@@ -1,4 +1,3 @@
-import proj4 from 'proj4';
 import * as d3 from 'd3';
 
 // Where we store the lonlatGrids of different projections

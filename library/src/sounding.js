@@ -1,10 +1,16 @@
 import sharp from './Sharp';
 
+export default class Sounding {
+    constructor() {}
+
+    updateData(d, time) {
+        this.profileData = this.soundingFormat(d, time);
+    }
+
 // Preprocess data for drawing
-soundingFormat(d, time, options, dic_fields, chartOptions) {
+    soundingFormat(d, time) {
     // Get data for current forecast hour
     const mydata = d.data[time];
-    const { dataset } = options;
 
     const obj = {};
     for (const i in mydata) {
@@ -86,8 +92,6 @@ soundingFormat(d, time, options, dic_fields, chartOptions) {
     });
     // Remove arrays that are of length zero
     let filteredArray = filteredArrayTmp.filter((array) => array.length > 0);
-    // Now grab the members now that the filtering is done
-    let members = filteredArray.map((x) => x[0].member);
 
     // This inserts surface variables into bottom of sounding array
     filteredArray.map((innerArray) => {
@@ -169,65 +173,13 @@ soundingFormat(d, time, options, dic_fields, chartOptions) {
         }
     }
 
-    if (chartOptions.x2dGraphStyle == 'plume') {
-        const newFilteredArray = [];
-        const newMembers = [];
-        for (const thing in filteredArray) {
-            if (options.models[filteredArray[thing][0].mem]) {
-                newFilteredArray.push(filteredArray[thing]);
-                newMembers.push(filteredArray[thing][0].mem);
-            }
-        }
-
-        if (options.groupBy === 'cluster') {
-            const modifiedArray = newFilteredArray.slice(0, -1);
-            //needed to update cluster grandensemble
-            const means = this.calculateAverages(modifiedArray);
-            const grandEnsemble = means[means.length - 1];
-            modifiedArray.push(grandEnsemble);
-            filteredArray = modifiedArray;
-            members = newMembers;
-        } else {
-            filteredArray = newFilteredArray;
-            members = newMembers;
-        }
-    }
-    if (
-        chartOptions.x2dGraphStyle === 'boxwhisker' ||
-        chartOptions.x2dGraphStyle === 'plumeWithMembers' ||
-        chartOptions.x2dGraphStyle === 'mean'
-    ) {
-        const newMembers = filteredArray
-            .filter((thing) => options.models[thing[0].mem])
-            .map((thing) => thing[0].mem);
-
-        const allMembers = Object.keys(options.clusters.membership)
-            .filter((cluster) => cluster !== 'grandensemble' && newMembers.includes(cluster))
-            .flatMap((cluster) => options.clusters.membership[cluster]);
-
-        // Filter the original array based on allMembers
-        filteredArray = filteredArray.filter((thing) => allMembers.includes(thing[0].mem));
-
-        //needed to update cluster grandensemble
-        const means = this.calculateAverages(filteredArray);
-        const grandEnsemble = means[means.length - 1];
-        filteredArray.push(grandEnsemble);
-
-        // Collect all members from the filtered array to update newMembers
-        const allFilteredMembers =
-            filteredArray.length > 0
-                ? [...new Set(filteredArray.map((thing) => thing[0]?.mem).filter(Boolean))]
-                : members;
-
-        members = allFilteredMembers;
-    }
-
-    return [filteredArray, profiledata, members];
+        return profiledata;
 }
 
 // Calculate thermo statistics
-function sharpStats(profile) {
+    sharpStats(profile) {
     // Most unstable pressure
+        console.log(profile);
     const mupclpres = sharp.mostUnstableLayer(profile);
 
     // Most unstable temperature
@@ -539,4 +491,5 @@ function sharpStats(profile) {
         momentumTransferMagMax,
         pblDepth,
     };
+}
 }
