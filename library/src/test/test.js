@@ -1,5 +1,13 @@
-function add(num1, num2) {
-    return num1 + num2;
+import Sounding from '../sounding';
+import data from './soundingData.json'; // assert { type: 'json' };
+
+function displayResults() {
+    const sounding = new Sounding();
+    sounding.updateData(data, '1753707600000');
+    console.log(sounding.members);
+    console.log(sounding.profileData);
+    const stats = sounding.sharpStats(sounding.profileData[0]);
+    console.log(stats);
 }
 
-export default add;
+export default displayResults;
