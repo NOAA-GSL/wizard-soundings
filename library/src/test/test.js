@@ -10,4 +10,10 @@ function displayResults() {
     console.log(stats);
 }
 
-export default displayResults;
+function getSounding() {
+    const sounding = new Sounding();
+    sounding.updateData(data, '1753707600000');
+    return sounding;
+}
+
+export default getSounding;

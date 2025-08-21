@@ -1,3 +1,3 @@
-import add from './test';
+import getSounding from './test';
 
-export { add };
+export { getSounding };

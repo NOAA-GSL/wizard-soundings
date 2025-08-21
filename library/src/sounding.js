@@ -1,10 +1,13 @@
 import sharp from './Sharp';
+import Vector from './vector';
+import { math } from './Utilities';
 
 export default class Sounding {
     // constructor() {}
 
     updateData(d, time) {
         [this.profileData, this.members] = Sounding.soundingFormat(d, time);
+        this.profileDerivedData = this.calcDerivedParameters();
     }
 
     // Preprocess data
@@ -178,12 +181,79 @@ export default class Sounding {
         return [profiledata, members];
     }
 
-    // TODO: calcStats from all members
-    // TODO: get mean of stats from specified member list
+    static calcDerivedParameters(profileData) {
+        const profileDerivedData = [];
+        for (const profile in profileData) {
+            console.log(profile.mem);
+            profileDerivedData.push(Sounding.sharpStats(profile));
+        }
+        return profileDerivedData;
+    }
+
+    calcStats(memberList, stat) {
+        const selectedProfiles = [];
+        for (const profile in this.profileDerivedData) {
+            if (memberList.includes(profile.mem)) {
+                console.log(profile.mem);
+                selectedProfiles.push(this.sharpStats(profile));
+            }
+        }
+        selectedStats = selectedProfiles.map(this.calculateStats);
+        // TODO: How will mag/dir data be derived from vector stats?
+    }
+
+    calculateStats(components, stat) {
+        // Check if the value is a scalar or vector
+        if (Array.isArray(components) && components.length === 2) {
+            return this.calculateStatsScalar(components, stat);
+        } else {
+            return this.calculateStatsVector(components[0], components[1], stat);
+        }
+    }
+
+    calculateStatsScalar(componentOne, stat) {
+        // in this case we have a scalar input
+        // really simple, just calculate the mean (or percentile) and boom done
+        if (!componentOne) return NaN;
+        let value;
+        if (stat === 'mean') {
+            value = math.mean(componentOne);
+        } else {
+            const q = Number(stat.substring(0, stat.length - 1));
+            value = math.quantile(componentOne, q / 100);
+        }
+        if (!value) value = NaN;
+        return value;
+    }
+
+    calculateStatsVector(componentOne, componentTwo, stat) {
+        // TODO: Update to use Vector object
+        // in this case we have a vector-valued input
+        // first, calculate the mean u and mean v winds...and this will be our direction
+        if (!componentOne || !componentTwo) return { mag: NaN, drx: NaN };
+        const xValue = math.mean(componentOne);
+        const yValue = math.mean(componentTwo);
+        let mag;
+        const mags = componentOne.map((element, idx) => sharp.mag(element, componentTwo[idx]));
+        if (stat == 'mean') {
+            mag = math.mean(mags);
+        } else {
+            const q = Number(stat.substring(0, stat.length - 1));
+            mag = math.quantile(mags, q / 100);
+        }
+
+        // so now <xValue,yValue> has the direction we want
+        // and mag has the value we want
+        let [sp, drx] = sharp.comp2vec(xValue, yValue);
+        if (!mag) mag = NaN;
+        if (!drx) drx = NaN;
+        return { mag, drx };
+    }
 
     // Calculate thermo statistics
     sharpStats(profile) {
         // Most unstable pressure
+        const { mem } = profile;
         const mupclpres = sharp.mostUnstableLayer(profile);
 
         // Most unstable temperature
@@ -311,7 +381,8 @@ export default class Sounding {
 
         // Bunkers storm motion components
         const [rstu, rstv, lstu, lstv] = sharp.bunkers(profile, muCAPE, muCINH, muEL);
-
+        const rstVector = new Vector(rstu, rstv); // TODO: Update the rest of the UV parameters to use Vector objects.
+        const lstUV = [lstu, lstv];
         // Calculate storm relative helicities for each layer if Bunker's defined
         // Question: Is there a reason these are var instead of const?
         if (rstu) {
@@ -337,50 +408,52 @@ export default class Sounding {
         }
 
         // Mean winds for each layer
-        const [mw1u, mw1v] = sharp.meanWind(profile, profile.pres[0], p1km);
-        const [mw3u, mw3v] = sharp.meanWind(profile, profile.pres[0], p3km);
-        const [mw6u, mw6v] = sharp.meanWind(profile, profile.pres[0], p6km);
-        const [mw8u, mw8v] = sharp.meanWind(profile, profile.pres[0], p8km);
+        const mw1UV = sharp.meanWind(profile, profile.pres[0], p1km);
+        const mw3UV = sharp.meanWind(profile, profile.pres[0], p3km);
+        const mw6UV = sharp.meanWind(profile, profile.pres[0], p6km);
+        const mw8UV = sharp.meanWind(profile, profile.pres[0], p8km);
 
         // Storm relative winds for each layer
-        const [srw1u, srw1v] = sharp.srWind(profile, profile.pres[0], p1km, rstu, rstv);
-        const [srw3u, srw3v] = sharp.srWind(profile, profile.pres[0], p3km, rstu, rstv);
-        const [srw6u, srw6v] = sharp.srWind(profile, profile.pres[0], p6km, rstu, rstv);
-        const [srw8u, srw8v] = sharp.srWind(profile, profile.pres[0], p8km, rstu, rstv);
+        const srw1UV = sharp.srWind(profile, profile.pres[0], p1km, rstu, rstv);
+        const srw3UV = sharp.srWind(profile, profile.pres[0], p3km, rstu, rstv);
+        const srw6UV = sharp.srWind(profile, profile.pres[0], p6km, rstu, rstv);
+        const srw8UV = sharp.srWind(profile, profile.pres[0], p8km, rstu, rstv);
 
         // Mean winds, shear, SR winds for effective inflow layer
-        const [effwu, effwv] = sharp.meanWind(profile, effp0, effp1);
-        const [effshru, effshrv] = sharp.shear(profile, effp0, effp1);
-        const effshr = sharp.mag(effshru, effshrv);
-        const [srweffu, srweffv] = sharp.srWind(profile, effp0, effp1, rstu, rstv);
+        const effwUV = sharp.meanWind(profile, effp0, effp1);
+        const effshrUV = sharp.shear(profile, effp0, effp1);
+        const effshr = sharp.mag(effshrUV[0], effshrUV[1]);
+        const srweffUV = sharp.srWind(profile, effp0, effp1, rstu, rstv);
 
         // Mean winds, shear, SR winds for LCL-EL layer
-        const [ellclwu, ellclwv] = sharp.meanWind(profile, plcl, pel, rstu, rstv);
-        const [ellclshru, ellclshrv] = sharp.shear(profile, plcl, pel);
-        const ellclshr = sharp.mag(ellclshru, ellclshrv);
-        const [srwellclu, srwellclv] = sharp.srWind(profile, plcl, pel, rstu, rstv);
+        const ellclwUV = sharp.meanWind(profile, plcl, pel, rstu, rstv);
+        const ellclshrUV = sharp.shear(profile, plcl, pel);
+        const ellclshr = sharp.mag(ellclshrUV[0], ellclshrUV[1]);
+        const srwellclUV = sharp.srWind(profile, plcl, pel, rstu, rstv);
 
         // Mean winds, shear, SR winds for LCL-EL layer for (effective bulk wind difference?)
-        const [ebwdu, ebwdv] = sharp.meanWind(profile, effp0, elh);
-        const [ebwdshru, ebwdshrv] = sharp.shear(profile, effp0, elh);
-        const ebwdshr = sharp.mag(ebwdshru, ebwdshrv);
-        const [srwebwdu, srwebwdv] = sharp.srWind(profile, effp0, elh, rstu, rstv);
+        const ebwdUV = sharp.meanWind(profile, effp0, elh);
+        const ebwdshrUV = sharp.shear(profile, effp0, elh);
+        const ebwdshr = sharp.mag(ebwdshrUV[0], ebwdshrUV[1]);
+        const srwebwdUV = sharp.srWind(profile, effp0, elh, rstu, rstv);
 
         // 4-6km storm relative winds
-        const [srw46u, srw46v] = sharp.srWind(profile, p4km, p6km, rstu, rstv);
+        const srw46UV = sharp.srWind(profile, p4km, p6km, rstu, rstv);
 
         // Bulk richardson shear
         const brnShear = sharp.brnShear(profile);
 
         // Corfidi index
         const [upu, upv, dnu, dnv] = sharp.corfidi(profile);
+        const upUV = [upu, upv];
+        const dnUV = [dnu, dnv];
 
         // Low and mid level mean relative humidity
         const lowRH = sharp.meanRH(profile, profile.pres[0], profile.pres[0] - 100);
         const midRH = sharp.meanRH(profile, profile.pres[0] - 150, profile.pres[0] - 350);
 
-        const momentumTransferVector = sharp.momentum_transfer_vector(profile, 'Mean');
-        const momentumTransferMag = sharp.mag(momentumTransferVector[0], momentumTransferVector[1]);
+        const momentumTransferUV = sharp.momentum_transfer_vector(profile, 'Mean');
+        const momentumTransferMag = sharp.mag(momentumTransferUV[0], momentumTransferUV[1]);
         const momentumTransferVectorMax = sharp.momentum_transfer_vector(profile, 'Max');
         let momentumTransferMagMax = sharp.mag(
             momentumTransferVectorMax[0],
@@ -393,6 +466,7 @@ export default class Sounding {
         const pblDepth = sharp.pbl_lid(profile);
 
         return {
+            mem,
             sfcCAPE,
             mlCAPE,
             muCAPE,
@@ -431,22 +505,30 @@ export default class Sounding {
             sfc3kmshr,
             sfc6kmshr,
             sfc8kmshr,
-            mw1u,
-            mw1v,
-            mw3u,
-            mw3v,
-            mw6u,
-            mw6v,
-            mw8u,
-            mw8v,
-            srw1u,
-            srw1v,
-            srw3u,
-            srw3v,
-            srw6u,
-            srw6v,
-            srw8u,
-            srw8v,
+            // mw1u, // TODO: Figure out how to handle u/v components (use mag / dir instead?)
+            // mw1v,
+            // mw3u,
+            // mw3v,
+            // mw6u,
+            // mw6v,
+            // mw8u,
+            // mw8v,
+            mw1UV,
+            mw3UV,
+            mw6UV,
+            mw8UV,
+            // srw1u,
+            // srw1v,
+            // srw3u,
+            // srw3v,
+            // srw6u,
+            // srw6v,
+            // srw8u,
+            // srw8v,
+            srw1UV,
+            srw3UV,
+            srw6UV,
+            srw8UV,
             lowRH,
             midRH,
             mburst,
@@ -455,41 +537,51 @@ export default class Sounding {
             mmp,
             sigsvr,
             effshr,
-            effwu,
-            effwv,
+            // effwu,
+            // effwv,
+            effwUV,
             right_srheff,
             right_srhlclel,
             ellclshr,
             ellclwu,
             ellclwv,
-            srweffu,
-            srweffv,
-            srwellclu,
-            srwellclv,
+            // srweffu,
+            // srweffv,
+            // srwellclu,
+            // srwellclv,
+            srweffUV,
+            srwellclUV,
             right_srhebwd,
             ebwdshr,
-            ebwdu,
-            ebwdv,
-            srwebwdu,
-            srwebwdv,
+            // ebwdu,
+            // ebwdv,
+            // srwebwdu,
+            // srwebwdv,
+            ebwdUV,
+            srwebwdUV,
             brnShear,
-            srw46u,
-            srw46v,
-            rstu,
-            rstv,
-            lstu,
-            lstv,
-            upu,
-            upv,
-            dnu,
-            dnv,
+            // srw46u,
+            // srw46v,
+            // rstu,
+            // rstv,
+            // lstu,
+            // lstv,
+            // upu,
+            // upv,
+            // dnu,
+            // dnv,
+            srw46UV,
+            rstUV,
+            lstUV,
+            upUV,
+            dnUV,
             muptrace,
             muttrace,
             sfcptrace,
             sfcttrace,
             mlptrace,
             mlttrace,
-            momentumTransferVector,
+            momentumTransferVector: momentumTransferUV,
             momentumTransferMag,
             momentumTransferVectorMax,
             momentumTransferMagMax,
