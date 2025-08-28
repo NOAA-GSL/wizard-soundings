@@ -7,7 +7,7 @@ export default class Sounding {
 
     updateData(d, time) {
         [this.profileData, this.members] = Sounding.soundingFormat(d, time);
-        this.profileDerivedData = this.calcDerivedParameters();
+        this.profileDerivedData = Sounding.calcDerivedParameters(this.profileData);
     }
 
     // Preprocess data
@@ -177,13 +177,15 @@ export default class Sounding {
                 memdata.hghtmsl.push(-999);
             }
         }
-
+        console.log('The saved members are: ');
+        console.log(members);
         return [profiledata, members];
     }
 
     static calcDerivedParameters(profileData) {
+        console.log(profileData);
         const profileDerivedData = [];
-        for (const profile in profileData) {
+        for (const profile of profileData) {
             console.log(profile.mem);
             profileDerivedData.push(Sounding.sharpStats(profile));
         }
@@ -191,27 +193,70 @@ export default class Sounding {
     }
 
     calcStats(memberList, stat) {
-        const selectedProfiles = [];
-        for (const profile in this.profileDerivedData) {
+        console.log('calculating stats');
+        console.log(memberList);
+        console.log(stat);
+        const statsDict = {};
+
+        // Return an empty object if the input array is empty to avoid errors.
+        if (memberList.length === 0) {
+            return {};
+        }
+
+        for (const profile of this.profileDerivedData) {
+            console.log(profile);
             if (memberList.includes(profile.mem)) {
                 console.log(profile.mem);
-                selectedProfiles.push(this.sharpStats(profile));
+                const stats = profile;
+
+                // Push all HREF member stats to appropriate array (each will be length 10)
+                for (const key in stats) {
+                    if (!statsDict[key]) statsDict[key] = [];
+                    statsDict[key].push(stats[key]);
+                }
             }
         }
-        selectedStats = selectedProfiles.map(this.calculateStats);
-        // TODO: How will mag/dir data be derived from vector stats?
+        console.log(statsDict);
+        const selectedStats = {};
+        Object.entries(statsDict).forEach(([key, value]) => {
+            console.log(key);
+            const statOutput = this.calculateStats(value, key, stat);
+            selectedStats[key] = statOutput;
+        });
+        console.log(selectedStats);
+        return selectedStats;
     }
 
-    calculateStats(components, stat) {
+    calculateStats(components, key, stat) {
         // Check if the value is a scalar or vector
-        if (Array.isArray(components) && components.length === 2) {
-            return this.calculateStatsScalar(components, stat);
-        } else {
-            return this.calculateStatsVector(components[0], components[1], stat);
+        let returnStat = null;
+        console.log(components);
+        // 1. Filter out any null or undefined entries from the components array.
+        // The condition `vec != null` conveniently checks for both null and undefined.
+        const validComponents = components.filter((value) => value != null);
+
+        // 2. Add an edge case check. If the array is empty after filtering,
+        // we can't perform calculations, so we return a new Vector with NaN values.
+        if (validComponents.length === 0) {
+            if (key.includes('Vector')) {
+                // Cheap check to make sure a vector is returned if a vector is expected.
+                // TODO: This may not be necessary.
+                return new Vector(NaN, NaN);
+            }
+            return null;
         }
+        if (validComponents[0] instanceof Vector) {
+            returnStat = Sounding.calculateStatsVector(validComponents, stat);
+        } else if (typeof validComponents[0] === 'number') {
+            returnStat = Sounding.calculateStatsScalar(validComponents, stat);
+        } else {
+            console.error('Error: Data array must contain either numbers or Vector objects.');
+            return null;
+        }
+        return returnStat;
     }
 
-    calculateStatsScalar(componentOne, stat) {
+    static calculateStatsScalar(componentOne, stat) {
         // in this case we have a scalar input
         // really simple, just calculate the mean (or percentile) and boom done
         if (!componentOne) return NaN;
@@ -226,15 +271,17 @@ export default class Sounding {
         return value;
     }
 
-    calculateStatsVector(componentOne, componentTwo, stat) {
-        // TODO: Update to use Vector object
+    static calculateStatsVector(components, stat) {
         // in this case we have a vector-valued input
         // first, calculate the mean u and mean v winds...and this will be our direction
-        if (!componentOne || !componentTwo) return { mag: NaN, drx: NaN };
-        const xValue = math.mean(componentOne);
-        const yValue = math.mean(componentTwo);
+        const uList = components.map((vec) => vec.u);
+        const vList = components.map((vec) => vec.v);
+        // TODO: Need to handle vector lists full of null values
+        if (!uList || !vList) return { mag: NaN, drx: NaN };
+        const xValue = math.mean(uList);
+        const yValue = math.mean(vList);
         let mag;
-        const mags = componentOne.map((element, idx) => sharp.mag(element, componentTwo[idx]));
+        const mags = uList.map((element, idx) => sharp.mag(element, vList[idx]));
         if (stat == 'mean') {
             mag = math.mean(mags);
         } else {
@@ -244,14 +291,17 @@ export default class Sounding {
 
         // so now <xValue,yValue> has the direction we want
         // and mag has the value we want
-        let [sp, drx] = sharp.comp2vec(xValue, yValue);
-        if (!mag) mag = NaN;
-        if (!drx) drx = NaN;
-        return { mag, drx };
+        const [sp, drx] = Vector.comp2vec(xValue, yValue);
+        const [u, v] = Vector.vec2comp(mag, drx);
+        const newVector = new Vector(u, v);
+
+        //if (!mag) mag = NaN;
+        //if (!drx) drx = NaN;
+        return newVector;
     }
 
     // Calculate thermo statistics
-    sharpStats(profile) {
+    static sharpStats(profile) {
         // Most unstable pressure
         const { mem } = profile;
         const mupclpres = sharp.mostUnstableLayer(profile);
@@ -381,8 +431,8 @@ export default class Sounding {
 
         // Bunkers storm motion components
         const [rstu, rstv, lstu, lstv] = sharp.bunkers(profile, muCAPE, muCINH, muEL);
-        const rstVector = new Vector(rstu, rstv); // TODO: Update the rest of the UV parameters to use Vector objects.
-        const lstUV = [lstu, lstv];
+        const rstVector = new Vector(rstu, rstv);
+        const lstVector = new Vector(lstu, lstv);
         // Calculate storm relative helicities for each layer if Bunker's defined
         // Question: Is there a reason these are var instead of const?
         if (rstu) {
@@ -408,56 +458,60 @@ export default class Sounding {
         }
 
         // Mean winds for each layer
-        const mw1UV = sharp.meanWind(profile, profile.pres[0], p1km);
-        const mw3UV = sharp.meanWind(profile, profile.pres[0], p3km);
-        const mw6UV = sharp.meanWind(profile, profile.pres[0], p6km);
-        const mw8UV = sharp.meanWind(profile, profile.pres[0], p8km);
+        const mw1Vector = new Vector(...sharp.meanWind(profile, profile.pres[0], p1km));
+        const mw3Vector = new Vector(...sharp.meanWind(profile, profile.pres[0], p3km));
+        const mw6Vector = new Vector(...sharp.meanWind(profile, profile.pres[0], p6km));
+        const mw8Vector = new Vector(...sharp.meanWind(profile, profile.pres[0], p8km));
 
         // Storm relative winds for each layer
-        const srw1UV = sharp.srWind(profile, profile.pres[0], p1km, rstu, rstv);
-        const srw3UV = sharp.srWind(profile, profile.pres[0], p3km, rstu, rstv);
-        const srw6UV = sharp.srWind(profile, profile.pres[0], p6km, rstu, rstv);
-        const srw8UV = sharp.srWind(profile, profile.pres[0], p8km, rstu, rstv);
+        const srw1Vector = new Vector(...sharp.srWind(profile, profile.pres[0], p1km, rstu, rstv));
+        const srw3Vector = new Vector(...sharp.srWind(profile, profile.pres[0], p3km, rstu, rstv));
+        const srw6Vector = new Vector(...sharp.srWind(profile, profile.pres[0], p6km, rstu, rstv));
+        const srw8Vector = new Vector(...sharp.srWind(profile, profile.pres[0], p8km, rstu, rstv));
 
         // Mean winds, shear, SR winds for effective inflow layer
-        const effwUV = sharp.meanWind(profile, effp0, effp1);
-        const effshrUV = sharp.shear(profile, effp0, effp1);
-        const effshr = sharp.mag(effshrUV[0], effshrUV[1]);
-        const srweffUV = sharp.srWind(profile, effp0, effp1, rstu, rstv);
+        const effwVector = new Vector(...sharp.meanWind(profile, effp0, effp1));
+        const effshrVector = new Vector(...sharp.shear(profile, effp0, effp1));
+        const effshr = sharp.mag(effshrVector.u, effshrVector.v); // TODO: Cleanup. Use mag function of Vector objects.
+        const srweffVector = new Vector(...sharp.srWind(profile, effp0, effp1, rstu, rstv));
 
         // Mean winds, shear, SR winds for LCL-EL layer
-        const ellclwUV = sharp.meanWind(profile, plcl, pel, rstu, rstv);
-        const ellclshrUV = sharp.shear(profile, plcl, pel);
-        const ellclshr = sharp.mag(ellclshrUV[0], ellclshrUV[1]);
-        const srwellclUV = sharp.srWind(profile, plcl, pel, rstu, rstv);
+        const ellclwVector = new Vector(...sharp.meanWind(profile, plcl, pel, rstu, rstv));
+        const ellclshrVector = new Vector(...sharp.shear(profile, plcl, pel));
+        const ellclshr = sharp.mag(ellclshrVector.u, ellclshrVector.v);
+        const srwellclVector = new Vector(...sharp.srWind(profile, plcl, pel, rstu, rstv));
 
         // Mean winds, shear, SR winds for LCL-EL layer for (effective bulk wind difference?)
-        const ebwdUV = sharp.meanWind(profile, effp0, elh);
-        const ebwdshrUV = sharp.shear(profile, effp0, elh);
-        const ebwdshr = sharp.mag(ebwdshrUV[0], ebwdshrUV[1]);
-        const srwebwdUV = sharp.srWind(profile, effp0, elh, rstu, rstv);
+        const ebwdVector = new Vector(...sharp.meanWind(profile, effp0, elh));
+        const ebwdshrVector = new Vector(...sharp.shear(profile, effp0, elh));
+        const ebwdshr = sharp.mag(ebwdshrVector.u, ebwdshrVector.v);
+        const srwebwdVector = new Vector(...sharp.srWind(profile, effp0, elh, rstu, rstv));
 
         // 4-6km storm relative winds
-        const srw46UV = sharp.srWind(profile, p4km, p6km, rstu, rstv);
+        const srw46Vector = new Vector(...sharp.srWind(profile, p4km, p6km, rstu, rstv));
 
         // Bulk richardson shear
         const brnShear = sharp.brnShear(profile);
 
         // Corfidi index
         const [upu, upv, dnu, dnv] = sharp.corfidi(profile);
-        const upUV = [upu, upv];
-        const dnUV = [dnu, dnv];
+        const upVector = new Vector(upu, upv);
+        const dnVector = new Vector(dnu, dnv);
 
         // Low and mid level mean relative humidity
         const lowRH = sharp.meanRH(profile, profile.pres[0], profile.pres[0] - 100);
         const midRH = sharp.meanRH(profile, profile.pres[0] - 150, profile.pres[0] - 350);
 
-        const momentumTransferUV = sharp.momentum_transfer_vector(profile, 'Mean');
-        const momentumTransferMag = sharp.mag(momentumTransferUV[0], momentumTransferUV[1]);
-        const momentumTransferVectorMax = sharp.momentum_transfer_vector(profile, 'Max');
+        const momentumTransferVector = new Vector(
+            ...sharp.momentum_transfer_vector(profile, 'Mean'),
+        );
+        const momentumTransferMag = sharp.mag(momentumTransferVector.u, momentumTransferVector.v);
+        const momentumTransferVectorMax = new Vector(
+            ...sharp.momentum_transfer_vector(profile, 'Max'),
+        );
         let momentumTransferMagMax = sharp.mag(
-            momentumTransferVectorMax[0],
-            momentumTransferVectorMax[1],
+            momentumTransferVectorMax.u,
+            momentumTransferVectorMax.v,
         );
         if (momentumTransferMagMax < momentumTransferMag) {
             momentumTransferMagMax = momentumTransferMag;
@@ -505,7 +559,7 @@ export default class Sounding {
             sfc3kmshr,
             sfc6kmshr,
             sfc8kmshr,
-            // mw1u, // TODO: Figure out how to handle u/v components (use mag / dir instead?)
+            // mw1u,
             // mw1v,
             // mw3u,
             // mw3v,
@@ -513,10 +567,10 @@ export default class Sounding {
             // mw6v,
             // mw8u,
             // mw8v,
-            mw1UV,
-            mw3UV,
-            mw6UV,
-            mw8UV,
+            mw1Vector,
+            mw3Vector,
+            mw6Vector,
+            mw8Vector,
             // srw1u,
             // srw1v,
             // srw3u,
@@ -525,10 +579,10 @@ export default class Sounding {
             // srw6v,
             // srw8u,
             // srw8v,
-            srw1UV,
-            srw3UV,
-            srw6UV,
-            srw8UV,
+            srw1Vector,
+            srw3Vector,
+            srw6Vector,
+            srw8Vector,
             lowRH,
             midRH,
             mburst,
@@ -539,26 +593,25 @@ export default class Sounding {
             effshr,
             // effwu,
             // effwv,
-            effwUV,
+            effwVector,
             right_srheff,
             right_srhlclel,
             ellclshr,
-            ellclwu,
-            ellclwv,
+            ellclwVector,
             // srweffu,
             // srweffv,
             // srwellclu,
             // srwellclv,
-            srweffUV,
-            srwellclUV,
+            srweffVector,
+            srwellclVector,
             right_srhebwd,
             ebwdshr,
             // ebwdu,
             // ebwdv,
             // srwebwdu,
             // srwebwdv,
-            ebwdUV,
-            srwebwdUV,
+            ebwdVector,
+            srwebwdVector,
             brnShear,
             // srw46u,
             // srw46v,
@@ -570,18 +623,18 @@ export default class Sounding {
             // upv,
             // dnu,
             // dnv,
-            srw46UV,
-            rstUV,
-            lstUV,
-            upUV,
-            dnUV,
+            srw46Vector,
+            rstVector,
+            lstVector,
+            upVector,
+            dnVector,
             muptrace,
             muttrace,
             sfcptrace,
             sfcttrace,
             mlptrace,
             mlttrace,
-            momentumTransferVector: momentumTransferUV,
+            momentumTransferVector,
             momentumTransferMag,
             momentumTransferVectorMax,
             momentumTransferMagMax,

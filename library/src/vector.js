@@ -28,6 +28,23 @@ export default class Vector {
     }
 
     /**
+     * Calculates u and v components from magnitude and direction.
+     * @param {number} mag - The magnitude (speed) of the vector.
+     * @param {number} drx - The direction in degrees (meteorological convention).
+     * @returns {Array<number>} An array containing the u and v components: [u, v].
+     */
+    static vec2comp(mag, drx) {
+        // Convert direction from degrees to radians for trigonometric functions
+        const drxRad = drx * (Math.PI / 180);
+
+        // Calculate u and v components using meteorological conventions
+        const u = -mag * Math.sin(drxRad);
+        const v = -mag * Math.cos(drxRad);
+
+        return [u, v];
+    }
+
+    /**
      * Displays the vector's properties in a readable format.
      * @returns {string} A string representation of the vector.
      */

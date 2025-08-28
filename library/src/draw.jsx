@@ -1,4 +1,12 @@
+import { Tooltip } from '@mui/material';
+
 export default function createStatsTable(statsDict) {
+    // TODO: Make statsDict a state so that the table updates whenever statsDict updates.
+    function statClick() {
+        return null;
+        /* TODO: Add a "statClick function back in" */
+    }
+
     return (
         <>
             <div id="statsContainer">
@@ -17,7 +25,7 @@ export default function createStatsTable(statsDict) {
                                 </tr>
                                 <tr>
                                     <th>SFC</th>
-                                    {/* TODO: Add a "statClick function back in" */}
+
                                     <td onClick={(event) => statClick('sfcCAPE', event)}>
                                         {statsDict.sfcCAPE.toFixed(0)}
                                     </td>
@@ -172,12 +180,7 @@ export default function createStatsTable(statsDict) {
                                             }
                                         >
                                             Max MT ={' '}
-                                            {/* TODO: Remove calculateStatsVector and use vector objects instead. Stats are precalculated by the sounding object
-                                            and passed here as statsDict. Do this for all calculateStatsVector occurrences in this file. */}
-                                            {calculateStatsVector(
-                                                cape.momentumTransferVectorMax?.map((x) => x[0]),
-                                                cape.momentumTransferVectorMax?.map((x) => x[1]),
-                                            ).mag.toFixed(1)}
+                                            {statsDict.momentumTransferVectorMax.mag.toFixed(1)}
                                         </td>
                                     </Tooltip>
                                     <Tooltip
@@ -215,20 +218,12 @@ export default function createStatsTable(statsDict) {
                                         {statsDict.sfc1kmshr.toFixed(0)}
                                     </td>
                                     <td className="noClick">
-                                        {`${calculateStatsVector(cape.mw1u, cape.mw1v).drx.toFixed(
+                                        {`${statsDict.mw1Vector.drx.toFixed(
                                             0,
-                                        )}/${calculateStatsVector(cape.mw1u, cape.mw1v).mag.toFixed(
-                                            0,
-                                        )}`}
+                                        )}/${statsDict.mw1Vector.mag.toFixed(0)}`}
                                     </td>
                                     <td className="noClick">
-                                        {`${calculateStatsVector(
-                                            cape.srw1u,
-                                            cape.srw1v,
-                                        ).drx.toFixed(0)}/${calculateStatsVector(
-                                            cape.srw1u,
-                                            cape.srw1v,
-                                        ).mag.toFixed(0)}`}
+                                        {`${statsDict.srw1Vector.drx.toFixed(0)}/${statsDict.srw1Vector.mag.toFixed(0)}`}
                                     </td>
                                 </tr>
                                 <tr>
@@ -240,20 +235,12 @@ export default function createStatsTable(statsDict) {
                                         {statsDict.sfc3kmshr.toFixed(0)}
                                     </td>
                                     <td className="noClick">
-                                        {`${calculateStatsVector(cape.mw3u, cape.mw3v).drx.toFixed(
+                                        {`${statsDict.mw3Vector.drx.toFixed(
                                             0,
-                                        )}/${calculateStatsVector(cape.mw3u, cape.mw3v).mag.toFixed(
-                                            0,
-                                        )}`}
+                                        )}/${statsDict.mw3Vector.mag.toFixed(0)}`}
                                     </td>
                                     <td className="noClick">
-                                        {`${calculateStatsVector(
-                                            cape.srw3u,
-                                            cape.srw3v,
-                                        ).drx.toFixed(0)}/${calculateStatsVector(
-                                            cape.srw3u,
-                                            cape.srw3v,
-                                        ).mag.toFixed(0)}`}
+                                        {`${statsDict.srw3Vector.drx.toFixed(0)}/${statsDict.srw3Vector.mag.toFixed(0)}`}
                                     </td>
                                 </tr>
                                 <tr>
@@ -265,22 +252,10 @@ export default function createStatsTable(statsDict) {
                                         {statsDict.effshr.toFixed(0)}
                                     </td>
                                     <td className="noClick">
-                                        {`${calculateStatsVector(
-                                            cape.effwu,
-                                            cape.effwv,
-                                        ).drx.toFixed(0)}/${calculateStatsVector(
-                                            cape.effwu,
-                                            cape.effwv,
-                                        ).mag.toFixed(0)}`}
+                                        {`${statsDict.effwVector.drx.toFixed(0)}/${statsDict.effwVector.mag.toFixed(0)}`}
                                     </td>
                                     <td className="noClick">
-                                        {`${calculateStatsVector(
-                                            cape.srweffu,
-                                            cape.srweffv,
-                                        ).drx.toFixed(0)}/${calculateStatsVector(
-                                            cape.srweffu,
-                                            cape.srweffv,
-                                        ).mag.toFixed(0)}`}
+                                        {`${statsDict.srweffVector.drx.toFixed(0)}/${statsDict.srweffVector.mag.toFixed(0)}`}
                                     </td>
                                 </tr>
                                 <tr>
@@ -292,20 +267,12 @@ export default function createStatsTable(statsDict) {
                                         {statsDict.sfc6kmshr.toFixed(0)}
                                     </td>
                                     <td className="noClick">
-                                        {`${calculateStatsVector(cape.mw6u, cape.mw6v).drx.toFixed(
+                                        {`${statsDict.mw6Vector.drx.toFixed(
                                             0,
-                                        )}/${calculateStatsVector(cape.mw6u, cape.mw6v).mag.toFixed(
-                                            0,
-                                        )}`}
+                                        )}/${statsDict.mw6Vector.mag.toFixed(0)}`}
                                     </td>
                                     <td className="noClick">
-                                        {`${calculateStatsVector(
-                                            cape.srw6u,
-                                            cape.srw6v,
-                                        ).drx.toFixed(0)}/${calculateStatsVector(
-                                            cape.srw6u,
-                                            cape.srw6v,
-                                        ).mag.toFixed(0)}`}
+                                        {`${statsDict.srw6Vector.drx.toFixed(0)}/${statsDict.srw6Vector.mag.toFixed(0)}`}
                                     </td>
                                 </tr>
                                 <tr>
@@ -317,20 +284,12 @@ export default function createStatsTable(statsDict) {
                                         {statsDict.sfc8kmshr.toFixed(0)}
                                     </td>
                                     <td className="noClick">
-                                        {`${calculateStatsVector(cape.mw8u, cape.mw8v).drx.toFixed(
+                                        {`${statsDict.mw8Vector.drx.toFixed(
                                             0,
-                                        )}/${calculateStatsVector(cape.mw8u, cape.mw8v).mag.toFixed(
-                                            0,
-                                        )}`}
+                                        )}/${statsDict.mw8Vector.mag.toFixed(0)}`}
                                     </td>
                                     <td className="noClick">
-                                        {`${calculateStatsVector(
-                                            cape.srw8u,
-                                            cape.srw8v,
-                                        ).drx.toFixed(0)}/${calculateStatsVector(
-                                            cape.srw8u,
-                                            cape.srw8v,
-                                        ).mag.toFixed(0)}`}
+                                        {`${statsDict.srw8Vector.drx.toFixed(0)}/${statsDict.srw8Vector.mag.toFixed(0)}`}
                                     </td>
                                 </tr>
                                 <tr>
@@ -342,22 +301,10 @@ export default function createStatsTable(statsDict) {
                                         {statsDict.ellclshr.toFixed(0)}
                                     </td>
                                     <td className="noClick">
-                                        {`${calculateStatsVector(
-                                            cape.ellclwu,
-                                            cape.ellclwv,
-                                        ).drx.toFixed(0)}/${calculateStatsVector(
-                                            cape.ellclwu,
-                                            cape.ellclwv,
-                                        ).mag.toFixed(0)}`}
+                                        {`${statsDict.ellclwVector.drx.toFixed(0)}/${statsDict.ellclwVector.mag.toFixed(0)}`}
                                     </td>
                                     <td className="noClick">
-                                        {`${calculateStatsVector(
-                                            cape.srwellclu,
-                                            cape.srwellclv,
-                                        ).drx.toFixed(0)}/${calculateStatsVector(
-                                            cape.srwellclu,
-                                            cape.srwellclv,
-                                        ).mag.toFixed(0)}`}
+                                        {`${statsDict.srwellclVector.drx.toFixed(0)}/${statsDict.srwellclVector.mag.toFixed(0)}`}
                                     </td>
                                 </tr>
                                 <tr>
@@ -369,22 +316,10 @@ export default function createStatsTable(statsDict) {
                                         {statsDict.ebwdshr.toFixed(0)}
                                     </td>
                                     <td className="noClick">
-                                        {`${calculateStatsVector(
-                                            cape.ebwdu,
-                                            cape.ebwdv,
-                                        ).drx.toFixed(0)}/${calculateStatsVector(
-                                            cape.ebwdu,
-                                            cape.ebwdv,
-                                        ).mag.toFixed(0)}`}
+                                        {`${statsDict.ebwdVector.drx.toFixed(0)}/${statsDict.ebwdVector.mag.toFixed(0)}`}
                                     </td>
                                     <td className="noClick">
-                                        {`${calculateStatsVector(
-                                            cape.srwebwdu,
-                                            cape.srwebwdv,
-                                        ).drx.toFixed(0)}/${calculateStatsVector(
-                                            cape.srwebwdu,
-                                            cape.srwebwdv,
-                                        ).mag.toFixed(0)}`}
+                                        {`${statsDict.srwebwdVector.drx.toFixed(0)}/${statsDict.srwebwdVector.mag.toFixed(0)}`}
                                     </td>
                                 </tr>
                             </tbody>
@@ -402,61 +337,31 @@ export default function createStatsTable(statsDict) {
                                     <tr>
                                         <td className="noClick">
                                             4-6 km SR Wind ={' '}
-                                            {`${calculateStatsVector(
-                                                cape.srw46u,
-                                                cape.srw46v,
-                                            ).drx.toFixed(0)}/${calculateStatsVector(
-                                                cape.srw46u,
-                                                cape.srw46v,
-                                            ).mag.toFixed(0)}`}
+                                            {`${statsDict.srw46Vector.drx.toFixed(0)}/${statsDict.srw46Vector.mag.toFixed(0)}`}
                                         </td>
                                     </tr>
                                     <tr>
                                         <td className="noClick">
                                             Bunkers Right ={' '}
-                                            {`${calculateStatsVector(
-                                                cape.rstu,
-                                                cape.rstv,
-                                            ).drx.toFixed(0)}/${calculateStatsVector(
-                                                cape.rstu,
-                                                cape.rstv,
-                                            ).mag.toFixed(0)}`}
+                                            {`${statsDict.rstVector.drx.toFixed(0)}/${statsDict.rstVector.mag.toFixed(0)}`}
                                         </td>
                                     </tr>
                                     <tr>
                                         <td className="noClick">
                                             Bunkers Left ={' '}
-                                            {`${calculateStatsVector(
-                                                cape.lstu,
-                                                cape.lstv,
-                                            ).drx.toFixed(0)}/${calculateStatsVector(
-                                                cape.lstu,
-                                                cape.lstv,
-                                            ).mag.toFixed(0)}`}
+                                            {`${statsDict.lstVector.drx.toFixed(0)}/${statsDict.lstVector.mag.toFixed(0)}`}
                                         </td>
                                     </tr>
                                     <tr>
                                         <td className="noClick">
                                             Corfidi Upshear ={' '}
-                                            {`${calculateStatsVector(
-                                                cape.upu,
-                                                cape.upv,
-                                            ).drx.toFixed(0)}/${calculateStatsVector(
-                                                cape.upu,
-                                                cape.upv,
-                                            ).mag.toFixed(0)}`}
+                                            {`${statsDict.upVector.drx.toFixed(0)}/${statsDict.upVector.mag.toFixed(0)}`}
                                         </td>
                                     </tr>
                                     <tr>
                                         <td className="noClick">
                                             Corfidi Downshear ={' '}
-                                            {`${calculateStatsVector(
-                                                cape.dnu,
-                                                cape.dnv,
-                                            ).drx.toFixed(0)}/${calculateStatsVector(
-                                                cape.dnu,
-                                                cape.dnv,
-                                            ).mag.toFixed(0)}`}
+                                            {`${statsDict.dnVector.drx.toFixed(0)}/${statsDict.dnVector.mag.toFixed(0)}`}
                                         </td>
                                     </tr>
                                 </tbody>
