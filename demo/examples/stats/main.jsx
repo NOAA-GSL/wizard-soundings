@@ -1,6 +1,7 @@
 import { StrictMode, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { getSounding } from 'desi-soundings';
+import { StatsTable } from 'desi-soundings';
 
 const sounding = getSounding();
 
@@ -11,8 +12,9 @@ function RenderStatsPage() {
     // 4 - onClick, calcStats from this all members
     // 5 - Create a function to calculate the mean of each stat, using selected members
     // 6 - Display these results in a table.
+    const [statsDict, setStatsDict] = useState(null);
 
-    const memberList = sounding.members.map((member, i) => {
+    const memberList = sounding.getMembers().map((member, i) => {
         return (
             <li key={member}>
                 <button>{member}</button>{' '}
@@ -23,11 +25,12 @@ function RenderStatsPage() {
 
     const handleCalculateStats = () => {
         // 1. Calculate the stats for only the selected members.
-        const stats = sounding.calcStats(sounding.members, 'mean'); //TODO: Update to use selected models.
+        const stats = sounding.calcStats(sounding.getMembers(), 'mean'); //TODO: Update to use selected models.
         console.log(stats);
+        setStatsDict(stats);
     };
 
-    console.log(sounding.profileData);
+    console.log(sounding.getProfileData());
     return (
         <>
             <div>Example of sounding stats!</div>
@@ -41,7 +44,9 @@ function RenderStatsPage() {
             >
                 Calculate Stats{' '}
             </button>
-            <div id="stats-table">Table</div>
+            <div id="stats-table">
+                <StatsTable statsDictParam={statsDict} />
+            </div>
         </>
     );
 }

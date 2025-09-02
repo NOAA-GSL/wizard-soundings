@@ -1,10 +1,27 @@
-import { Tooltip } from '@mui/material';
+// import { Tooltip } from '@mui/material';
 
-export default function createStatsTable(statsDict) {
+export default function StatsTable({ statsDictParam }) {
     // TODO: Make statsDict a state so that the table updates whenever statsDict updates.
+    // const [statsDict, setStatsDict] = useState(null);
+    const statsDict = statsDictParam;
+
     function statClick() {
         return null;
         /* TODO: Add a "statClick function back in" */
+    }
+
+    // function updateStats(newStatsDict) {
+    //    setStatsDict(newStatsDict);
+    // }
+
+    if (statsDict === null) {
+        return null;
+    }
+
+    for (const key in statsDict) {
+        if (statsDict[key] === null) {
+            statsDict[key] = -9999;
+        }
     }
 
     return (
@@ -149,7 +166,7 @@ export default function createStatsTable(statsDict) {
                                     <td onClick={(event) => statClick('sigsvr', event)}>
                                         SigSvr = {statsDict.sigsvr.toFixed(0)}
                                     </td>
-                                    <Tooltip
+                                    {/* <Tooltip
                                         enterDelay={750}
                                         title={
                                             'Momentum transfer wind gusts\nCalculated via Cook and Williams method, which takes the mean wind vector through depth of PBL'
@@ -194,7 +211,7 @@ export default function createStatsTable(statsDict) {
                                         <td onClick={(event) => statClick('pblDepth', event)}>
                                             PBL Top = {statsDict.pblDepth.toFixed(1)}
                                         </td>
-                                    </Tooltip>
+                                    </Tooltip> */}
                                 </tr>
                             </tbody>
                         </table>
