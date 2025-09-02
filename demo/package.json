@@ -15,10 +15,7 @@
         "desi-soundings": "file:../library",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
-        "react-map-gl": "8.0.4",
-        "@mui/material": "^5.15.10",
-        "@emotion/react": "^11.11.3",
-        "@emotion/styled": "^11.11.0"
+        "react-map-gl": "8.0.4"
     },
     "devDependencies": {
         "@eslint/js": "^9.25.0",

@@ -16,8 +16,5 @@
     "workspaces": [
         "library",
         "demo"
-    ],
-    "dependencies": {
-        "@mui/material": "^7.3.1"
-    }
+    ]
 }
