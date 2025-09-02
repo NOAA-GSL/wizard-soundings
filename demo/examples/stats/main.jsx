@@ -2,6 +2,7 @@ import { StrictMode, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { getSounding } from 'desi-soundings';
 import { StatsTable } from 'desi-soundings';
+import 'desi-soundings/desi-soundings.css';
 
 const sounding = getSounding();
 

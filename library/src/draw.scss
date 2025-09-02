@@ -1,0 +1,394 @@
+//@import '../../../../css/variables.scss';
+
+$timeSliderHeight: 50px;
+$soundingHeight: 100%;
+$statsHeight: 175px;
+$soundingWidth: 60%;
+
+#main-window-2d #forecast-hour-controls {
+    box-shadow: none;
+}
+
+#statsContainer {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    text-align: center;
+    flex-direction: column;
+    //background-color: gray;
+
+    .columns {
+        width: 100%;
+        //    height: $soundingHeight;
+        display: flex;
+        flex-direction: row; /* Set to 'column' for vertical columns */
+    }
+
+    .rows {
+        width: 100%;
+        //    height: calc(100% - $timeSliderHeight - $statsHeight);
+        display: flex;
+        flex-direction: column; /* Set to 'column' for vertical columns */
+    }
+
+    #soundingContainer {
+        //    width: $soundingWidth;
+        height: 100%;
+        //background-color: green;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+
+        .sounding {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            margin: auto;
+            max-width: 100%;
+            max-height: 100%;
+            aspect-ratio: 1.25 / 1; /* Sets a 1:2 aspect ratio */
+            //background-color: purple;
+        }
+    }
+    #rightContainer {
+        //    width: calc(100% - $soundingWidth);
+        height: 100%;
+        //background-color: blue;
+
+        #hodographContainer {
+            width: 100%;
+            height: 80%;
+            //background-color: aqua;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+
+            // Container should be a perfect square
+            .hodobox {
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                margin: auto;
+                max-width: 100%;
+                max-height: 100%;
+                aspect-ratio: 1 / 1; /* Sets a 1:2 aspect ratio */
+                //background-color: gray; /* Optional: To visualize the child div */
+            }
+        }
+        #boxWhiskerContainer {
+            width: 100%;
+            height: 20%;
+            //background-color: pink;
+        }
+    }
+    #statsContainer {
+        width: 100%;
+        //    height: $statsHeight;
+        //background-color: red;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+}
+
+#x2dsoundingSVG {
+    .readoutCircle {
+        //    fill: var(--primary-color);
+        //    stroke: var(--primary-color);
+        stroke-width: 1px;
+        pointer-events: none;
+    }
+}
+
+#readoutx2d {
+    color: white;
+    background-color: rgba(60, 60, 60, 0.9);
+}
+
+#ptypediv {
+    height: 100%;
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    //  stroke: var(--2d-line-contrast2);
+    stroke-width: 1px;
+    shape-rendering: crispEdges;
+}
+// .x.axis path {  }
+// .y.axis path {  }
+.axis {
+    fill: 'white';
+}
+.y.axis {
+    font-size: 13px;
+}
+.y.axis.hght {
+    font-size: 9px;
+    fill: red;
+}
+.x.axis {
+    font-size: 13px;
+}
+.y.axis.ticks text {
+    display: none;
+}
+.y.axis.ticks path {
+    //  stroke: var(--2d-line-contrast2);
+}
+
+.temp {
+    fill: none;
+    pointer-events: none;
+}
+.wetbulb {
+    fill: none;
+    pointer-events: none;
+}
+#boxplot svg {
+    background: transparent !important;
+}
+
+#ptypediv svg {
+    background: transparent !important;
+}
+.dwpt {
+    fill: none;
+    pointer-events: none;
+}
+
+.moistad {
+    //  stroke: var(--2d-line-contrast1);
+    fill: none;
+    stroke-dasharray: 5;
+    pointer-events: none;
+}
+
+.parcel {
+    stroke: rgb(252, 82, 252);
+    fill: none;
+    stroke-dasharray: 2 2;
+    stroke-width: 3;
+}
+
+.mtbarb {
+    //  stroke: var(--2d-mtbarb-color);
+    stroke-width: 2.245px;
+    //  fill: var(--2d-mtbarb-color);
+    pointer-events: none;
+}
+
+.tailsBox {
+    //  fill: var(--2d-pbl-color);
+    //  stroke: var(--2d-pbl-color);
+}
+
+.quantilesBox {
+    fill: rgb(255, 0, 0);
+}
+
+.medianLine {
+    stroke-width: 3;
+    stroke: rgb(144, 202, 249);
+}
+
+.main-svg {
+    background: transparent;
+}
+//member stoke-width and color set in skewt.js
+.member {
+    opacity: 0.8;
+    pointer-events: none;
+}
+.mean {
+    stroke-width: 3px;
+    //   stroke: var(--2d-line-contrast4);
+    opacity: 1;
+    pointer-events: none;
+}
+.hodoline {
+    stroke: lightblue;
+    fill: none;
+    opacity: 0.5;
+}
+.hodoline.mean {
+    //  stroke: var(--2d-line-contrast3);
+    opacity: 1;
+    stroke-width: 3.5px;
+}
+.hododot {
+    stroke: #000;
+    opacity: 0.8;
+}
+.hododot.hgt0 {
+    fill: gray;
+}
+.hododot.hgt1 {
+    fill: #225ea8;
+}
+.hododot.hgt3 {
+    fill: #41b6c4;
+}
+.hododot.hgt6 {
+    fill: #a1dab4;
+}
+.hododot.hgt9 {
+    fill: #ffffcc;
+}
+
+.gridline,
+.tempzero {
+    //  stroke: var(--2d-line-contrast1);
+    stroke-width: 0.75px;
+    fill: none;
+    pointer-events: none;
+}
+
+.dryline {
+    //   stroke: var(--2d-line-contrast2);
+    /* stroke-width: 0.75px; */
+    fill: none;
+    pointer-events: none;
+}
+
+.tempzero {
+    stroke: var(--2d-line-contrast2);
+    stroke-width: 1.25px;
+    //  pointer-events: none;
+}
+
+.barline {
+    stroke: #000;
+    stroke-width: 0.5px;
+}
+.rectline {
+    fill: #aaa;
+    opacity: 0.5;
+}
+.rectline2 {
+    fill: #000;
+}
+.index {
+    font-size: 13px;
+}
+.header {
+    font-weight: bold;
+    font-size: 11px;
+}
+.hodolabels {
+    font-size: 9px;
+    opacity: 0.7;
+    stroke: var(--font-color-primary);
+}
+.lcltext {
+    font-size: 11px;
+}
+.key {
+    font-size: 10px;
+}
+
+.windbarb {
+    //  stroke: var(--2d-line-contrast4);
+    stroke-width: 0.75px;
+    //   fill: var(--2d-line-contrast4);
+    pointer-events: none;
+}
+.flag {
+    //  fill: var(--2d-line-contrast4);
+}
+
+.overlay {
+    fill: none;
+    pointer-events: all;
+}
+
+.focus.tmpc circle {
+    fill: red;
+    stroke: none;
+}
+.focus.dwpc circle {
+    fill: green;
+    stroke: none;
+}
+.focus text {
+    font-size: 12px;
+}
+
+div.rollover {
+    padding: 15px 5px 15px 5px;
+    display: inline;
+    cursor: pointer;
+}
+div.rollover.selected {
+    background-color: #efefef;
+    border-bottom: 2px solid gray;
+}
+
+#meteostats {
+    //  height: $statsHeight;
+    //height:100%;
+    font-size: 0.7rem;
+    min-width: 855px;
+    width: 100%;
+    margin: 0 10px;
+    display: flex;
+    text-align: center;
+    //    border: 1px solid var(--2d-line-contrast1);
+    td {
+        cursor: pointer;
+    }
+    td.noClick {
+        cursor: default;
+    }
+    .statscolumn {
+        flex: 1 1 max-content;
+        height: 100%;
+        //   border-right: 1px solid var(--2d-line-contrast1);
+
+        #firsthalf {
+            width: 100%;
+            height: 100%;
+
+            #morewindstats {
+                width: 100%;
+                flex: 1;
+                height: 100%;
+            }
+        }
+
+        #secondhalf {
+            width: 50%;
+            height: 100%;
+            float: left;
+        }
+
+        #parcelstats {
+            width: 100%;
+            height: 50%;
+            border-bottom: 1px solid var(--2d-line-contrast1);
+        }
+
+        #thermostats {
+            width: 100%;
+            height: 50%;
+        }
+
+        #windstats {
+            width: 100%;
+            height: 100%;
+        }
+    }
+
+    .statscolumn:last-child {
+        border-right: none;
+    }
+}

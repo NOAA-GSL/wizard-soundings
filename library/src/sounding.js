@@ -1,5 +1,5 @@
 import sharp from './Sharp';
-import Vector from './vector';
+import { createVector, isVector, vec2comp, comp2vec } from './vector';
 import { math } from './Utilities';
 
 /**
@@ -28,7 +28,7 @@ const soundingFormat = (d, time) => {
             value = value.map((x) => sharp.f2c(x));
             // value = value.map(x => x)
         }
-        if (field == 'gh_isobaric') value = value.map((x) => x * 10);
+        if (field === 'gh_isobaric') value = value.map((x) => x * 10);
         obj[mem][field] = value;
     }
 
@@ -80,7 +80,7 @@ const soundingFormat = (d, time) => {
         const filteredInnerArray = innerArray.filter(
             (obj) =>
                 obj.press < obj.sp &&
-                obj.hght != -9990 &&
+                obj.hght !== -9990 &&
                 obj.temp < 200 &&
                 obj.temp > -200 &&
                 obj.dwpt < 200 &&
@@ -91,9 +91,9 @@ const soundingFormat = (d, time) => {
         return filteredInnerArray;
     });
     // Remove arrays that are of length zero
-    let filteredArray = filteredArrayTmp.filter((array) => array.length > 0);
+    const filteredArray = filteredArrayTmp.filter((array) => array.length > 0);
     // Now grab the members now that the filtering is done
-    let members = filteredArray.map((x) => x[0].member);
+    const members = filteredArray.map((x) => x[0].member);
 
     // This inserts surface variables into bottom of sounding array
     filteredArray.map((innerArray) => {
@@ -162,7 +162,7 @@ const soundingFormat = (d, time) => {
             );
         }
         profiledata.push(memdata);
-        if (memdata.hght.length == 0) {
+        if (memdata.hght.length === 0) {
             memdata.mem.push(-999);
             memdata.pres.push(-999);
             memdata.hght.push(-999);
@@ -316,84 +316,83 @@ const sharpStats = (profile) => {
 
     // Bunkers storm motion components
     const [rstu, rstv, lstu, lstv] = sharp.bunkers(profile, muCAPE, muCINH, muEL);
-    const rstVector = new Vector(rstu, rstv);
-    const lstVector = new Vector(lstu, lstv);
+    const rstVector = createVector(rstu, rstv);
+    const lstVector = createVector(lstu, lstv);
     // Calculate storm relative helicities for each layer if Bunker's defined
-    // Question: Is there a reason these are var instead of const?
+    let right_srh1km = null;
+    let right_srh3km = null;
+    let right_srh6km = null;
+    let right_srh8km = null;
+    let right_srheff = null;
+    let right_srhlclel = null;
+    let right_srhebwd = null;
     if (rstu) {
-        var right_srh1km = sharp.helicity(profile, 0, 1000, rstu, rstv)[0];
-        var right_srh3km = sharp.helicity(profile, 0, 3000, rstu, rstv)[0];
-        var right_srh6km = sharp.helicity(profile, 0, 6000, rstu, rstv)[0];
-        var right_srh8km = sharp.helicity(profile, 0, 8000, rstu, rstv)[0];
-        var right_srheff = sharp.helicity(profile, effh0, effh1, rstu, rstv)[0];
-        var right_srhlclel = sharp.helicity(profile, muLCL, muEL, rstu, rstv)[0];
-        var right_srhebwd = sharp.helicity(
+        right_srh1km = sharp.helicity(profile, 0, 1000, rstu, rstv)[0];
+        right_srh3km = sharp.helicity(profile, 0, 3000, rstu, rstv)[0];
+        right_srh6km = sharp.helicity(profile, 0, 6000, rstu, rstv)[0];
+        right_srh8km = sharp.helicity(profile, 0, 8000, rstu, rstv)[0];
+        right_srheff = sharp.helicity(profile, effh0, effh1, rstu, rstv)[0];
+        right_srhlclel = sharp.helicity(profile, muLCL, muEL, rstu, rstv)[0];
+        right_srhebwd = sharp.helicity(
             profile,
             effh0,
             sharp.toMSL(profile.hght, ebotm + depth),
             rstu,
             rstv,
         );
-    } else {
-        var right_srh1km = null;
-        var right_srh3km = null;
-        var right_srh6km = null;
-        var right_srh8km = null;
-        var right_srheff = null;
     }
 
     // Mean winds for each layer
-    const mw1Vector = new Vector(...sharp.meanWind(profile, profile.pres[0], p1km));
-    const mw3Vector = new Vector(...sharp.meanWind(profile, profile.pres[0], p3km));
-    const mw6Vector = new Vector(...sharp.meanWind(profile, profile.pres[0], p6km));
-    const mw8Vector = new Vector(...sharp.meanWind(profile, profile.pres[0], p8km));
+    const mw1Vector = createVector(...sharp.meanWind(profile, profile.pres[0], p1km));
+    const mw3Vector = createVector(...sharp.meanWind(profile, profile.pres[0], p3km));
+    const mw6Vector = createVector(...sharp.meanWind(profile, profile.pres[0], p6km));
+    const mw8Vector = createVector(...sharp.meanWind(profile, profile.pres[0], p8km));
 
     // Storm relative winds for each layer
-    const srw1Vector = new Vector(...sharp.srWind(profile, profile.pres[0], p1km, rstu, rstv));
-    const srw3Vector = new Vector(...sharp.srWind(profile, profile.pres[0], p3km, rstu, rstv));
-    const srw6Vector = new Vector(...sharp.srWind(profile, profile.pres[0], p6km, rstu, rstv));
-    const srw8Vector = new Vector(...sharp.srWind(profile, profile.pres[0], p8km, rstu, rstv));
+    const srw1Vector = createVector(...sharp.srWind(profile, profile.pres[0], p1km, rstu, rstv));
+    const srw3Vector = createVector(...sharp.srWind(profile, profile.pres[0], p3km, rstu, rstv));
+    const srw6Vector = createVector(...sharp.srWind(profile, profile.pres[0], p6km, rstu, rstv));
+    const srw8Vector = createVector(...sharp.srWind(profile, profile.pres[0], p8km, rstu, rstv));
 
     // Mean winds, shear, SR winds for effective inflow layer
-    const effwVector = new Vector(...sharp.meanWind(profile, effp0, effp1));
-    const effshrVector = new Vector(...sharp.shear(profile, effp0, effp1));
-    const effshr = sharp.mag(effshrVector.u, effshrVector.v); // TODO: Cleanup. Use mag function of Vector objects.
-    const srweffVector = new Vector(...sharp.srWind(profile, effp0, effp1, rstu, rstv));
+    const effwVector = createVector(...sharp.meanWind(profile, effp0, effp1));
+    const effshrVector = createVector(...sharp.shear(profile, effp0, effp1));
+    const effshr = effshrVector.mag;
+    const srweffVector = createVector(...sharp.srWind(profile, effp0, effp1, rstu, rstv));
 
     // Mean winds, shear, SR winds for LCL-EL layer
-    const ellclwVector = new Vector(...sharp.meanWind(profile, plcl, pel, rstu, rstv));
-    const ellclshrVector = new Vector(...sharp.shear(profile, plcl, pel));
-    const ellclshr = sharp.mag(ellclshrVector.u, ellclshrVector.v);
-    const srwellclVector = new Vector(...sharp.srWind(profile, plcl, pel, rstu, rstv));
+    const ellclwVector = createVector(...sharp.meanWind(profile, plcl, pel, rstu, rstv));
+    const ellclshrVector = createVector(...sharp.shear(profile, plcl, pel));
+    const ellclshr = ellclshrVector.mag;
+    const srwellclVector = createVector(...sharp.srWind(profile, plcl, pel, rstu, rstv));
 
     // Mean winds, shear, SR winds for LCL-EL layer for (effective bulk wind difference?)
-    const ebwdVector = new Vector(...sharp.meanWind(profile, effp0, elh));
-    const ebwdshrVector = new Vector(...sharp.shear(profile, effp0, elh));
-    const ebwdshr = sharp.mag(ebwdshrVector.u, ebwdshrVector.v);
-    const srwebwdVector = new Vector(...sharp.srWind(profile, effp0, elh, rstu, rstv));
+    const ebwdVector = createVector(...sharp.meanWind(profile, effp0, elh));
+    const ebwdshrVector = createVector(...sharp.shear(profile, effp0, elh));
+    const ebwdshr = ebwdshrVector.mag;
+    const srwebwdVector = createVector(...sharp.srWind(profile, effp0, elh, rstu, rstv));
 
     // 4-6km storm relative winds
-    const srw46Vector = new Vector(...sharp.srWind(profile, p4km, p6km, rstu, rstv));
+    const srw46Vector = createVector(...sharp.srWind(profile, p4km, p6km, rstu, rstv));
 
     // Bulk richardson shear
     const brnShear = sharp.brnShear(profile);
 
     // Corfidi index
     const [upu, upv, dnu, dnv] = sharp.corfidi(profile);
-    const upVector = new Vector(upu, upv);
-    const dnVector = new Vector(dnu, dnv);
+    const upVector = createVector(upu, upv);
+    const dnVector = createVector(dnu, dnv);
 
     // Low and mid level mean relative humidity
     const lowRH = sharp.meanRH(profile, profile.pres[0], profile.pres[0] - 100);
     const midRH = sharp.meanRH(profile, profile.pres[0] - 150, profile.pres[0] - 350);
 
-    const momentumTransferVector = new Vector(...sharp.momentum_transfer_vector(profile, 'Mean'));
-    const momentumTransferMag = sharp.mag(momentumTransferVector.u, momentumTransferVector.v);
-    const momentumTransferVectorMax = new Vector(...sharp.momentum_transfer_vector(profile, 'Max'));
-    let momentumTransferMagMax = sharp.mag(
-        momentumTransferVectorMax.u,
-        momentumTransferVectorMax.v,
+    const momentumTransferVector = createVector(...sharp.momentum_transfer_vector(profile, 'Mean'));
+    const momentumTransferMag = momentumTransferVector.mag;
+    const momentumTransferVectorMax = createVector(
+        ...sharp.momentum_transfer_vector(profile, 'Max'),
     );
+    let momentumTransferMagMax = momentumTransferVectorMax.mag;
     if (momentumTransferMagMax < momentumTransferMag) {
         momentumTransferMagMax = momentumTransferMag;
     }
@@ -530,10 +529,8 @@ const sharpStats = (profile) => {
  */
 
 const calcDerivedParameters = (profileData) => {
-    console.log(profileData);
     const profileDerivedData = [];
     for (const profile of profileData) {
-        console.log(profile.mem);
         profileDerivedData.push(sharpStats(profile));
     }
     return profileDerivedData;
@@ -574,9 +571,9 @@ const calculateStatsVector = (components, stat) => {
 
     // so now <xValue,yValue> has the direction we want
     // and mag has the value we want
-    const [sp, drx] = Vector.comp2vec(xValue, yValue);
-    const [u, v] = Vector.vec2comp(mag, drx);
-    const newVector = new Vector(u, v);
+    const [sp, drx] = comp2vec(xValue, yValue);
+    const [u, v] = vec2comp(mag, drx);
+    const newVector = createVector(u, v);
 
     //if (!mag) mag = NaN;
     //if (!drx) drx = NaN;
@@ -592,16 +589,16 @@ const calculateStats = (components, key, stat) => {
     const validComponents = components.filter((value) => value != null);
 
     // 2. Add an edge case check. If the array is empty after filtering,
-    // we can't perform calculations, so we return a new Vector with NaN values.
+    // we can't perform calculations, so we return a createVector with NaN values.
     if (validComponents.length === 0) {
         if (key.includes('Vector')) {
             // Cheap check to make sure a vector is returned if a vector is expected.
             // TODO: This may not be necessary.
-            return new Vector(NaN, NaN);
+            return createVector(NaN, NaN);
         }
         return null;
     }
-    if (validComponents[0] instanceof Vector) {
+    if (isVector(validComponents[0])) {
         returnStat = calculateStatsVector(validComponents, stat);
     } else if (typeof validComponents[0] === 'number') {
         returnStat = calculateStatsScalar(validComponents, stat);
