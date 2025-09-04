@@ -1,18 +1,17 @@
 import { StrictMode, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { getSounding } from 'desi-soundings';
-import { StatsTable } from 'desi-soundings';
+import { createSounding, StatsTable, data } from 'desi-soundings';
 import 'desi-soundings/desi-soundings.css';
+
+function getSounding() {
+    const sounding = createSounding();
+    sounding.updateData(data, '1753707600000');
+    return sounding;
+}
 
 const sounding = getSounding();
 
 function RenderStatsPage() {
-    // 1 - Get json data and pass to sounding object (check)
-    // 2 - Obtain a list of members. Display this list to user, allowing the user to check members on/off
-    // 3 - Create a "calc stats" button
-    // 4 - onClick, calcStats from this all members
-    // 5 - Create a function to calculate the mean of each stat, using selected members
-    // 6 - Display these results in a table.
     const [statsDict, setStatsDict] = useState(null);
 
     const memberList = sounding.getMembers().map((member, i) => {
@@ -51,7 +50,6 @@ function RenderStatsPage() {
         </>
     );
 }
-// TODO: Create a function to calculate stats using selected models.
 
 createRoot(document.getElementById('root')).render(
     <StrictMode>

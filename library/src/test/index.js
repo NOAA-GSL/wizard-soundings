@@ -1,7 +1,5 @@
-import getSounding from './test';
+import createSounding from '../sounding';
 import StatsTable from '../draw';
+import data from './soundingData.json'; // assert { type: 'json' };
 
-export { getSounding };
-export { StatsTable };
-
-//export StatsStable;
+export { createSounding, StatsTable, data };

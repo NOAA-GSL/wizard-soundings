@@ -16,5 +16,8 @@
     "workspaces": [
         "library",
         "demo"
-    ]
+    ],
+    "dependencies": {
+        "desi-soundings": "^1.0.7"
+    }
 }

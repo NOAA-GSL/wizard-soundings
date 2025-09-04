@@ -8,4 +8,4 @@ function getSounding() {
     return sounding;
 }
 
-export default getSounding;
+export { getSounding };
