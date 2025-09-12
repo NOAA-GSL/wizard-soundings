@@ -2,9 +2,15 @@ import { StrictMode, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createSounding, StatsTable, data } from 'desi-soundings';
 import 'desi-soundings/desi-soundings.css';
+// Data contains the sample data.
+// Use createSounding to create the Sounding object for handling / manipulating sounding data
+// Use StatsTable for displaying derived parameters (stored in the Sounding object) in a table format.
+// Desi-soundings.css controls the look/feel of StatsTable
 
 function getSounding() {
+    // Create the sounding object.
     const sounding = createSounding();
+    // Add data and specify the datetime to use
     sounding.updateData(data, '1753707600000');
     return sounding;
 }
@@ -12,8 +18,10 @@ function getSounding() {
 const sounding = getSounding();
 
 function RenderStatsPage() {
+    // Create a state variable to tie table updates to derived data changes.
     const [statsDict, setStatsDict] = useState(null);
 
+    // Obtain a list of members from the sounding object using .getMembers
     const memberList = sounding.getMembers().map((member, i) => {
         return (
             <li key={member}>
@@ -24,13 +32,14 @@ function RenderStatsPage() {
     });
 
     const handleCalculateStats = () => {
-        // 1. Calculate the stats for only the selected members.
+        // Calculate the stats for only the selected members. Set state variable.
         const stats = sounding.calcStats(sounding.getMembers(), 'mean'); //TODO: Update to use selected models.
         console.log(stats);
         setStatsDict(stats);
     };
 
     console.log(sounding.getProfileData());
+    // Insert StatsTable where you'd like it to appear with the statsDictParam specified.
     return (
         <>
             <div>Example of sounding stats!</div>
