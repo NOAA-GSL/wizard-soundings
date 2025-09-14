@@ -1,7 +1,8 @@
-import { StrictMode, useMemo, useState } from 'react';
+import { StrictMode, useMemo, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createSounding, StatsTable, data } from 'desi-soundings';
+import { createSounding, StatsTable, Hodograph, data } from 'desi-soundings';
 import 'desi-soundings/desi-soundings.css';
+
 // Data contains the sample data.
 // Use createSounding to create the Sounding object for handling / manipulating sounding data
 // Use StatsTable for displaying derived parameters (stored in the Sounding object) in a table format.
@@ -20,6 +21,8 @@ const sounding = getSounding();
 function RenderStatsPage() {
     // Create a state variable to tie table updates to derived data changes.
     const [statsDict, setStatsDict] = useState(null);
+    const [soundingData, setSoundingData] = useState(null);
+    const hodographContainerDiv = useRef();
 
     // Obtain a list of members from the sounding object using .getMembers
     const memberList = sounding.getMembers().map((member, i) => {
@@ -36,6 +39,7 @@ function RenderStatsPage() {
         const stats = sounding.calcStats(sounding.getMembers(), 'mean'); //TODO: Update to use selected models.
         console.log(stats);
         setStatsDict(stats);
+        setSoundingData(sounding.getProfileData());
     };
 
     console.log(sounding.getProfileData());
@@ -55,6 +59,9 @@ function RenderStatsPage() {
             </button>
             <div id="stats-table">
                 <StatsTable statsDictParam={statsDict} />
+            </div>
+            <div id="hodograph" ref={hodographContainerDiv}>
+                <Hodograph soundingParam={soundingData} containerDiv={hodographContainerDiv} />
             </div>
         </>
     );

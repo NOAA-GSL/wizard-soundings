@@ -1,8 +1,10 @@
 // import { Tooltip } from '@mui/material';
 // import '../dist/desi-soundings.css';
 import 'desi-soundings/draw.scss';
+import { useRef, useEffect } from 'react';
+import * as d3 from 'd3';
 
-export default function StatsTable({ statsDictParam }) {
+export function StatsTable({ statsDictParam }) {
     const statsDict = statsDictParam;
 
     function statClick() {
@@ -20,7 +22,7 @@ export default function StatsTable({ statsDictParam }) {
 
     for (const key in statsDict) {
         if (statsDict[key] === null) {
-            statsDict[key] = -9999;
+            statsDict[key] = NaN;
         }
     }
 
@@ -392,4 +394,291 @@ export default function StatsTable({ statsDictParam }) {
             </div>
         </div>
     );
+}
+export function Hodograph({ soundingParam, containerDiv }) {
+    // A ref for the div that D3 will manage
+    const d3Container = useRef(null);
+
+    useEffect(() => {
+        // 1. A "guard clause" to prevent errors.
+        //    Don't do anything if we don't have data or the container ref.
+        if (!soundingParam || !containerDiv.current) {
+            return;
+        }
+
+        // --- D3 Drawing Logic ---
+
+        // Function to calculate dimensions based on the parent container
+        function calcPositions() {
+            const hodomargin = 25;
+            const hodographMargin = {
+                top: hodomargin,
+                bottom: hodomargin,
+                left: hodomargin,
+                right: hodomargin,
+            };
+            // Use the passed containerDiv for sizing
+            const height =
+                containerDiv.current.clientHeight - hodographMargin.top - hodographMargin.bottom;
+            const width =
+                containerDiv.current.clientWidth - hodographMargin.left - hodographMargin.right;
+
+            return {
+                hodograph: {
+                    height,
+                    width,
+                    margin: hodographMargin,
+                },
+            };
+        }
+
+        const positions = calcPositions();
+
+        // 2. Select the D3 container using our ref and clear any previous SVG
+        //    to prevent duplicates when data updates.
+        const svgContainer = d3.select(d3Container.current);
+        svgContainer.selectAll('*').remove();
+
+        // Append the new SVG
+        const svghodo = svgContainer
+            .append('svg')
+            .attr(
+                'width',
+                positions.hodograph.width +
+                    positions.hodograph.margin.left +
+                    positions.hodograph.margin.right,
+            )
+            .attr(
+                'height',
+                positions.hodograph.height +
+                    positions.hodograph.margin.top +
+                    positions.hodograph.margin.bottom,
+            )
+            .append('g')
+            .attr(
+                'transform',
+                `translate(${
+                    (positions.hodograph.width +
+                        positions.hodograph.margin.left +
+                        positions.hodograph.margin.right) /
+                    2
+                },${
+                    (positions.hodograph.height +
+                        positions.hodograph.margin.top +
+                        positions.hodograph.margin.bottom) /
+                    2
+                })`,
+            );
+
+        const hodogroup = svghodo.append('g').attr('class', 'hodo');
+        const hodoRadius = Math.min(positions.hodograph.width, positions.hodograph.height) / 2;
+
+        // Draw hodograph background (circles and labels)
+        function drawBackground() {
+            // console.log('drawBackground');
+            // const maxWind = d3.max(soundingParam.flat(), (d) => d.twnd) || 80;
+            // console.log(maxWind);
+            // const rDomain = Math.ceil(maxWind / 10) * 10;
+            // console.log(rDomain);
+            // const r = d3.scaleLinear().range([0, hodoRadius]).domain([0, rDomain]);
+            const r = d3.scaleLinear().range([0, positions.hodograph.width]).domain([0, 150]);
+            console.log(r);
+
+            svghodo
+                .selectAll('.circles')
+                .data(d3.range(10, 80, 10))
+                .enter()
+                .append('circle')
+                .attr('cx', 0)
+                .attr('cy', 0)
+                .attr('r', (d) => r(d))
+                .attr('class', 'gridline');
+
+            svghodo
+                .selectAll('hodolabels')
+                .data(d3.range(10, 80, 20))
+                .enter()
+                .append('text')
+                .attr('x', 0)
+                .attr('y', (d, i) => r(d))
+                .attr('dy', '0.4em')
+                .attr('class', 'hodolabels')
+                .attr('text-anchor', 'middle')
+                .text((d) => `${d}kts`);
+        }
+        // Calculate total winds and directions
+        // function calcWinds(d, length) {
+        //     // TODO: Decide where to put this function (draw.jsx or sounding.js) and simplify/clean up code
+        //     // Loop through times
+        //     for (let time = 0; time < length; time++) {
+        //         // Filter for u and v winds
+        //         const uwnd = d.data[Object.keys(d.data)[time]].filter(
+        //             (item) => item.field === 'u_isobaric',
+        //         );
+        //         var vwnd = d.data[Object.keys(d.data)[time]].filter(
+        //             (item) => item.field === 'v_isobaric',
+        //         );
+
+        //         // Loop through members (and means)
+        //         uwnd.map((val, idx) => {
+        //             // Prepare data entries for total wind and wind direction
+        //             const twndvals = [];
+        //             var twnd = {
+        //                 field: 'totalwind',
+        //                 model: val.model,
+        //                 mem: val.mem,
+        //                 reqNum: 5,
+        //                 value: twndvals,
+        //             };
+        //             const wnddirvals = [];
+        //             const wnddir = {
+        //                 field: 'winddir',
+        //                 model: val.model,
+        //                 mem: val.mem,
+        //                 reqNum: 5,
+        //                 value: wnddirvals,
+        //             };
+        //             d.data[Object.keys(d.data)[time]].push(twnd);
+        //             d.data[Object.keys(d.data)[time]].push(wnddir);
+
+        //             // Loop through levels
+        //             for (let lev = 0; lev < val.value.length; lev++) {
+        //                 // Calculate total wind for components (convert mph to kts)
+        //                 var twnd = Math.sqrt(
+        //                     sharp.mph2kts(val.value[lev]) ** 2 +
+        //                         sharp.mph2kts(vwnd[idx].value[lev]) ** 2,
+        //                 );
+        //                 twndvals.push(twnd);
+
+        //                 // Calculate directions from components (convert mph to kts)
+        //                 let wnddirval =
+        //                     (180 / Math.PI) *
+        //                     Math.atan2(
+        //                         -sharp.mph2kts(val.value[lev]),
+        //                         -sharp.mph2kts(vwnd[idx].value[lev]),
+        //                     );
+        //                 if (wnddirval < 0) {
+        //                     wnddirval += 360;
+        //                 }
+        //                 wnddirvals.push(wnddirval);
+        //             }
+        //         });
+
+        //         // Filter for 10m u and v winds
+        //         const uwnd10 = d.data[Object.keys(d.data)[time]].filter((item) => item.field === 'u10');
+        //         var vwnd10 = d.data[Object.keys(d.data)[time]].filter((item) => item.field === 'v10');
+
+        //         // Loop through members (and means)
+        //         uwnd10.map((val, idx) => {
+        //             // Calculate and create data entry for 10m total wind
+        //             const twnd10vals = Math.sqrt(
+        //                 sharp.mph2kts(val.value) ** 2 + sharp.mph2kts(vwnd10[idx].value) ** 2,
+        //             );
+        //             const twnd10 = {
+        //                 field: 'totalwind10',
+        //                 model: val.model,
+        //                 mem: val.mem,
+        //                 reqNum: 5,
+        //                 value: twnd10vals,
+        //             };
+
+        //             // Calculate and create data entry for 10m wind directions
+        //             let wnddir10vals =
+        //                 (180 / Math.PI) *
+        //                 Math.atan2(-sharp.mph2kts(val.value), -sharp.mph2kts(vwnd10[idx].value));
+        //             if (wnddir10vals < 0) {
+        //                 wnddir10vals += 360;
+        //             }
+        //             const wnddir10 = {
+        //                 field: 'winddir10',
+        //                 model: val.model,
+        //                 mem: val.mem,
+        //                 reqNum: 5,
+        //                 value: wnddir10vals,
+        //             };
+
+        //             // Push entries to main data
+        //             d.data[Object.keys(d.data)[time]].push(twnd10);
+        //             d.data[Object.keys(d.data)[time]].push(wnddir10);
+        //         });
+        //     }
+        // }
+        // Draw the actual hodograph plot
+        function draw(alldata) {
+            // animationSpeed, chartOptions
+            const maxWind = d3.max(alldata.flat(), (d) => d.twnd) || 80;
+            const rDomain = Math.ceil(maxWind / 10) * 10;
+            const chartOptions = {};
+            chartOptions.x2dGraphStyle = 'mean';
+            const r = d3.scaleLinear().range([0, hodoRadius]).domain([0, rDomain]);
+
+            const hodoline = d3
+                .lineRadial()
+                .radius((d) => r(d.twnd))
+                .angle((d) => (d.wdir + 180) * (Math.PI / 180));
+
+            const meanmember = alldata.filter((d) => d.length > 0 && d[0].mem === 'grandensemble');
+            // Update the hodograph lines plume
+            // if (
+            //     chartOptions.x2dGraphStyle == 'plume' ||
+            //     chartOptions.x2dGraphStyle == 'plumeWithMembers'
+            // ) {
+            //     const hodoLines = hodogroup.selectAll('.hodoline').data(alldatanew);
+            //     hodoLines
+            //         .enter()
+            //         .append('path')
+            //         .merge(hodoLines)
+            //         .transition()
+            //         // .duration(animationSpeed)
+            //         .attr('class', (d, i) =>
+            //             i < alldata.length - 1 ? 'hodoline member' : 'hodoline mean',
+            //         )
+            //         .attr('d', hodoline);
+
+            //     // Remove existing lines
+            //     hodoLines.exit().remove();
+            // }
+
+            // // Update the hodograph lines box whisker
+            // if (chartOptions.x2dGraphStyle == 'boxwhisker') {
+            //     const hodoLines = hodogroup.selectAll('.hodoline').data(alldatanew);
+            //     hodoLines
+            //         .enter()
+            //         .append('path')
+            //         .merge(hodoLines)
+            //         .transition()
+            //         // .duration(animationSpeed)
+            //         .attr('class', (d, i) =>
+            //             i < alldata.length - 1 ? 'hodoline member' : 'hodoline mean',
+            //         )
+            //         .attr('d', hodoline);
+
+            //     // Remove existing lines
+            //     hodoLines.exit().remove();
+            // }
+
+            // Update the hodograph lines mean
+            if (chartOptions.x2dGraphStyle === 'mean') {
+                const hodoLines = hodogroup.selectAll('.hodoline').data(meanmember);
+
+                hodoLines
+                    .enter()
+                    .append('path')
+                    .merge(hodoLines)
+                    .attr('class', 'hodoline mean')
+                    .attr('d', hodoline);
+
+                hodoLines.exit().remove();
+            }
+        }
+
+        if (soundingParam.length > 0) {
+            drawBackground();
+            draw(soundingParam);
+        }
+    }, [soundingParam, containerDiv]);
+
+    // 4. The component now returns a single div with the ref that D3 uses.
+    //    The stray `ref={hodographDiv}` has also been removed.
+    return <div id="hodobox" className="hodobox" ref={d3Container} />;
 }
