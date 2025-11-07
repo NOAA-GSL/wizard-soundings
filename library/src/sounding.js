@@ -6,7 +6,7 @@ import { math } from './Utilities';
  * Formats raw data into a structured sounding profile.
  * @param {object} d - The raw data object.
  * @param {number} time - The forecast hour/time index.
- * @returns {Array} - An array containing [profileData, members].
+ * @returns {Array} - An array containing [levelData, profileData, members].
  */
 const soundingFormat = (d, time) => {
     // Get data for current forecast hour
@@ -130,6 +130,7 @@ const soundingFormat = (d, time) => {
         };
         innerArray.unshift(insert);
     });
+    const levelData = filteredArray;
 
     // Create profile data for calculating stats
     const profiledata = [];
@@ -142,6 +143,8 @@ const soundingFormat = (d, time) => {
             uwnd: [],
             vwnd: [],
             vtmp: [],
+            twnd: [],
+            wdir: [],
             hghtmsl: [],
         };
         for (let j = 0; j < filteredArray[i].length; j++) {
@@ -153,6 +156,8 @@ const soundingFormat = (d, time) => {
             memdata.dwpc.push(filteredArray[i][j].dwpt);
             memdata.uwnd.push(filteredArray[i][j].uwnd);
             memdata.vwnd.push(filteredArray[i][j].vwnd);
+            memdata.twnd.push(filteredArray[i][j].twnd);
+            memdata.wdir.push(filteredArray[i][j].wdir);
             memdata.vtmp.push(
                 sharp.vtmp(
                     [filteredArray[i][j].temp],
@@ -170,13 +175,14 @@ const soundingFormat = (d, time) => {
             memdata.dwpc.push(-999);
             memdata.uwnd.push(-999);
             memdata.vwnd.push(-999);
+            memdata.twnd.push(-999);
+            memdata.wdir.push(-999);
             memdata.vtmp.push(-999);
             memdata.hghtmsl.push(-999);
         }
     }
-    console.log('The saved members are: ');
-    console.log(members);
-    return [profiledata, members];
+
+    return [levelData, profiledata, members];
 };
 
 /**
@@ -583,7 +589,6 @@ const calculateStatsVector = (components, stat) => {
 const calculateStats = (components, key, stat) => {
     // Check if the value is a scalar or vector
     let returnStat = null;
-    console.log(components);
     // 1. Filter out any null or undefined entries from the components array.
     // The condition `vec != null` conveniently checks for both null and undefined.
     const validComponents = components.filter((value) => value != null);
@@ -619,13 +624,14 @@ const calculateStats = (components, key, stat) => {
  */
 
 export default function createSounding() {
+    let levelData = null;
     let profileData = null;
     let members = null;
     let profileDerivedData = null;
 
     return {
         updateData(d, time) {
-            [profileData, members] = soundingFormat(d, time);
+            [levelData, profileData, members] = soundingFormat(d, time);
             profileDerivedData = calcDerivedParameters(profileData);
         },
 
@@ -640,9 +646,7 @@ export default function createSounding() {
             }
 
             for (const profile of profileDerivedData) {
-                console.log(profile);
                 if (memberList.includes(profile.mem)) {
-                    console.log(profile.mem);
                     const stats = profile;
 
                     // Push all HREF member stats to appropriate array (each will be length 10)
@@ -652,14 +656,11 @@ export default function createSounding() {
                     }
                 }
             }
-            console.log(statsDict);
             const selectedStats = {};
             Object.entries(statsDict).forEach(([key, value]) => {
-                console.log(key);
                 const statOutput = calculateStats(value, key, stat);
                 selectedStats[key] = statOutput;
             });
-            console.log(selectedStats);
             return selectedStats;
         },
 
@@ -669,6 +670,14 @@ export default function createSounding() {
          */
         getProfileData() {
             return profileData;
+        },
+
+        /**
+         * Getter to safely access the processed level data.
+         * @returns {Array|null} The profile data.
+         */
+        getLevelData() {
+            return levelData;
         },
 
         /**

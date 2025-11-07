@@ -224,6 +224,7 @@ $soundingWidth: 60%;
     //  stroke: var(--2d-line-contrast3);
     opacity: 1;
     stroke-width: 3.5px;
+    stroke: black;
 }
 .hododot {
     stroke: #000;
@@ -248,9 +249,10 @@ $soundingWidth: 60%;
 .gridline,
 .tempzero {
     //  stroke: var(--2d-line-contrast1);
-    stroke-width: 0.75px;
+    stroke-width: 1px;
     fill: none;
     pointer-events: none;
+    stroke: black;
 }
 
 .dryline {

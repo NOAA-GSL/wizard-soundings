@@ -403,8 +403,10 @@ export function Hodograph({ soundingParam, containerDiv }) {
         // 1. A "guard clause" to prevent errors.
         //    Don't do anything if we don't have data or the container ref.
         if (!soundingParam || !containerDiv.current) {
+            console.log('No data and/or container ref for hodograph');
             return;
         }
+        console.log('Calculating hodograph!');
 
         // --- D3 Drawing Logic ---
 
@@ -618,6 +620,9 @@ export function Hodograph({ soundingParam, containerDiv }) {
                 .angle((d) => (d.wdir + 180) * (Math.PI / 180));
 
             const meanmember = alldata.filter((d) => d.length > 0 && d[0].mem === 'grandensemble');
+            //const meanmember = alldata.filter((d) => d.mem === 'grandensemble');
+            console.log('mean member');
+            console.log(meanmember);
             // Update the hodograph lines plume
             // if (
             //     chartOptions.x2dGraphStyle == 'plume' ||
@@ -658,8 +663,12 @@ export function Hodograph({ soundingParam, containerDiv }) {
             // }
 
             // Update the hodograph lines mean
+            console.log(chartOptions.x2dGraphStyle);
+
             if (chartOptions.x2dGraphStyle === 'mean') {
                 const hodoLines = hodogroup.selectAll('.hodoline').data(meanmember);
+                console.log('hodoLines');
+                console.log(hodoLines);
 
                 hodoLines
                     .enter()
