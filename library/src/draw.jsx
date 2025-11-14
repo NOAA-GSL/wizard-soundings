@@ -623,58 +623,126 @@ export function Hodograph({ soundingParam, containerDiv }) {
             //const meanmember = alldata.filter((d) => d.mem === 'grandensemble');
             console.log('mean member');
             console.log(meanmember);
-            // Update the hodograph lines plume
-            // if (
-            //     chartOptions.x2dGraphStyle == 'plume' ||
-            //     chartOptions.x2dGraphStyle == 'plumeWithMembers'
-            // ) {
-            //     const hodoLines = hodogroup.selectAll('.hodoline').data(alldatanew);
-            //     hodoLines
-            //         .enter()
-            //         .append('path')
-            //         .merge(hodoLines)
-            //         .transition()
-            //         // .duration(animationSpeed)
-            //         .attr('class', (d, i) =>
-            //             i < alldata.length - 1 ? 'hodoline member' : 'hodoline mean',
-            //         )
-            //         .attr('d', hodoline);
-
-            //     // Remove existing lines
-            //     hodoLines.exit().remove();
-            // }
-
-            // // Update the hodograph lines box whisker
-            // if (chartOptions.x2dGraphStyle == 'boxwhisker') {
-            //     const hodoLines = hodogroup.selectAll('.hodoline').data(alldatanew);
-            //     hodoLines
-            //         .enter()
-            //         .append('path')
-            //         .merge(hodoLines)
-            //         .transition()
-            //         // .duration(animationSpeed)
-            //         .attr('class', (d, i) =>
-            //             i < alldata.length - 1 ? 'hodoline member' : 'hodoline mean',
-            //         )
-            //         .attr('d', hodoline);
-
-            //     // Remove existing lines
-            //     hodoLines.exit().remove();
-            // }
 
             // Update the hodograph lines mean
             console.log(chartOptions.x2dGraphStyle);
+            const segmentConfig = [
+                { maxHeight: 3000, color: 'blue' },
+                { maxHeight: 8000, color: 'green' },
+                { maxHeight: Infinity, color: 'red' }, // 'Infinity' catches everything else
+            ];
+
+            const segments = []; // This will hold the final data arrays for each path
+            const segmentColors = []; // This will hold the corresponding colors
+            let minHeight = -Infinity; // Tracks the *start* height for the current segment
+            let lastPoint = null; // Tracks the overlap point from the previous segment
+
+            // Loop through the configuration
+            segmentConfig.forEach((config) => {
+                const { maxHeight } = config;
+
+                // 1. Filter the main data to get points for this segment
+                const currentSegment = meanmember[0].filter(
+                    (d) => d.hght >= minHeight && d.hght < maxHeight,
+                );
+
+                // 2. Add the overlap point (the "handoff") from the previous segment
+                if (lastPoint && currentSegment.length > 0) {
+                    currentSegment.unshift(lastPoint);
+                }
+
+                // 3. If this segment has data, save it
+                if (currentSegment.length > 0) {
+                    segments.push(currentSegment);
+                    segmentColors.push(config.color);
+
+                    // 4. Save the last point of *this* segment for the *next* segment
+                    lastPoint = currentSegment[currentSegment.length - 1];
+                }
+
+                // 5. Set the starting height for the next loop
+                minHeight = maxHeight;
+            });
+
+            //const segment1Data = meanmember[0].filter((d) => d.hght < 3000);
+            //const segment2Data = meanmember[0].filter((d) => d.hght >= 3000 && d.hght < 8000);
+            //const segment3Data = meanmember[0].filter((d) => d.hght >= 8000);
+
+            // 2. JOIN AN ARRAY OF THOSE SEGMENTS
+            //const segments = [segment1Data, segment2Data, segment3Data];
+            //const segmentColors = ['blue', 'green', 'red'];
+
+            // We select by a new class, '.hodo-segment'
 
             if (chartOptions.x2dGraphStyle === 'mean') {
-                const hodoLines = hodogroup.selectAll('.hodoline').data(meanmember);
-                console.log('hodoLines');
-                console.log(hodoLines);
-
-                hodoLines
+                const hodoSegments = hodogroup.selectAll('.hodoline.mean').data(segments); // Data is: [ [segment1_points], [segment2_points] ]
+                hodoSegments
                     .enter()
                     .append('path')
-                    .merge(hodoLines)
+                    .merge(hodoSegments)
                     .attr('class', 'hodoline mean')
+                    .style('stroke', (d, i) => {
+                        // 'd' is the segment data ([segment_points])
+                        // 'i' is the index (0 or 1)
+                        return segmentColors[i]; // 1st segment is blue, 2nd is red
+                    })
+                    .attr('d', hodoline); // 'hodoline' is called ONCE for each segment
+
+                hodoSegments.exit().remove();
+
+                const hodoLines = hodogroup.selectAll('.hodoline.member').data(alldata);
+                // hodoLines
+                //     .enter()
+                //     .append('path')
+                //     .merge(hodoLines)
+                //     .transition()
+                //     // .duration(animationSpeed)
+                //     .attr('class', 'hodoline member')
+                //     // (d, i) =>
+                //     // i < alldata.length - 1 ? 'hodoline member' : 'hodoline mean',
+                //     // )
+                //     .style('stroke', null) // Clear inline styles from previous (segment) renders
+                //     .attr('d', hodoline);
+                // hodoLines
+                //     .enter()
+                //     .append('path')
+                //     .merge(hodoLines)
+                //     .attr('class', 'hodoline mean')
+                //     .attr('d', hodoline);
+                const mergedHodoLines = hodoLines.enter().append('path').merge(hodoLines);
+                mergedHodoLines
+                    .on('mouseover', (event, d) => {
+                        // **NEW**: Get the member ID and log it
+                        const memberId = d[0].mem;
+                        console.log('Hovering member:', memberId);
+                        // In the future, you would call your shared function here
+                        // highlightOtherPlots(memberId);
+                        d3.select(event.currentTarget)
+                            .raise() // Bring to front
+                            .style('opacity', 1.0)
+                            .style('stroke-width', '3px')
+                            .style('stoke', 'yellow');
+                    })
+                    .on('mouseout', (event, d) => {
+                        // **NEW**: Get the member ID for 'un-highlighting'
+                        const memberId = d[0].mem;
+                        // In the future, you would call your shared function here
+                        // unHighlightOtherPlots(memberId);
+                        d3.select(event.currentTarget)
+                            .lower() // Send to back
+                            .style('opacity', 0.3) // Return to original
+                            .style('stroke-width', '1.5px'); // Return to original
+                    });
+
+                // Now, apply attributes and transitions
+                mergedHodoLines
+                    .transition()
+                    .attr('class', 'hodoline member')
+                    .style('stroke', 'gray')
+                    .style('opacity', 0.3)
+                    .style('stroke-width', '1.5px') // **NEW**: Set a base width
+                    .style('fill', 'none') // <-- **FIX 1: Remove fill**
+                    .style('pointer-events', 'stroke')
                     .attr('d', hodoline);
 
                 hodoLines.exit().remove();

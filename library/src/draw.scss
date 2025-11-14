@@ -220,10 +220,16 @@ $soundingWidth: 60%;
     fill: none;
     opacity: 0.5;
 }
+
 .hodoline.mean {
     //  stroke: var(--2d-line-contrast3);
     opacity: 1;
     stroke-width: 3.5px;
+    //stroke: black;
+}
+.hodoline.member {
+    opacity: 1;
+    stroke-width: 1px;
     stroke: black;
 }
 .hododot {
