@@ -396,11 +396,9 @@ export function StatsTable({ statsDictParam }) {
     );
 }
 export function Hodograph({ soundingParam, containerDiv }) {
-    // A ref for the div that D3 will manage
     const d3Container = useRef(null);
 
     useEffect(() => {
-        // 1. A "guard clause" to prevent errors.
         //    Don't do anything if we don't have data or the container ref.
         if (!soundingParam || !containerDiv.current) {
             console.log('No data and/or container ref for hodograph');
@@ -436,57 +434,80 @@ export function Hodograph({ soundingParam, containerDiv }) {
 
         const positions = calcPositions();
 
-        // 2. Select the D3 container using our ref and clear any previous SVG
-        //    to prevent duplicates when data updates.
+        // Select the D3 container using our ref and clear any previous SVG
+        // to prevent duplicates when data updates.
         const svgContainer = d3.select(d3Container.current);
         svgContainer.selectAll('*').remove();
 
-        // Append the new SVG
-        const svghodo = svgContainer
-            .append('svg')
-            .attr(
-                'width',
-                positions.hodograph.width +
-                    positions.hodograph.margin.left +
-                    positions.hodograph.margin.right,
-            )
-            .attr(
-                'height',
-                positions.hodograph.height +
-                    positions.hodograph.margin.top +
-                    positions.hodograph.margin.bottom,
-            )
-            .append('g')
-            .attr(
-                'transform',
-                `translate(${
-                    (positions.hodograph.width +
-                        positions.hodograph.margin.left +
-                        positions.hodograph.margin.right) /
-                    2
-                },${
-                    (positions.hodograph.height +
-                        positions.hodograph.margin.top +
-                        positions.hodograph.margin.bottom) /
-                    2
-                })`,
-            );
+        const totalWidth =
+            positions.hodograph.width +
+            positions.hodograph.margin.left +
+            positions.hodograph.margin.right;
+        const totalHeight =
+            positions.hodograph.height +
+            positions.hodograph.margin.top +
+            positions.hodograph.margin.bottom;
 
-        const hodogroup = svghodo.append('g').attr('class', 'hodo');
+        // Append the new SVG
+        const svgRoot = svgContainer
+            .append('svg')
+            .attr('width', totalWidth)
+            .attr('height', totalHeight);
+
+        // 2. Append the main <g> to 'svgRoot' and store it as 'svghodo'
+        const svghodo = svgRoot.append('g');
+
+        const centeringTransform = `translate(${totalWidth / 2},${totalHeight / 2})`;
+
+        //const hodogroup = svghodo.append('g').attr('class', 'hodo');
+        const hodogroup = svghodo
+            .append('g')
+            .attr('class', 'hodo')
+            .attr('transform', centeringTransform);
+        const hodoBackgroundGroup = svghodo
+            .append('g')
+            .attr('class', 'hodo')
+            .attr('transform', centeringTransform);
         const hodoRadius = Math.min(positions.hodograph.width, positions.hodograph.height) / 2;
+
+        function zoomed(event) {
+            // 'event.transform' contains the new x, y, and k (scale) values
+            // We apply this transform directly to the main hodograph group
+            svghodo.attr('transform', event.transform);
+            //hodoBackgroundGroup.attr('transform', event.transform);
+        }
+
+        // 4. Create the zoom behavior
+        const zoom = d3
+            .zoom()
+            // Set the zoom limits (e.g., 0.5x to 10x)
+            .scaleExtent([0.5, 10])
+            .translateExtent([
+                [-totalWidth / 2, -totalHeight / 2], // [x0, y0] - top-left limit
+                [totalWidth + totalWidth / 2, totalHeight + totalHeight / 2], // [x1, y1] - bottom-right limit
+            ])
+            // Prevent zooming on double-click, which can be annoying
+            // .on('dblclick.zoom', null)
+
+            // Connect the 'zoom' event to our handler function
+            .on('zoom', zoomed);
+
+        // 5. Attach the zoom behavior to the main SVG
+        // The 'svg' element will now listen for zoom/pan gestures
+        svgRoot.call(zoom);
+
+        const tooltip = d3
+            .select('body')
+            .append('div')
+            .attr('class', 'hodo-tooltip') // For styling
+            .style('opacity', 0); // Start hidden
 
         // Draw hodograph background (circles and labels)
         function drawBackground() {
-            // console.log('drawBackground');
-            // const maxWind = d3.max(soundingParam.flat(), (d) => d.twnd) || 80;
-            // console.log(maxWind);
-            // const rDomain = Math.ceil(maxWind / 10) * 10;
-            // console.log(rDomain);
-            // const r = d3.scaleLinear().range([0, hodoRadius]).domain([0, rDomain]);
             const r = d3.scaleLinear().range([0, positions.hodograph.width]).domain([0, 150]);
             console.log(r);
 
-            svghodo
+            hodoBackgroundGroup
                 .selectAll('.circles')
                 .data(d3.range(10, 80, 10))
                 .enter()
@@ -496,7 +517,7 @@ export function Hodograph({ soundingParam, containerDiv }) {
                 .attr('r', (d) => r(d))
                 .attr('class', 'gridline');
 
-            svghodo
+            hodoBackgroundGroup
                 .selectAll('hodolabels')
                 .data(d3.range(10, 80, 20))
                 .enter()
@@ -508,116 +529,32 @@ export function Hodograph({ soundingParam, containerDiv }) {
                 .attr('text-anchor', 'middle')
                 .text((d) => `${d}kts`);
         }
-        // Calculate total winds and directions
-        // function calcWinds(d, length) {
-        //     // TODO: Decide where to put this function (draw.jsx or sounding.js) and simplify/clean up code
-        //     // Loop through times
-        //     for (let time = 0; time < length; time++) {
-        //         // Filter for u and v winds
-        //         const uwnd = d.data[Object.keys(d.data)[time]].filter(
-        //             (item) => item.field === 'u_isobaric',
-        //         );
-        //         var vwnd = d.data[Object.keys(d.data)[time]].filter(
-        //             (item) => item.field === 'v_isobaric',
-        //         );
 
-        //         // Loop through members (and means)
-        //         uwnd.map((val, idx) => {
-        //             // Prepare data entries for total wind and wind direction
-        //             const twndvals = [];
-        //             var twnd = {
-        //                 field: 'totalwind',
-        //                 model: val.model,
-        //                 mem: val.mem,
-        //                 reqNum: 5,
-        //                 value: twndvals,
-        //             };
-        //             const wnddirvals = [];
-        //             const wnddir = {
-        //                 field: 'winddir',
-        //                 model: val.model,
-        //                 mem: val.mem,
-        //                 reqNum: 5,
-        //                 value: wnddirvals,
-        //             };
-        //             d.data[Object.keys(d.data)[time]].push(twnd);
-        //             d.data[Object.keys(d.data)[time]].push(wnddir);
-
-        //             // Loop through levels
-        //             for (let lev = 0; lev < val.value.length; lev++) {
-        //                 // Calculate total wind for components (convert mph to kts)
-        //                 var twnd = Math.sqrt(
-        //                     sharp.mph2kts(val.value[lev]) ** 2 +
-        //                         sharp.mph2kts(vwnd[idx].value[lev]) ** 2,
-        //                 );
-        //                 twndvals.push(twnd);
-
-        //                 // Calculate directions from components (convert mph to kts)
-        //                 let wnddirval =
-        //                     (180 / Math.PI) *
-        //                     Math.atan2(
-        //                         -sharp.mph2kts(val.value[lev]),
-        //                         -sharp.mph2kts(vwnd[idx].value[lev]),
-        //                     );
-        //                 if (wnddirval < 0) {
-        //                     wnddirval += 360;
-        //                 }
-        //                 wnddirvals.push(wnddirval);
-        //             }
-        //         });
-
-        //         // Filter for 10m u and v winds
-        //         const uwnd10 = d.data[Object.keys(d.data)[time]].filter((item) => item.field === 'u10');
-        //         var vwnd10 = d.data[Object.keys(d.data)[time]].filter((item) => item.field === 'v10');
-
-        //         // Loop through members (and means)
-        //         uwnd10.map((val, idx) => {
-        //             // Calculate and create data entry for 10m total wind
-        //             const twnd10vals = Math.sqrt(
-        //                 sharp.mph2kts(val.value) ** 2 + sharp.mph2kts(vwnd10[idx].value) ** 2,
-        //             );
-        //             const twnd10 = {
-        //                 field: 'totalwind10',
-        //                 model: val.model,
-        //                 mem: val.mem,
-        //                 reqNum: 5,
-        //                 value: twnd10vals,
-        //             };
-
-        //             // Calculate and create data entry for 10m wind directions
-        //             let wnddir10vals =
-        //                 (180 / Math.PI) *
-        //                 Math.atan2(-sharp.mph2kts(val.value), -sharp.mph2kts(vwnd10[idx].value));
-        //             if (wnddir10vals < 0) {
-        //                 wnddir10vals += 360;
-        //             }
-        //             const wnddir10 = {
-        //                 field: 'winddir10',
-        //                 model: val.model,
-        //                 mem: val.mem,
-        //                 reqNum: 5,
-        //                 value: wnddir10vals,
-        //             };
-
-        //             // Push entries to main data
-        //             d.data[Object.keys(d.data)[time]].push(twnd10);
-        //             d.data[Object.keys(d.data)[time]].push(wnddir10);
-        //         });
-        //     }
-        // }
         // Draw the actual hodograph plot
         function draw(alldata) {
-            // animationSpeed, chartOptions
             const maxWind = d3.max(alldata.flat(), (d) => d.twnd) || 80;
             const rDomain = Math.ceil(maxWind / 10) * 10;
             const chartOptions = {};
             chartOptions.x2dGraphStyle = 'mean';
-            const r = d3.scaleLinear().range([0, hodoRadius]).domain([0, rDomain]);
+            // const r = d3.scaleLinear().range([0, hodoRadius]).domain([0, rDomain]);
+            const r = d3.scaleLinear().range([0, positions.hodograph.width]).domain([0, 150]);
 
             const hodoline = d3
                 .lineRadial()
                 .radius((d) => r(d.twnd))
                 .angle((d) => (d.wdir + 180) * (Math.PI / 180));
+
+            const memberLinesGroup = hodogroup
+                .selectAll('.member-lines-group')
+                .data([null]) // Bind a single dummy item
+                .join('g')
+                .attr('class', 'member-lines-group');
+
+            const meanLineGroup = hodogroup
+                .selectAll('.mean-line-group')
+                .data([null]) // Bind a single dummy item
+                .join('g')
+                .attr('class', 'mean-line-group');
 
             const meanmember = alldata.filter((d) => d.length > 0 && d[0].mem === 'grandensemble');
             //const meanmember = alldata.filter((d) => d.mem === 'grandensemble');
@@ -627,9 +564,10 @@ export function Hodograph({ soundingParam, containerDiv }) {
             // Update the hodograph lines mean
             console.log(chartOptions.x2dGraphStyle);
             const segmentConfig = [
-                { maxHeight: 3000, color: 'blue' },
-                { maxHeight: 8000, color: 'green' },
-                { maxHeight: Infinity, color: 'red' }, // 'Infinity' catches everything else
+                { maxHeight: 1000, color: 'red' },
+                { maxHeight: 3000, color: 'orange' },
+                { maxHeight: 6000, color: 'purple' },
+                { maxHeight: Infinity, color: 'blue' }, // 'Infinity' catches everything else
             ];
 
             const segments = []; // This will hold the final data arrays for each path
@@ -664,18 +602,82 @@ export function Hodograph({ soundingParam, containerDiv }) {
                 minHeight = maxHeight;
             });
 
-            //const segment1Data = meanmember[0].filter((d) => d.hght < 3000);
-            //const segment2Data = meanmember[0].filter((d) => d.hght >= 3000 && d.hght < 8000);
-            //const segment3Data = meanmember[0].filter((d) => d.hght >= 8000);
-
-            // 2. JOIN AN ARRAY OF THOSE SEGMENTS
-            //const segments = [segment1Data, segment2Data, segment3Data];
-            //const segmentColors = ['blue', 'green', 'red'];
-
             // We select by a new class, '.hodo-segment'
 
             if (chartOptions.x2dGraphStyle === 'mean') {
-                const hodoSegments = hodogroup.selectAll('.hodoline.mean').data(segments); // Data is: [ [segment1_points], [segment2_points] ]
+                // Draw ensemble member lines
+                const hodoLines = memberLinesGroup.selectAll('.hodoline.member').data(alldata);
+                const mergedHodoLines = hodoLines.enter().append('path').merge(hodoLines);
+                mergedHodoLines
+                    .on('mouseover', (event, d) => {
+                        const memberId = d[0].mem;
+                        console.log('Hovering member:', memberId);
+                        tooltip.transition().duration(50).style('opacity', 1);
+                        tooltip
+                            .html(memberId) // Set text
+                            .style('left', `${event.pageX + 10}px`) // Position near mouse
+                            .style('top', `${event.pageY - 15}px`);
+                        d3.select(event.currentTarget).raise().classed('hovered', true);
+                    })
+                    .on('mousemove', (event) => {
+                        tooltip
+                            .style('left', `${event.pageX + 10}px`)
+                            .style('top', `${event.pageY - 15}px`);
+                    })
+                    .on('mouseout', (event, d) => {
+                        const memberId = d[0].mem;
+                        tooltip.transition().duration(200).style('opacity', 0);
+                        d3.select(event.currentTarget).lower().classed('hovered', false);
+                    });
+
+                mergedHodoLines.transition().attr('class', 'hodoline member').attr('d', hodoline);
+                hodoLines.exit().remove();
+
+                // Draw mean member data points (draw first to send to back)
+                const hodoDataPoints = meanLineGroup
+                    .selectAll('.hodo-datapoint')
+                    .data(meanmember[0]);
+                const mergedHodoDataPoints = hodoDataPoints
+                    .enter()
+                    .append('circle')
+                    .merge(hodoDataPoints);
+
+                mergedHodoDataPoints
+                    .on('mouseover', (event, d) => {
+                        const { twnd } = d;
+                        const { wdir } = d;
+                        const { hght } = d;
+                        console.log('Wind speed: ', twnd, 'Wind Dir: ', wdir);
+                        tooltip.transition().duration(50).style('opacity', 1);
+                        tooltip
+                            .html(
+                                `Height: ${hght.toFixed(0)}<br>Spd: ${twnd.toFixed(0)}<br>Dir: ${wdir.toFixed(0)}`,
+                            ) // Set text
+                            .style('left', `${event.pageX + 10}px`) // Position near mouse
+                            .style('top', `${event.pageY - 15}px`);
+                        d3.select(event.currentTarget).raise().classed('hovered', true);
+                    })
+                    .on('mousemove', (event) => {
+                        tooltip
+                            .style('left', `${event.pageX + 10}px`)
+                            .style('top', `${event.pageY - 15}px`);
+                    })
+                    .on('mouseout', (event, d) => {
+                        const { twnd } = d;
+                        const { wdir } = d;
+                        tooltip.transition().duration(200).style('opacity', 0);
+                        d3.select(event.currentTarget).lower().classed('hovered', false);
+                    });
+
+                mergedHodoDataPoints
+                    .attr('class', 'hodo-datapoint')
+                    .attr('cx', (d) => r(d.twnd) * Math.sin((d.wdir + 180) * (Math.PI / 180)))
+                    .attr('cy', (d) => -r(d.twnd) * Math.cos((d.wdir + 180) * (Math.PI / 180)))
+                    .attr('r', 2);
+                hodoDataPoints.exit().remove();
+
+                // Draw mean member in multiple segments
+                const hodoSegments = meanLineGroup.selectAll('.hodoline.mean').data(segments); // Data is: [ [segment1_points], [segment2_points] ]
                 hodoSegments
                     .enter()
                     .append('path')
@@ -684,68 +686,10 @@ export function Hodograph({ soundingParam, containerDiv }) {
                     .style('stroke', (d, i) => {
                         // 'd' is the segment data ([segment_points])
                         // 'i' is the index (0 or 1)
-                        return segmentColors[i]; // 1st segment is blue, 2nd is red
+                        return segmentColors[i];
                     })
-                    .attr('d', hodoline); // 'hodoline' is called ONCE for each segment
-
-                hodoSegments.exit().remove();
-
-                const hodoLines = hodogroup.selectAll('.hodoline.member').data(alldata);
-                // hodoLines
-                //     .enter()
-                //     .append('path')
-                //     .merge(hodoLines)
-                //     .transition()
-                //     // .duration(animationSpeed)
-                //     .attr('class', 'hodoline member')
-                //     // (d, i) =>
-                //     // i < alldata.length - 1 ? 'hodoline member' : 'hodoline mean',
-                //     // )
-                //     .style('stroke', null) // Clear inline styles from previous (segment) renders
-                //     .attr('d', hodoline);
-                // hodoLines
-                //     .enter()
-                //     .append('path')
-                //     .merge(hodoLines)
-                //     .attr('class', 'hodoline mean')
-                //     .attr('d', hodoline);
-                const mergedHodoLines = hodoLines.enter().append('path').merge(hodoLines);
-                mergedHodoLines
-                    .on('mouseover', (event, d) => {
-                        // **NEW**: Get the member ID and log it
-                        const memberId = d[0].mem;
-                        console.log('Hovering member:', memberId);
-                        // In the future, you would call your shared function here
-                        // highlightOtherPlots(memberId);
-                        d3.select(event.currentTarget)
-                            .raise() // Bring to front
-                            .style('opacity', 1.0)
-                            .style('stroke-width', '3px')
-                            .style('stoke', 'yellow');
-                    })
-                    .on('mouseout', (event, d) => {
-                        // **NEW**: Get the member ID for 'un-highlighting'
-                        const memberId = d[0].mem;
-                        // In the future, you would call your shared function here
-                        // unHighlightOtherPlots(memberId);
-                        d3.select(event.currentTarget)
-                            .lower() // Send to back
-                            .style('opacity', 0.3) // Return to original
-                            .style('stroke-width', '1.5px'); // Return to original
-                    });
-
-                // Now, apply attributes and transitions
-                mergedHodoLines
-                    .transition()
-                    .attr('class', 'hodoline member')
-                    .style('stroke', 'gray')
-                    .style('opacity', 0.3)
-                    .style('stroke-width', '1.5px') // **NEW**: Set a base width
-                    .style('fill', 'none') // <-- **FIX 1: Remove fill**
-                    .style('pointer-events', 'stroke')
                     .attr('d', hodoline);
-
-                hodoLines.exit().remove();
+                hodoSegments.exit().remove();
             }
         }
 

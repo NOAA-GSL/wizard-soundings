@@ -224,14 +224,31 @@ $soundingWidth: 60%;
 .hodoline.mean {
     //  stroke: var(--2d-line-contrast3);
     opacity: 1;
-    stroke-width: 3.5px;
+    stroke-width: 4px;
     //stroke: black;
 }
 .hodoline.member {
-    opacity: 1;
+    opacity: 0.5;
     stroke-width: 1px;
-    stroke: black;
+    stroke: gray;
+    fill: none;
+    pointer-events: stroke;
 }
+
+/* Hovered state for member lines */
+.hodoline.member.hovered {
+    stroke: yellow;
+    stroke-width: 2px;
+    opacity: 1;
+}
+
+/* Hovered state for data points */
+.hodo-datapoint.hovered {
+    stroke: yellow;
+    stroke-width: 4px;
+    opacity: 1;
+}
+
 .hododot {
     stroke: #000;
     opacity: 0.8;
@@ -250,6 +267,19 @@ $soundingWidth: 60%;
 }
 .hododot.hgt9 {
     fill: #ffffcc;
+}
+
+.hodo-tooltip {
+    position: absolute; /* This is crucial for following the mouse */
+    background-color: white;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-family: sans-serif;
+    font-size: 12px;
+    /* Prevents the tooltip from blocking mouse events on the lines */
+    pointer-events: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .gridline,
