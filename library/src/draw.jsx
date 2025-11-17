@@ -395,7 +395,7 @@ export function StatsTable({ statsDictParam }) {
         </div>
     );
 }
-export function Hodograph({ soundingParam, containerDiv }) {
+export function Hodograph({ soundingParam, statsDictParam, containerDiv }) {
     const d3Container = useRef(null);
 
     useEffect(() => {
@@ -434,11 +434,6 @@ export function Hodograph({ soundingParam, containerDiv }) {
 
         const positions = calcPositions();
 
-        // Select the D3 container using our ref and clear any previous SVG
-        // to prevent duplicates when data updates.
-        const svgContainer = d3.select(d3Container.current);
-        svgContainer.selectAll('*').remove();
-
         const totalWidth =
             positions.hodograph.width +
             positions.hodograph.margin.left +
@@ -448,18 +443,21 @@ export function Hodograph({ soundingParam, containerDiv }) {
             positions.hodograph.margin.top +
             positions.hodograph.margin.bottom;
 
-        // Append the new SVG
+        // Select the D3 container using our ref and clear any previous SVG
+        // to prevent duplicates when data updates.
+        const svgContainer = d3.select(d3Container.current);
+        svgContainer.selectAll('*').remove();
+
+        // Setup svg groups and transforms
         const svgRoot = svgContainer
             .append('svg')
             .attr('width', totalWidth)
             .attr('height', totalHeight);
 
-        // 2. Append the main <g> to 'svgRoot' and store it as 'svghodo'
         const svghodo = svgRoot.append('g');
-
         const centeringTransform = `translate(${totalWidth / 2},${totalHeight / 2})`;
+        const hodoRadius = Math.min(positions.hodograph.width, positions.hodograph.height) / 2;
 
-        //const hodogroup = svghodo.append('g').attr('class', 'hodo');
         const hodogroup = svghodo
             .append('g')
             .attr('class', 'hodo')
@@ -468,34 +466,22 @@ export function Hodograph({ soundingParam, containerDiv }) {
             .append('g')
             .attr('class', 'hodo')
             .attr('transform', centeringTransform);
-        const hodoRadius = Math.min(positions.hodograph.width, positions.hodograph.height) / 2;
 
+        // Setup zoom/pan
         function zoomed(event) {
-            // 'event.transform' contains the new x, y, and k (scale) values
-            // We apply this transform directly to the main hodograph group
             svghodo.attr('transform', event.transform);
-            //hodoBackgroundGroup.attr('transform', event.transform);
         }
-
-        // 4. Create the zoom behavior
         const zoom = d3
             .zoom()
-            // Set the zoom limits (e.g., 0.5x to 10x)
             .scaleExtent([0.5, 10])
             .translateExtent([
-                [-totalWidth / 2, -totalHeight / 2], // [x0, y0] - top-left limit
-                [totalWidth + totalWidth / 2, totalHeight + totalHeight / 2], // [x1, y1] - bottom-right limit
+                [0, 0], // [x0, y0] - top-left limit
+                [totalWidth, totalHeight], // [x1, y1] - bottom-right limit
             ])
-            // Prevent zooming on double-click, which can be annoying
-            // .on('dblclick.zoom', null)
-
-            // Connect the 'zoom' event to our handler function
             .on('zoom', zoomed);
-
-        // 5. Attach the zoom behavior to the main SVG
-        // The 'svg' element will now listen for zoom/pan gestures
         svgRoot.call(zoom);
 
+        // Setup tooltip
         const tooltip = d3
             .select('body')
             .append('div')
@@ -531,18 +517,18 @@ export function Hodograph({ soundingParam, containerDiv }) {
         }
 
         // Draw the actual hodograph plot
-        function draw(alldata) {
-            const maxWind = d3.max(alldata.flat(), (d) => d.twnd) || 80;
-            const rDomain = Math.ceil(maxWind / 10) * 10;
-            const chartOptions = {};
-            chartOptions.x2dGraphStyle = 'mean';
+        function draw(alldata, statsDict) {
+            // const maxWind = d3.max(alldata.flat(), (d) => d.twnd) || 80;
+            // const rDomain = Math.ceil(maxWind / 10) * 10;
             // const r = d3.scaleLinear().range([0, hodoRadius]).domain([0, rDomain]);
             const r = d3.scaleLinear().range([0, positions.hodograph.width]).domain([0, 150]);
 
+            // Setup groups for mean and members
             const hodoline = d3
                 .lineRadial()
                 .radius((d) => r(d.twnd))
                 .angle((d) => (d.wdir + 180) * (Math.PI / 180));
+            // .curve(d3.curveCatmullRom);
 
             const memberLinesGroup = hodogroup
                 .selectAll('.member-lines-group')
@@ -557,12 +543,8 @@ export function Hodograph({ soundingParam, containerDiv }) {
                 .attr('class', 'mean-line-group');
 
             const meanmember = alldata.filter((d) => d.length > 0 && d[0].mem === 'grandensemble');
-            //const meanmember = alldata.filter((d) => d.mem === 'grandensemble');
-            console.log('mean member');
-            console.log(meanmember);
 
-            // Update the hodograph lines mean
-            console.log(chartOptions.x2dGraphStyle);
+            // Setup segment coloring for hodograph mean line
             const segmentConfig = [
                 { maxHeight: 1000, color: 'red' },
                 { maxHeight: 3000, color: 'orange' },
@@ -570,136 +552,170 @@ export function Hodograph({ soundingParam, containerDiv }) {
                 { maxHeight: Infinity, color: 'blue' }, // 'Infinity' catches everything else
             ];
 
-            const segments = []; // This will hold the final data arrays for each path
-            const segmentColors = []; // This will hold the corresponding colors
-            let minHeight = -Infinity; // Tracks the *start* height for the current segment
-            let lastPoint = null; // Tracks the overlap point from the previous segment
+            const segments = [];
+            const segmentColors = [];
+            const majorPoints = [];
+            let minHeight = -Infinity;
+            let lastPoint = null;
 
             // Loop through the configuration
             segmentConfig.forEach((config) => {
                 const { maxHeight } = config;
-
-                // 1. Filter the main data to get points for this segment
                 const currentSegment = meanmember[0].filter(
                     (d) => d.hght >= minHeight && d.hght < maxHeight,
                 );
-
-                // 2. Add the overlap point (the "handoff") from the previous segment
                 if (lastPoint && currentSegment.length > 0) {
                     currentSegment.unshift(lastPoint);
                 }
-
-                // 3. If this segment has data, save it
                 if (currentSegment.length > 0) {
                     segments.push(currentSegment);
                     segmentColors.push(config.color);
 
-                    // 4. Save the last point of *this* segment for the *next* segment
                     lastPoint = currentSegment[currentSegment.length - 1];
+                    const firstPoint = currentSegment[0];
+                    majorPoints.push(firstPoint);
                 }
-
-                // 5. Set the starting height for the next loop
                 minHeight = maxHeight;
             });
 
-            // We select by a new class, '.hodo-segment'
+            // Draw ensemble member lines
+            const hodoLines = memberLinesGroup.selectAll('.hodoline.member').data(alldata);
+            const mergedHodoLines = hodoLines.enter().append('path').merge(hodoLines);
+            mergedHodoLines
+                .on('mouseover', (event, d) => {
+                    const memberId = d[0].mem;
+                    console.log('Hovering member:', memberId);
+                    tooltip.transition().duration(50).style('opacity', 1);
+                    tooltip
+                        .html(memberId) // Set text
+                        .style('left', `${event.pageX + 10}px`) // Position near mouse
+                        .style('top', `${event.pageY - 15}px`);
+                    d3.select(event.currentTarget).raise().classed('hovered', true);
+                })
+                .on('mousemove', (event) => {
+                    tooltip
+                        .style('left', `${event.pageX + 10}px`)
+                        .style('top', `${event.pageY - 15}px`);
+                })
+                .on('mouseout', (event, d) => {
+                    const memberId = d[0].mem;
+                    tooltip.transition().duration(200).style('opacity', 0);
+                    d3.select(event.currentTarget).lower().classed('hovered', false);
+                });
 
-            if (chartOptions.x2dGraphStyle === 'mean') {
-                // Draw ensemble member lines
-                const hodoLines = memberLinesGroup.selectAll('.hodoline.member').data(alldata);
-                const mergedHodoLines = hodoLines.enter().append('path').merge(hodoLines);
-                mergedHodoLines
-                    .on('mouseover', (event, d) => {
-                        const memberId = d[0].mem;
-                        console.log('Hovering member:', memberId);
-                        tooltip.transition().duration(50).style('opacity', 1);
-                        tooltip
-                            .html(memberId) // Set text
-                            .style('left', `${event.pageX + 10}px`) // Position near mouse
-                            .style('top', `${event.pageY - 15}px`);
-                        d3.select(event.currentTarget).raise().classed('hovered', true);
-                    })
-                    .on('mousemove', (event) => {
-                        tooltip
-                            .style('left', `${event.pageX + 10}px`)
-                            .style('top', `${event.pageY - 15}px`);
-                    })
-                    .on('mouseout', (event, d) => {
-                        const memberId = d[0].mem;
-                        tooltip.transition().duration(200).style('opacity', 0);
-                        d3.select(event.currentTarget).lower().classed('hovered', false);
-                    });
+            mergedHodoLines.transition().attr('class', 'hodoline member').attr('d', hodoline);
+            hodoLines.exit().remove();
 
-                mergedHodoLines.transition().attr('class', 'hodoline member').attr('d', hodoline);
-                hodoLines.exit().remove();
+            // Draw mean member in multiple segments
+            const hodoSegments = meanLineGroup.selectAll('.hodoline.mean').data(segments); // Data is: [ [segment1_points], [segment2_points] ]
+            hodoSegments
+                .enter()
+                .append('path')
+                .merge(hodoSegments)
+                .attr('class', 'hodoline mean')
+                .style('stroke', (d, i) => {
+                    // 'd' is the segment data ([segment_points])
+                    // 'i' is the index (0 or 1)
+                    return segmentColors[i];
+                })
+                .attr('d', hodoline);
+            hodoSegments.exit().remove();
 
-                // Draw mean member data points (draw first to send to back)
-                const hodoDataPoints = meanLineGroup
-                    .selectAll('.hodo-datapoint')
-                    .data(meanmember[0]);
-                const mergedHodoDataPoints = hodoDataPoints
-                    .enter()
-                    .append('circle')
-                    .merge(hodoDataPoints);
+            // Draw mean member data points
+            const hodoDataPoints = meanLineGroup.selectAll('.hodo-datapoint').data(majorPoints);
+            const mergedHodoDataPoints = hodoDataPoints
+                .enter()
+                .append('circle')
+                .merge(hodoDataPoints);
 
-                mergedHodoDataPoints
-                    .on('mouseover', (event, d) => {
-                        const { twnd } = d;
-                        const { wdir } = d;
-                        const { hght } = d;
-                        console.log('Wind speed: ', twnd, 'Wind Dir: ', wdir);
-                        tooltip.transition().duration(50).style('opacity', 1);
-                        tooltip
-                            .html(
-                                `Height: ${hght.toFixed(0)}<br>Spd: ${twnd.toFixed(0)}<br>Dir: ${wdir.toFixed(0)}`,
-                            ) // Set text
-                            .style('left', `${event.pageX + 10}px`) // Position near mouse
-                            .style('top', `${event.pageY - 15}px`);
-                        d3.select(event.currentTarget).raise().classed('hovered', true);
-                    })
-                    .on('mousemove', (event) => {
-                        tooltip
-                            .style('left', `${event.pageX + 10}px`)
-                            .style('top', `${event.pageY - 15}px`);
-                    })
-                    .on('mouseout', (event, d) => {
-                        const { twnd } = d;
-                        const { wdir } = d;
-                        tooltip.transition().duration(200).style('opacity', 0);
-                        d3.select(event.currentTarget).lower().classed('hovered', false);
-                    });
+            mergedHodoDataPoints
+                .on('mouseover', (event, d) => {
+                    const { twnd } = d;
+                    const { wdir } = d;
+                    const { hght } = d;
+                    console.log('Wind speed: ', twnd, 'Wind Dir: ', wdir);
+                    tooltip.transition().duration(50).style('opacity', 1);
+                    tooltip
+                        .html(
+                            `Height: ${hght.toFixed(0)}<br>Spd: ${twnd.toFixed(0)}<br>Dir: ${wdir.toFixed(0)}`,
+                        )
+                        .style('left', `${event.pageX + 10}px`) // Position near mouse
+                        .style('top', `${event.pageY - 15}px`);
+                    d3.select(event.currentTarget).raise().classed('hovered', true);
+                })
+                .on('mousemove', (event) => {
+                    tooltip
+                        .style('left', `${event.pageX + 10}px`)
+                        .style('top', `${event.pageY - 15}px`);
+                })
+                .on('mouseout', (event, d) => {
+                    const { twnd } = d;
+                    const { wdir } = d;
+                    tooltip.transition().duration(200).style('opacity', 0);
+                    d3.select(event.currentTarget).classed('hovered', false);
+                });
 
-                mergedHodoDataPoints
-                    .attr('class', 'hodo-datapoint')
-                    .attr('cx', (d) => r(d.twnd) * Math.sin((d.wdir + 180) * (Math.PI / 180)))
-                    .attr('cy', (d) => -r(d.twnd) * Math.cos((d.wdir + 180) * (Math.PI / 180)))
-                    .attr('r', 2);
-                hodoDataPoints.exit().remove();
+            mergedHodoDataPoints
+                .attr('class', 'hodo-datapoint')
+                .attr('cx', (d) => r(d.twnd) * Math.sin((d.wdir + 180) * (Math.PI / 180)))
+                .attr('cy', (d) => -r(d.twnd) * Math.cos((d.wdir + 180) * (Math.PI / 180)))
+                .attr('r', 2);
+            hodoDataPoints.exit().remove();
 
-                // Draw mean member in multiple segments
-                const hodoSegments = meanLineGroup.selectAll('.hodoline.mean').data(segments); // Data is: [ [segment1_points], [segment2_points] ]
-                hodoSegments
-                    .enter()
-                    .append('path')
-                    .merge(hodoSegments)
-                    .attr('class', 'hodoline mean')
-                    .style('stroke', (d, i) => {
-                        // 'd' is the segment data ([segment_points])
-                        // 'i' is the index (0 or 1)
-                        return segmentColors[i];
-                    })
-                    .attr('d', hodoline);
-                hodoSegments.exit().remove();
-            }
+            // Draw bunkers motion points
+            const bunkerPoints = meanLineGroup
+                .selectAll('.hodo-bunkers')
+                .data([statsDict.rstVector, statsDict.lstVector]);
+            const mergedBunkerPoints = bunkerPoints.enter().append('path').merge(bunkerPoints);
+
+            mergedBunkerPoints
+                .on('mouseover', (event, d) => {
+                    const { drx } = d;
+                    const { mag } = d;
+                    tooltip.transition().duration(50).style('opacity', 1);
+                    tooltip
+                        .html(`Spd: ${mag.toFixed(0)}<br>Dir: ${drx.toFixed(0)}`)
+                        .style('left', `${event.pageX + 10}px`) // Position near mouse
+                        .style('top', `${event.pageY - 15}px`);
+                    d3.select(event.currentTarget).raise().classed('hovered', true);
+                })
+                .on('mousemove', (event) => {
+                    tooltip
+                        .style('left', `${event.pageX + 10}px`)
+                        .style('top', `${event.pageY - 15}px`);
+                })
+                .on('mouseout', (event, d) => {
+                    const { drx } = d;
+                    const { mag } = d;
+                    tooltip.transition().duration(200).style('opacity', 0);
+                    d3.select(event.currentTarget).lower().classed('hovered', false);
+                });
+
+            const symbolGenerator = d3
+                .symbol()
+                .type(d3.symbolCross) // Use a star
+                .size(30);
+
+            mergedBunkerPoints
+                .attr('class', 'hodo-bunkers')
+                .attr('d', symbolGenerator)
+                .attr('transform', (d) => {
+                    // Get the x and y coordinates
+                    const x = r(d.mag) * Math.sin((d.drx + 180) * (Math.PI / 180));
+                    const y = -r(d.mag) * Math.cos((d.drx + 180) * (Math.PI / 180)); // Return a 'translate' string
+                    return `translate(${x}, ${y})`;
+                })
+                //  .attr('cx', (d) => r(d.mag) * Math.sin((d.drx + 180) * (Math.PI / 180)))
+                //  .attr('cy', (d) => -r(d.mag) * Math.cos((d.drx + 180) * (Math.PI / 180)))
+                .attr('r', 2);
+            bunkerPoints.exit().remove();
         }
 
         if (soundingParam.length > 0) {
             drawBackground();
-            draw(soundingParam);
+            draw(soundingParam, statsDictParam);
         }
-    }, [soundingParam, containerDiv]);
+    }, [soundingParam, statsDictParam, containerDiv]);
 
-    // 4. The component now returns a single div with the ref that D3 uses.
-    //    The stray `ref={hodographDiv}` has also been removed.
     return <div id="hodobox" className="hodobox" ref={d3Container} />;
 }

@@ -215,6 +215,8 @@ $soundingWidth: 60%;
     opacity: 1;
     pointer-events: none;
 }
+
+/* Hodograph styles */
 .hodoline {
     stroke: lightblue;
     fill: none;
@@ -235,14 +237,18 @@ $soundingWidth: 60%;
     pointer-events: stroke;
 }
 
-/* Hovered state for member lines */
 .hodoline.member.hovered {
     stroke: yellow;
     stroke-width: 2px;
     opacity: 1;
 }
 
-/* Hovered state for data points */
+.hodo-datapoint {
+    stroke: black;
+    stroke-width: 2px;
+    opacity: 1;
+}
+
 .hodo-datapoint.hovered {
     stroke: yellow;
     stroke-width: 4px;
@@ -280,6 +286,12 @@ $soundingWidth: 60%;
     /* Prevents the tooltip from blocking mouse events on the lines */
     pointer-events: none;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.hodolabels {
+    font-size: 14px;
+    opacity: 0.7;
+    stroke: var(--font-color-primary);
 }
 
 .gridline,
@@ -322,11 +334,7 @@ $soundingWidth: 60%;
     font-weight: bold;
     font-size: 11px;
 }
-.hodolabels {
-    font-size: 9px;
-    opacity: 0.7;
-    stroke: var(--font-color-primary);
-}
+
 .lcltext {
     font-size: 11px;
 }

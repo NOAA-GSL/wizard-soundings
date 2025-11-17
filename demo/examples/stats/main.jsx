@@ -63,7 +63,11 @@ function RenderStatsPage() {
                 <StatsTable statsDictParam={statsDict} />
             </div>
             <div id="hodograph" ref={hodographContainerDiv}>
-                <Hodograph soundingParam={levelData} containerDiv={hodographContainerDiv} />
+                <Hodograph
+                    soundingParam={levelData}
+                    statsDictParam={statsDict}
+                    containerDiv={hodographContainerDiv}
+                />
             </div>
         </>
     );
