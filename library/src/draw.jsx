@@ -1,222 +1,254 @@
-// import { Tooltip } from '@mui/material';
 // import '../dist/desi-soundings.css';
 import 'desi-soundings/draw.scss';
-import { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 
+// --- Helper: Safe Number Formatting ---
+const fmt = (val, decimals = 0) => {
+    if (val === null || val === undefined || isNaN(val)) return '-';
+    return val.toFixed(decimals);
+};
+
+// --- Helper: Safe Vector Formatting ---
+const fmtVec = (vec) => {
+    if (!vec || vec.drx === null || vec.mag === null) return '-/-';
+    return `${vec.drx.toFixed(0)}/${vec.mag.toFixed(0)}`;
+};
+
+// --- Configuration: Parcel Table ---
+const PARCEL_ROWS = [
+    { label: 'SFC', prefix: 'sfc' },
+    { label: 'ML', prefix: 'ml' },
+    { label: 'MU', prefix: 'mu' },
+];
+const PARCEL_COLS = ['CAPE', 'CINH', 'LCL', 'LI', 'LFC', 'EL'];
+
+// --- Configuration: Wind Table ---
+const WIND_ROWS = [
+    {
+        label: 'SFC-1km',
+        srh: 'right_srh1km',
+        shear: 'sfc1kmshr',
+        mw: 'mw1Vector',
+        srw: 'srw1Vector',
+    },
+    {
+        label: 'SFC-3km',
+        srh: 'right_srh3km',
+        shear: 'sfc3kmshr',
+        mw: 'mw3Vector',
+        srw: 'srw3Vector',
+    },
+    {
+        label: 'Eff Inflow',
+        srh: 'right_srheff',
+        shear: 'effshr',
+        mw: 'effwVector',
+        srw: 'srweffVector',
+    },
+    {
+        label: 'SFC-6km',
+        srh: 'right_srh6km',
+        shear: 'sfc6kmshr',
+        mw: 'mw6Vector',
+        srw: 'srw6Vector',
+    },
+    {
+        label: 'SFC-8km',
+        srh: 'right_srh1km',
+        shear: 'sfc8kmshr',
+        mw: 'mw8Vector',
+        srw: 'srw8Vector',
+    },
+    {
+        label: 'LCL-EL',
+        srh: 'right_srhlclel',
+        shear: 'ellclshr',
+        mw: 'ellclwVector',
+        srw: 'srwellclVector',
+    },
+    {
+        label: 'Eff Shear',
+        srh: 'right_srhebwd',
+        shear: 'ebwdshr',
+        mw: 'ebwdVector',
+        srw: 'srwebwdVector',
+    },
+];
+
 export function StatsTable({ statsDictParam }) {
-    const statsDict = statsDictParam;
+    const stats = statsDictParam;
 
-    function statClick() {
+    // 1. Tooltip State
+    const [hoverInfo, setHoverInfo] = useState(null);
+
+    // 2. Tooltip Handlers (Same as Hodograph)
+    const handleMouseOver = (e, content) => {
+        setHoverInfo({
+            x: e.clientX + 10,
+            y: e.clientY - 15,
+            content,
+        });
+    };
+
+    const handleMouseOut = () => setHoverInfo(null);
+
+    const statClick = (key, event) => {
+        // Placeholder for click logic
         return null;
-        /* TODO: Add a "statClick function back in" */
-    }
+    };
 
-    // function updateStats(newStatsDict) {
-    //    setStatsDict(newStatsDict);
-    // }
-
-    if (statsDict === null) {
-        return null;
-    }
-
-    for (const key in statsDict) {
-        if (statsDict[key] === null) {
-            statsDict[key] = NaN;
-        }
-    }
+    if (!stats) return null;
 
     return (
         <div id="statsContainer">
             <div id="meteostats" className="meteostats">
+                {/* --- Left Column: Parcels & Thermo --- */}
                 <div className="statscolumn">
+                    {/* Parcel Stats Matrix */}
                     <table id="parcelstats">
                         <tbody>
                             <tr>
                                 <th>PCL</th>
-                                <th>CAPE</th>
-                                <th>CINH</th>
-                                <th>LCL</th>
-                                <th>LI</th>
-                                <th>LFC</th>
-                                <th>EL</th>
+                                {PARCEL_COLS.map((col) => (
+                                    <th key={col}>{col}</th>
+                                ))}
                             </tr>
-                            <tr>
-                                <th>SFC</th>
-
-                                <td onClick={(event) => statClick('sfcCAPE', event)}>
-                                    {statsDict.sfcCAPE.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('sfcCINH', event)}>
-                                    {statsDict.sfcCINH.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('sfcLCL', event)}>
-                                    {statsDict.sfcLCL.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('sfcLI', event)}>
-                                    {statsDict.sfcLI.toFixed(1)}
-                                </td>
-                                <td onClick={(event) => statClick('sfcLFC', event)}>
-                                    {statsDict.sfcLFC.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('sfcEL', event)}>
-                                    {statsDict.sfcEL.toFixed(0)}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>ML</th>
-                                <td onClick={(event) => statClick('mlCAPE', event)}>
-                                    {statsDict.mlCAPE.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('mlCINH', event)}>
-                                    {statsDict.mlCINH.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('mlLCL', event)}>
-                                    {statsDict.mlLCL.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('mlLI', event)}>
-                                    {statsDict.mlLI.toFixed(1)}
-                                </td>
-                                <td onClick={(event) => statClick('mlLFC', event)}>
-                                    {statsDict.mlLFC.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('mlEL', event)}>
-                                    {statsDict.mlEL.toFixed(0)}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>MU</th>
-                                <td onClick={(event) => statClick('muCAPE', event)}>
-                                    {statsDict.muCAPE.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('muCINH', event)}>
-                                    {statsDict.muCINH.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('muLCL', event)}>
-                                    {statsDict.muLCL.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('muLI', event)}>
-                                    {statsDict.muLI.toFixed(1)}
-                                </td>
-                                <td onClick={(event) => statClick('muLFC', event)}>
-                                    {statsDict.muLFC.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('muEL', event)}>
-                                    {statsDict.muEL.toFixed(0)}
-                                </td>
-                            </tr>
+                            {PARCEL_ROWS.map((row) => (
+                                <tr key={row.prefix}>
+                                    <th>{row.label}</th>
+                                    {PARCEL_COLS.map((col) => {
+                                        const key = `${row.prefix}${col}`;
+                                        const prec = col === 'LI' ? 1 : 0;
+                                        return (
+                                            <td key={key} onClick={(e) => statClick(key, e)}>
+                                                {fmt(stats[key], prec)}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
+
+                    {/* Thermo Stats (Irregular Grid) */}
                     <table id="thermostats">
                         <tbody>
                             <tr>
-                                <td onClick={(event) => statClick('pw', event)}>
-                                    PW = {statsDict.pw.toFixed(2)}
+                                <td onClick={(e) => statClick('pw', e)}>PW = {fmt(stats.pw, 2)}</td>
+                                <td onClick={(e) => statClick('kIndex', e)}>
+                                    K = {fmt(stats.kIndex, 0)}
                                 </td>
-                                <td onClick={(event) => statClick('kIndex', event)}>
-                                    K = {statsDict.kIndex.toFixed(0)}
+                                <td onClick={(e) => statClick('wndg', e)}>
+                                    WNDG = {fmt(stats.wndg, 1)}
                                 </td>
-                                <td onClick={(event) => statClick('wndg', event)}>
-                                    WNDG = {statsDict.wndg.toFixed(1)}
+                                <td onClick={(e) => statClick('meanMR', e)}>
+                                    MeanW = {fmt(stats.meanMR, 1)}
                                 </td>
-                                <td onClick={(event) => statClick('meanMR', event)}>
-                                    MeanW = {statsDict.meanMR.toFixed(1)}
-                                </td>
-                                <td onClick={(event) => statClick('tTotals', event)}>
-                                    TT = {statsDict.tTotals.toFixed(0)}
+                                <td onClick={(e) => statClick('tTotals', e)}>
+                                    TT = {fmt(stats.tTotals, 0)}
                                 </td>
                             </tr>
                             <tr>
-                                <td onClick={(event) => statClick('tei', event)}>
-                                    TEI = {statsDict.tei.toFixed(0)}
+                                <td onClick={(e) => statClick('tei', e)}>
+                                    TEI = {fmt(stats.tei, 0)}
                                 </td>
-                                <td onClick={(event) => statClick('lowRH', event)}>
-                                    lowRH = {statsDict.lowRH.toFixed(0)}
+                                <td onClick={(e) => statClick('lowRH', e)}>
+                                    lowRH = {fmt(stats.lowRH, 0)}
                                 </td>
-                                <td onClick={(event) => statClick('midRH', event)}>
-                                    midRH = {statsDict.midRH.toFixed(0)}
+                                <td onClick={(e) => statClick('midRH', e)}>
+                                    midRH = {fmt(stats.midRH, 0)}
                                 </td>
-                                <td onClick={(event) => statClick('cTemp', event)}>
-                                    convT = {statsDict.cTemp.toFixed(0)}
+                                <td onClick={(e) => statClick('cTemp', e)}>
+                                    convT = {fmt(stats.cTemp, 0)}
                                 </td>
-                                <td onClick={(event) => statClick('mlcape3', event)}>
-                                    3CAPE = {statsDict.mlcape3.toFixed(0)}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td onClick={(event) => statClick('maxT', event)}>
-                                    maxT = {statsDict.maxT.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('mburst', event)}>
-                                    MBURST = {statsDict.mburst.toFixed(1)}
-                                </td>
-                                <td onClick={(event) => statClick('dcape', event)}>
-                                    dCAPE = {statsDict.dcape.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('esp', event)}>
-                                    ESP = {statsDict.esp.toFixed(2)}
-                                </td>
-                                <td onClick={(event) => statClick('downT', event)}>
-                                    downT = {statsDict.downT.toFixed(1)}
+                                <td onClick={(e) => statClick('mlcape3', e)}>
+                                    3CAPE = {fmt(stats.mlcape3, 0)}
                                 </td>
                             </tr>
                             <tr>
-                                <td onClick={(event) => statClick('mmp', event)}>
-                                    MMP = {statsDict.mmp.toFixed(2)}
+                                <td onClick={(e) => statClick('maxT', e)}>
+                                    maxT = {fmt(stats.maxT, 0)}
                                 </td>
-                                <td onClick={(event) => statClick('sigsvr', event)}>
-                                    SigSvr = {statsDict.sigsvr.toFixed(0)}
+                                <td onClick={(e) => statClick('mburst', e)}>
+                                    MBURST = {fmt(stats.mburst, 1)}
                                 </td>
-                                {/* <Tooltip
-                                        enterDelay={750}
-                                        title={
-                                            'Momentum transfer wind gusts\nCalculated via Cook and Williams method, which takes the mean wind vector through depth of PBL'
-                                        }
-                                        placement="top"
-                                        disableInteractive
-                                    >
-                                        <td
-                                            onClick={(event) =>
-                                                statClick('momentumTransferMag', event)
-                                            }
-                                        >
-                                            Mean MT ={' '}
-                                            {statsDict.momentumTransferVector.mag.toFixed(1)}
-                                        </td>
-                                    </Tooltip>
-                                    <Tooltip
-                                        enterDelay={750}
-                                        title={
-                                            'Momentum transfer wind gusts\nCalculated by taking the max wind within the PBL and bringing it to the surface'
-                                        }
-                                        placement="top"
-                                        disableInteractive
-                                    >
-                                        <td
-                                            onClick={(event) =>
-                                                statClick('momentumTransferMagMax', event)
-                                            }
-                                        >
-                                            Max MT ={' '}
-                                            {statsDict.momentumTransferVectorMax.mag.toFixed(1)}
-                                        </td>
-                                    </Tooltip>
-                                    <Tooltip
-                                        enterDelay={750}
-                                        title={
-                                            'PBL depth calculated using\nvirtual temperature profile\nPBL Top defined as the first level at which Tv >= 0.5+Tv,sfc'
-                                        }
-                                        placement="top"
-                                        disableInteractive
-                                    >
-                                        <td onClick={(event) => statClick('pblDepth', event)}>
-                                            PBL Top = {statsDict.pblDepth.toFixed(1)}
-                                        </td>
-                                    </Tooltip> */}
+                                <td onClick={(e) => statClick('dcape', e)}>
+                                    dCAPE = {fmt(stats.dcape, 0)}
+                                </td>
+                                <td onClick={(e) => statClick('esp', e)}>
+                                    ESP = {fmt(stats.esp, 2)}
+                                </td>
+                                <td onClick={(e) => statClick('downT', e)}>
+                                    downT = {fmt(stats.downT, 1)}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td onClick={(e) => statClick('mmp', e)}>
+                                    MMP = {fmt(stats.mmp, 2)}
+                                </td>
+                                <td onClick={(e) => statClick('sigsvr', e)}>
+                                    SigSvr = {fmt(stats.sigsvr, 0)}
+                                </td>
+                                <td
+                                    onClick={(e) => statClick('momentumTransferMag', e)}
+                                    onMouseOver={(e) =>
+                                        handleMouseOver(
+                                            e,
+                                            <div style={{ maxWidth: '200px' }}>
+                                                <strong>Mean MT</strong>
+                                                <br />
+                                                Calculated via Cook and Williams method, using mean
+                                                wind vector through depth of PBL.
+                                            </div>,
+                                        )
+                                    }
+                                    onMouseOut={handleMouseOut}
+                                >
+                                    Mean MT = {fmt(stats.momentumTransferVector?.mag, 1)}
+                                </td>
+
+                                <td
+                                    onClick={(e) => statClick('momentumTransferMagMax', e)}
+                                    onMouseOver={(e) =>
+                                        handleMouseOver(
+                                            e,
+                                            <div style={{ maxWidth: '200px' }}>
+                                                <strong>Max MT</strong>
+                                                <br />
+                                                Calculated by taking the max wind within the PBL and
+                                                bringing it to the surface.
+                                            </div>,
+                                        )
+                                    }
+                                    onMouseOut={handleMouseOut}
+                                >
+                                    Max MT = {fmt(stats.momentumTransferVectorMax?.mag, 1)}
+                                </td>
+
+                                <td
+                                    onClick={(e) => statClick('pblDepth', e)}
+                                    onMouseOver={(e) =>
+                                        handleMouseOver(
+                                            e,
+                                            <div style={{ maxWidth: '200px' }}>
+                                                <strong>PBL Depth</strong>
+                                                <br />
+                                                Defined as the first level at which Tv &ge; 0.5 +
+                                                Tv,sfc.
+                                            </div>,
+                                        )
+                                    }
+                                    onMouseOut={handleMouseOut}
+                                >
+                                    PBL Top = {fmt(stats.pblDepth, 1)}
+                                </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+
+                {/* --- Right Column: Wind Stats --- */}
                 <div className="statscolumn">
                     <table id="windstats">
                         <tbody>
@@ -227,495 +259,420 @@ export function StatsTable({ statsDictParam }) {
                                 <th>MnWind</th>
                                 <th>SRW</th>
                             </tr>
+                            {WIND_ROWS.map((row) => (
+                                <tr key={row.label}>
+                                    <th>{row.label}</th>
+                                    <td onClick={(e) => statClick(row.srh, e)}>
+                                        {fmt(stats[row.srh], 0)}
+                                    </td>
+                                    <td onClick={(e) => statClick(row.shear, e)}>
+                                        {fmt(stats[row.shear], 0)}
+                                    </td>
+                                    <td className="noClick">{fmtVec(stats[row.mw])}</td>
+                                    <td className="noClick">{fmtVec(stats[row.srw])}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                {/* Extra Wind Vectors */}
+                <div className="statscolumn">
+                    <table id="morewindstats">
+                        <tbody>
                             <tr>
-                                <th>SFC-1km</th>
-                                <td onClick={(event) => statClick('right_srh1km', event)}>
-                                    {statsDict.right_srh1km.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('sfc1kmshr', event)}>
-                                    {statsDict.sfc1kmshr.toFixed(0)}
-                                </td>
-                                <td className="noClick">
-                                    {`${statsDict.mw1Vector.drx.toFixed(
-                                        0,
-                                    )}/${statsDict.mw1Vector.mag.toFixed(0)}`}
-                                </td>
-                                <td className="noClick">
-                                    {`${statsDict.srw1Vector.drx.toFixed(0)}/${statsDict.srw1Vector.mag.toFixed(0)}`}
+                                <td onClick={(e) => statClick('brnShear', e)}>
+                                    BRN Shear = {fmt(stats.brnShear, 0)}
                                 </td>
                             </tr>
                             <tr>
-                                <th>SFC-3km</th>
-                                <td onClick={(event) => statClick('right_srh3km', event)}>
-                                    {statsDict.right_srh3km.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('sfc3kmshr', event)}>
-                                    {statsDict.sfc3kmshr.toFixed(0)}
-                                </td>
                                 <td className="noClick">
-                                    {`${statsDict.mw3Vector.drx.toFixed(
-                                        0,
-                                    )}/${statsDict.mw3Vector.mag.toFixed(0)}`}
-                                </td>
-                                <td className="noClick">
-                                    {`${statsDict.srw3Vector.drx.toFixed(0)}/${statsDict.srw3Vector.mag.toFixed(0)}`}
+                                    4-6 km SR Wind = {fmtVec(stats.srw46Vector)}
                                 </td>
                             </tr>
                             <tr>
-                                <th>Eff Inflow Layer</th>
-                                <td onClick={(event) => statClick('right_srheff', event)}>
-                                    {statsDict.right_srheff.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('effshr', event)}>
-                                    {statsDict.effshr.toFixed(0)}
-                                </td>
                                 <td className="noClick">
-                                    {`${statsDict.effwVector.drx.toFixed(0)}/${statsDict.effwVector.mag.toFixed(0)}`}
-                                </td>
-                                <td className="noClick">
-                                    {`${statsDict.srweffVector.drx.toFixed(0)}/${statsDict.srweffVector.mag.toFixed(0)}`}
+                                    Bunkers Right = {fmtVec(stats.rstVector)}
                                 </td>
                             </tr>
                             <tr>
-                                <th>SFC-6km</th>
-                                <td onClick={(event) => statClick('right_srh6km', event)}>
-                                    {statsDict.right_srh6km.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('sfc6kmshr', event)}>
-                                    {statsDict.sfc6kmshr.toFixed(0)}
-                                </td>
                                 <td className="noClick">
-                                    {`${statsDict.mw6Vector.drx.toFixed(
-                                        0,
-                                    )}/${statsDict.mw6Vector.mag.toFixed(0)}`}
-                                </td>
-                                <td className="noClick">
-                                    {`${statsDict.srw6Vector.drx.toFixed(0)}/${statsDict.srw6Vector.mag.toFixed(0)}`}
+                                    Bunkers Left = {fmtVec(stats.lstVector)}
                                 </td>
                             </tr>
                             <tr>
-                                <th>SFC-8km</th>
-                                <td onClick={(event) => statClick('right_srh1km', event)}>
-                                    {statsDict.right_srh1km.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('sfc8kmshr', event)}>
-                                    {statsDict.sfc8kmshr.toFixed(0)}
-                                </td>
                                 <td className="noClick">
-                                    {`${statsDict.mw8Vector.drx.toFixed(
-                                        0,
-                                    )}/${statsDict.mw8Vector.mag.toFixed(0)}`}
-                                </td>
-                                <td className="noClick">
-                                    {`${statsDict.srw8Vector.drx.toFixed(0)}/${statsDict.srw8Vector.mag.toFixed(0)}`}
+                                    Corfidi Upshear = {fmtVec(stats.upVector)}
                                 </td>
                             </tr>
                             <tr>
-                                <th>LCL-EL (Cloud Layer)</th>
-                                <td onClick={(event) => statClick('right_srhlclel', event)}>
-                                    {statsDict.right_srhlclel.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('ellclshr', event)}>
-                                    {statsDict.ellclshr.toFixed(0)}
-                                </td>
                                 <td className="noClick">
-                                    {`${statsDict.ellclwVector.drx.toFixed(0)}/${statsDict.ellclwVector.mag.toFixed(0)}`}
-                                </td>
-                                <td className="noClick">
-                                    {`${statsDict.srwellclVector.drx.toFixed(0)}/${statsDict.srwellclVector.mag.toFixed(0)}`}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>Eff Shear (EBWD)</th>
-                                <td onClick={(event) => statClick('right_srhebwd', event)}>
-                                    {statsDict.right_srhebwd.toFixed(0)}
-                                </td>
-                                <td onClick={(event) => statClick('ebwdshr', event)}>
-                                    {statsDict.ebwdshr.toFixed(0)}
-                                </td>
-                                <td className="noClick">
-                                    {`${statsDict.ebwdVector.drx.toFixed(0)}/${statsDict.ebwdVector.mag.toFixed(0)}`}
-                                </td>
-                                <td className="noClick">
-                                    {`${statsDict.srwebwdVector.drx.toFixed(0)}/${statsDict.srwebwdVector.mag.toFixed(0)}`}
+                                    Corfidi Downshear = {fmtVec(stats.dnVector)}
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-                <div className="statscolumn">
-                    <div id="firsthalf">
-                        <table id="morewindstats">
-                            <tbody>
-                                <tr>
-                                    <td onClick={(event) => statClick('brnShear', event)}>
-                                        BRN Shear = {statsDict.brnShear.toFixed(0)}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className="noClick">
-                                        4-6 km SR Wind ={' '}
-                                        {`${statsDict.srw46Vector.drx.toFixed(0)}/${statsDict.srw46Vector.mag.toFixed(0)}`}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className="noClick">
-                                        Bunkers Right ={' '}
-                                        {`${statsDict.rstVector.drx.toFixed(0)}/${statsDict.rstVector.mag.toFixed(0)}`}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className="noClick">
-                                        Bunkers Left ={' '}
-                                        {`${statsDict.lstVector.drx.toFixed(0)}/${statsDict.lstVector.mag.toFixed(0)}`}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className="noClick">
-                                        Corfidi Upshear ={' '}
-                                        {`${statsDict.upVector.drx.toFixed(0)}/${statsDict.upVector.mag.toFixed(0)}`}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className="noClick">
-                                        Corfidi Downshear ={' '}
-                                        {`${statsDict.dnVector.drx.toFixed(0)}/${statsDict.dnVector.mag.toFixed(0)}`}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    {/*
-                        <div id="secondhalf">
-                            <div id="ptypediv"></div>
-                        </div>
-                        */}
-                </div>
             </div>
+
+            {/* --- Shared Tooltip Renderer --- */}
+            {hoverInfo && (
+                <div
+                    className="hodo-tooltip"
+                    style={{
+                        position: 'fixed', // Must match Hodograph logic
+                        left: hoverInfo.x,
+                        top: hoverInfo.y,
+                        zIndex: 9999,
+                        pointerEvents: 'none',
+                    }}
+                >
+                    {hoverInfo.content}
+                </div>
+            )}
         </div>
     );
 }
-export function Hodograph({ soundingParam, statsDictParam, containerDiv }) {
-    const d3Container = useRef(null);
 
+const SEGMENT_CONFIG = [
+    { maxHeight: 1000, color: 'red' },
+    { maxHeight: 3000, color: 'orange' },
+    { maxHeight: 6000, color: 'purple' },
+    { maxHeight: Infinity, color: 'blue' },
+];
+
+const LEGEND_DATA = [
+    { label: '0-1 km', color: 'red' },
+    { label: '1-3 km', color: 'orange' },
+    { label: '3-6 km', color: 'purple' },
+    { label: '>6 km', color: 'blue' },
+];
+
+const MAX_WIND = 80; // Max wind speed for scaling
+
+// Helper to split the mean line into colored altitude segments
+function getColoredSegments(meanMemberData) {
+    if (!meanMemberData || meanMemberData.length === 0) return [];
+
+    const segments = [];
+    let minHeight = -Infinity;
+    let lastPoint = null;
+
+    SEGMENT_CONFIG.forEach((config) => {
+        const currentSegment = meanMemberData.filter(
+            (d) => d.hght >= minHeight && d.hght < config.maxHeight,
+        );
+
+        if (lastPoint && currentSegment.length > 0) {
+            currentSegment.unshift(lastPoint);
+        }
+
+        if (currentSegment.length > 0) {
+            segments.push({ points: currentSegment, color: config.color });
+            lastPoint = currentSegment[currentSegment.length - 1];
+        }
+        minHeight = config.maxHeight;
+    });
+
+    return segments;
+}
+
+const BackgroundGrid = React.memo(({ rScale }) => (
+    <g className="grid">
+        {d3.range(10, MAX_WIND + 1, 10).map((tick) => (
+            <circle key={tick} cx={0} cy={0} r={rScale(tick)} className="hodorings" />
+        ))}
+        {d3.range(10, MAX_WIND + 1, 20).map((tick) => (
+            <text key={`label-${tick}`} x={0} y={rScale(tick)} dy="0.4em" className="hodolabels">
+                {tick}kts
+            </text>
+        ))}
+    </g>
+));
+
+export function Hodograph({ soundingParam, statsDictParam }) {
+    // --- Dimensions and Setup ---
+    const [containerNode, setContainerNode] = useState(null);
+    const [dimensions, setDimensions] = useState({ width: 0, height: 0, innerW: 0, innerH: 0 });
+    const [transformState, setTransformState] = useState({ k: 1, x: 0, y: 0 });
+    // const [zoomK, setZoomK] = useState(1);
+    const transformRef = useRef({ k: 1, x: 0, y: 0 });
+    // const gRef = useRef(null);
+    const [hoverInfo, setHoverInfo] = useState(null);
+    // const svgRef = useRef(null);
+
+    // --- ResizeObserver: update size on container changes ---
     useEffect(() => {
-        //    Don't do anything if we don't have data or the container ref.
-        if (!soundingParam || !containerDiv.current) {
-            console.log('No data and/or container ref for hodograph');
-            return;
-        }
-        console.log('Calculating hodograph!');
+        if (!containerNode) return () => {};
+        const margin = 25;
 
-        // --- D3 Drawing Logic ---
-
-        // Function to calculate dimensions based on the parent container
-        function calcPositions() {
-            const hodomargin = 25;
-            const hodographMargin = {
-                top: hodomargin,
-                bottom: hodomargin,
-                left: hodomargin,
-                right: hodomargin,
-            };
-            // Use the passed containerDiv for sizing
-            const height =
-                containerDiv.current.clientHeight - hodographMargin.top - hodographMargin.bottom;
-            const width =
-                containerDiv.current.clientWidth - hodographMargin.left - hodographMargin.right;
-
-            return {
-                hodograph: {
-                    height,
-                    width,
-                    margin: hodographMargin,
-                },
-            };
-        }
-
-        const positions = calcPositions();
-
-        const totalWidth =
-            positions.hodograph.width +
-            positions.hodograph.margin.left +
-            positions.hodograph.margin.right;
-        const totalHeight =
-            positions.hodograph.height +
-            positions.hodograph.margin.top +
-            positions.hodograph.margin.bottom;
-
-        // Select the D3 container using our ref and clear any previous SVG
-        // to prevent duplicates when data updates.
-        const svgContainer = d3.select(d3Container.current);
-        svgContainer.selectAll('*').remove();
-
-        // Setup svg groups and transforms
-        const svgRoot = svgContainer
-            .append('svg')
-            .attr('width', totalWidth)
-            .attr('height', totalHeight);
-
-        const svghodo = svgRoot.append('g');
-        const centeringTransform = `translate(${totalWidth / 2},${totalHeight / 2})`;
-        const hodoRadius = Math.min(positions.hodograph.width, positions.hodograph.height) / 2;
-
-        const hodogroup = svghodo
-            .append('g')
-            .attr('class', 'hodo')
-            .attr('transform', centeringTransform);
-        const hodoBackgroundGroup = svghodo
-            .append('g')
-            .attr('class', 'hodo')
-            .attr('transform', centeringTransform);
-
-        // Setup zoom/pan
-        function zoomed(event) {
-            svghodo.attr('transform', event.transform);
-        }
-        const zoom = d3
-            .zoom()
-            .scaleExtent([0.5, 10])
-            .translateExtent([
-                [0, 0], // [x0, y0] - top-left limit
-                [totalWidth, totalHeight], // [x1, y1] - bottom-right limit
-            ])
-            .on('zoom', zoomed);
-        svgRoot.call(zoom);
-
-        // Setup tooltip
-        const tooltip = d3
-            .select('body')
-            .append('div')
-            .attr('class', 'hodo-tooltip') // For styling
-            .style('opacity', 0); // Start hidden
-
-        // Draw hodograph background (circles and labels)
-        function drawBackground() {
-            const r = d3.scaleLinear().range([0, positions.hodograph.width]).domain([0, 150]);
-            console.log(r);
-
-            hodoBackgroundGroup
-                .selectAll('.circles')
-                .data(d3.range(10, 80, 10))
-                .enter()
-                .append('circle')
-                .attr('cx', 0)
-                .attr('cy', 0)
-                .attr('r', (d) => r(d))
-                .attr('class', 'gridline');
-
-            hodoBackgroundGroup
-                .selectAll('hodolabels')
-                .data(d3.range(10, 80, 20))
-                .enter()
-                .append('text')
-                .attr('x', 0)
-                .attr('y', (d, i) => r(d))
-                .attr('dy', '0.4em')
-                .attr('class', 'hodolabels')
-                .attr('text-anchor', 'middle')
-                .text((d) => `${d}kts`);
-        }
-
-        // Draw the actual hodograph plot
-        function draw(alldata, statsDict) {
-            // const maxWind = d3.max(alldata.flat(), (d) => d.twnd) || 80;
-            // const rDomain = Math.ceil(maxWind / 10) * 10;
-            // const r = d3.scaleLinear().range([0, hodoRadius]).domain([0, rDomain]);
-            const r = d3.scaleLinear().range([0, positions.hodograph.width]).domain([0, 150]);
-
-            // Setup groups for mean and members
-            const hodoline = d3
-                .lineRadial()
-                .radius((d) => r(d.twnd))
-                .angle((d) => (d.wdir + 180) * (Math.PI / 180));
-            // .curve(d3.curveCatmullRom);
-
-            const memberLinesGroup = hodogroup
-                .selectAll('.member-lines-group')
-                .data([null]) // Bind a single dummy item
-                .join('g')
-                .attr('class', 'member-lines-group');
-
-            const meanLineGroup = hodogroup
-                .selectAll('.mean-line-group')
-                .data([null]) // Bind a single dummy item
-                .join('g')
-                .attr('class', 'mean-line-group');
-
-            const meanmember = alldata.filter((d) => d.length > 0 && d[0].mem === 'grandensemble');
-
-            // Setup segment coloring for hodograph mean line
-            const segmentConfig = [
-                { maxHeight: 1000, color: 'red' },
-                { maxHeight: 3000, color: 'orange' },
-                { maxHeight: 6000, color: 'purple' },
-                { maxHeight: Infinity, color: 'blue' }, // 'Infinity' catches everything else
-            ];
-
-            const segments = [];
-            const segmentColors = [];
-            const majorPoints = [];
-            let minHeight = -Infinity;
-            let lastPoint = null;
-
-            // Loop through the configuration
-            segmentConfig.forEach((config) => {
-                const { maxHeight } = config;
-                const currentSegment = meanmember[0].filter(
-                    (d) => d.hght >= minHeight && d.hght < maxHeight,
-                );
-                if (lastPoint && currentSegment.length > 0) {
-                    currentSegment.unshift(lastPoint);
-                }
-                if (currentSegment.length > 0) {
-                    segments.push(currentSegment);
-                    segmentColors.push(config.color);
-
-                    lastPoint = currentSegment[currentSegment.length - 1];
-                    const firstPoint = currentSegment[0];
-                    majorPoints.push(firstPoint);
-                }
-                minHeight = maxHeight;
+        const updateSize = () => {
+            const { clientWidth, clientHeight } = containerNode;
+            setDimensions({
+                width: clientWidth,
+                height: clientHeight,
+                innerW: Math.max(0, clientWidth - margin * 2),
+                innerH: Math.max(0, clientHeight - margin * 2),
             });
+        };
 
-            // Draw ensemble member lines
-            const hodoLines = memberLinesGroup.selectAll('.hodoline.member').data(alldata);
-            const mergedHodoLines = hodoLines.enter().append('path').merge(hodoLines);
-            mergedHodoLines
-                .on('mouseover', (event, d) => {
-                    const memberId = d[0].mem;
-                    console.log('Hovering member:', memberId);
-                    tooltip.transition().duration(50).style('opacity', 1);
-                    tooltip
-                        .html(memberId) // Set text
-                        .style('left', `${event.pageX + 10}px`) // Position near mouse
-                        .style('top', `${event.pageY - 15}px`);
-                    d3.select(event.currentTarget).raise().classed('hovered', true);
-                })
-                .on('mousemove', (event) => {
-                    tooltip
-                        .style('left', `${event.pageX + 10}px`)
-                        .style('top', `${event.pageY - 15}px`);
-                })
-                .on('mouseout', (event, d) => {
-                    const memberId = d[0].mem;
-                    tooltip.transition().duration(200).style('opacity', 0);
-                    d3.select(event.currentTarget).lower().classed('hovered', false);
-                });
+        // initial measurement
+        updateSize();
 
-            mergedHodoLines.transition().attr('class', 'hodoline member').attr('d', hodoline);
-            hodoLines.exit().remove();
+        // Observe size changes
+        const supportsResizeObserver = typeof ResizeObserver !== 'undefined';
+        let ro;
 
-            // Draw mean member in multiple segments
-            const hodoSegments = meanLineGroup.selectAll('.hodoline.mean').data(segments); // Data is: [ [segment1_points], [segment2_points] ]
-            hodoSegments
-                .enter()
-                .append('path')
-                .merge(hodoSegments)
-                .attr('class', 'hodoline mean')
-                .style('stroke', (d, i) => {
-                    // 'd' is the segment data ([segment_points])
-                    // 'i' is the index (0 or 1)
-                    return segmentColors[i];
-                })
-                .attr('d', hodoline);
-            hodoSegments.exit().remove();
-
-            // Draw mean member data points
-            const hodoDataPoints = meanLineGroup.selectAll('.hodo-datapoint').data(majorPoints);
-            const mergedHodoDataPoints = hodoDataPoints
-                .enter()
-                .append('circle')
-                .merge(hodoDataPoints);
-
-            mergedHodoDataPoints
-                .on('mouseover', (event, d) => {
-                    const { twnd } = d;
-                    const { wdir } = d;
-                    const { hght } = d;
-                    console.log('Wind speed: ', twnd, 'Wind Dir: ', wdir);
-                    tooltip.transition().duration(50).style('opacity', 1);
-                    tooltip
-                        .html(
-                            `Height: ${hght.toFixed(0)}<br>Spd: ${twnd.toFixed(0)}<br>Dir: ${wdir.toFixed(0)}`,
-                        )
-                        .style('left', `${event.pageX + 10}px`) // Position near mouse
-                        .style('top', `${event.pageY - 15}px`);
-                    d3.select(event.currentTarget).raise().classed('hovered', true);
-                })
-                .on('mousemove', (event) => {
-                    tooltip
-                        .style('left', `${event.pageX + 10}px`)
-                        .style('top', `${event.pageY - 15}px`);
-                })
-                .on('mouseout', (event, d) => {
-                    const { twnd } = d;
-                    const { wdir } = d;
-                    tooltip.transition().duration(200).style('opacity', 0);
-                    d3.select(event.currentTarget).classed('hovered', false);
-                });
-
-            mergedHodoDataPoints
-                .attr('class', 'hodo-datapoint')
-                .attr('cx', (d) => r(d.twnd) * Math.sin((d.wdir + 180) * (Math.PI / 180)))
-                .attr('cy', (d) => -r(d.twnd) * Math.cos((d.wdir + 180) * (Math.PI / 180)))
-                .attr('r', 2);
-            hodoDataPoints.exit().remove();
-
-            // Draw bunkers motion points
-            const bunkerPoints = meanLineGroup
-                .selectAll('.hodo-bunkers')
-                .data([statsDict.rstVector, statsDict.lstVector]);
-            const mergedBunkerPoints = bunkerPoints.enter().append('path').merge(bunkerPoints);
-
-            mergedBunkerPoints
-                .on('mouseover', (event, d) => {
-                    const { drx } = d;
-                    const { mag } = d;
-                    tooltip.transition().duration(50).style('opacity', 1);
-                    tooltip
-                        .html(`Spd: ${mag.toFixed(0)}<br>Dir: ${drx.toFixed(0)}`)
-                        .style('left', `${event.pageX + 10}px`) // Position near mouse
-                        .style('top', `${event.pageY - 15}px`);
-                    d3.select(event.currentTarget).raise().classed('hovered', true);
-                })
-                .on('mousemove', (event) => {
-                    tooltip
-                        .style('left', `${event.pageX + 10}px`)
-                        .style('top', `${event.pageY - 15}px`);
-                })
-                .on('mouseout', (event, d) => {
-                    const { drx } = d;
-                    const { mag } = d;
-                    tooltip.transition().duration(200).style('opacity', 0);
-                    d3.select(event.currentTarget).lower().classed('hovered', false);
-                });
-
-            const symbolGenerator = d3
-                .symbol()
-                .type(d3.symbolCross) // Use a star
-                .size(30);
-
-            mergedBunkerPoints
-                .attr('class', 'hodo-bunkers')
-                .attr('d', symbolGenerator)
-                .attr('transform', (d) => {
-                    // Get the x and y coordinates
-                    const x = r(d.mag) * Math.sin((d.drx + 180) * (Math.PI / 180));
-                    const y = -r(d.mag) * Math.cos((d.drx + 180) * (Math.PI / 180)); // Return a 'translate' string
-                    return `translate(${x}, ${y})`;
-                })
-                //  .attr('cx', (d) => r(d.mag) * Math.sin((d.drx + 180) * (Math.PI / 180)))
-                //  .attr('cy', (d) => -r(d.mag) * Math.cos((d.drx + 180) * (Math.PI / 180)))
-                .attr('r', 2);
-            bunkerPoints.exit().remove();
+        if (supportsResizeObserver) {
+            ro = new ResizeObserver(() => updateSize());
+            ro.observe(containerNode);
+        } else {
+            window.addEventListener('resize', updateSize);
         }
 
-        if (soundingParam.length > 0) {
-            drawBackground();
-            draw(soundingParam, statsDictParam);
-        }
-    }, [soundingParam, statsDictParam, containerDiv]);
+        return () => {
+            if (supportsResizeObserver) {
+                if (ro) ro.disconnect();
+            } else {
+                window.removeEventListener('resize', updateSize);
+            }
+        };
+    }, [containerNode]);
 
-    return <div id="hodobox" className="hodobox" ref={d3Container} />;
+    // --- D3 Scales & Generators ---
+    const { rScale, lineGenerator, symbolGenerator } = useMemo(() => {
+        if (dimensions.width === 0) return {};
+
+        const minDim = Math.min(dimensions.innerW, dimensions.innerH);
+        const radius = minDim / 2;
+
+        // Scale
+        const scale = d3.scaleLinear().domain([0, MAX_WIND]).range([0, radius]);
+
+        // Line Generator
+        const lineGen = d3
+            .lineRadial()
+            .radius((d) => scale(d.twnd))
+            .angle((d) => (d.wdir + 180) * (Math.PI / 180));
+
+        // Symbol Generator (Cross)
+        const symbolGen = d3.symbol().type(d3.symbolCross).size(30);
+
+        return { rScale: scale, lineGenerator: lineGen, symbolGenerator: symbolGen };
+    }, [dimensions]);
+
+    // --- Zoom Logic ---
+    const zoomRefCallback = useCallback(
+        (node) => {
+            if (!node || dimensions.width === 0) return;
+            const zoom = d3
+                .zoom()
+                .scaleExtent([1, 10])
+                .translateExtent([
+                    [0, 0],
+                    [dimensions.width, dimensions.height],
+                ])
+                .on('zoom', (event) => {
+                    const t = event.transform;
+                    setTransformState({ k: t.k, x: t.x, y: t.y });
+                    transformRef.current = { k: t.k, x: t.x, y: t.y };
+                });
+
+            const selection = d3.select(node);
+            selection.on('.zoom', null); // Clear previous zoom handlers
+            selection.call(zoom);
+            // Restore previous transform so re-renders don't reset view
+            const { k, x, y } = transformRef.current;
+            if (k !== 1 || x !== 0 || y !== 0) {
+                selection.call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(k));
+            }
+        },
+        [dimensions],
+    );
+
+    // --- Data Preparation ---
+    const { segments, majorPoints, allMembers } = useMemo(() => {
+        if (!soundingParam) return { segments: [], majorPoints: [], allMembers: [] };
+
+        // Flatten logic
+        const meanM =
+            soundingParam?.filter((d) => d?.length > 0 && d[0]?.mem === 'grandensemble')?.[0] || [];
+        const segs = getColoredSegments(meanM);
+
+        const points = segs.map((s) => s.points[0]);
+
+        return {
+            segments: segs,
+            majorPoints: points,
+            allMembers: soundingParam,
+        };
+    }, [soundingParam]);
+
+    // --- Tooltip Helper ---
+    const handleMouseOver = (e, content) => {
+        setHoverInfo({
+            x: e.clientX + 10,
+            y: e.clientY - 15,
+            content,
+        });
+    };
+
+    // if (!dimensions.width || !soundingParam) return null;
+
+    const centerX = dimensions.width / 2;
+    const centerY = dimensions.height / 2;
+    const transformString = `translate(${transformState.x},${transformState.y}) scale(${transformState.k})`;
+
+    return (
+        <div
+            ref={setContainerNode}
+            className="hodobox"
+            style={{ position: 'relative', width: '100%', height: '100%' }}
+        >
+            {/* Only render SVG if we have dimensions */}
+            {dimensions.width > 0 && (
+                <>
+                    <svg
+                        ref={zoomRefCallback}
+                        width={dimensions.width}
+                        height={dimensions.height}
+                        style={{ cursor: 'move', display: 'block' }}
+                    >
+                        <rect
+                            width={dimensions.width}
+                            height={dimensions.height}
+                            fill="transparent"
+                        />
+                        <g transform={transformString} style={{ pointerEvents: 'none' }}>
+                            <g transform={`translate(${centerX}, ${centerY})`}>
+                                {rScale && <BackgroundGrid rScale={rScale} />}
+
+                                {/* Ensemble Member Lines */}
+                                <g className="member-lines-group">
+                                    {allMembers.map((memberData, i) => (
+                                        <path
+                                            key={i}
+                                            d={lineGenerator(memberData)}
+                                            className="hodoline member"
+                                            onMouseOver={(e) =>
+                                                handleMouseOver(
+                                                    e,
+                                                    <div>Member: {memberData[0]?.mem}</div>,
+                                                )
+                                            }
+                                            onMouseOut={() => setHoverInfo(null)}
+                                        />
+                                    ))}
+                                </g>
+
+                                {/* Mean Line Segments */}
+                                <g className="mean-line-group">
+                                    {segments.map((seg, i) => (
+                                        <path
+                                            key={i}
+                                            d={lineGenerator(seg.points)}
+                                            stroke={seg.color}
+                                            className="hodoline mean"
+                                        />
+                                    ))}
+                                </g>
+
+                                {/* Major Data Points (Circles) */}
+                                {majorPoints.map((d, i) => {
+                                    const angleRad = (d.wdir + 180) * (Math.PI / 180);
+                                    const r = rScale(d.twnd);
+                                    const cx = r * Math.sin(angleRad);
+                                    const cy = -r * Math.cos(angleRad);
+
+                                    return (
+                                        <circle
+                                            key={i}
+                                            cx={cx}
+                                            cy={cy}
+                                            r={3 / transformState.k} // Adjust radius based on zoom
+                                            className="hodo-datapoint"
+                                            onMouseOver={(e) =>
+                                                handleMouseOver(
+                                                    e,
+                                                    <div>
+                                                        Height: {d.hght.toFixed(0)}
+                                                        <br />
+                                                        Spd: {d.twnd.toFixed(0)}
+                                                        <br />
+                                                        Dir: {d.wdir.toFixed(0)}
+                                                    </div>,
+                                                )
+                                            }
+                                            onMouseOut={() => setHoverInfo(null)}
+                                        />
+                                    );
+                                })}
+
+                                {/* Bunkers Storm Motion */}
+                                {statsDictParam &&
+                                    [statsDictParam.rstVector, statsDictParam.lstVector].map(
+                                        (vec, i) => {
+                                            if (!vec) return null;
+                                            const angleRad = (vec.drx + 180) * (Math.PI / 180);
+                                            const r = rScale(vec.mag);
+                                            const x = r * Math.sin(angleRad);
+                                            const y = -r * Math.cos(angleRad);
+
+                                            return (
+                                                <path
+                                                    key={`bunker-${i}`}
+                                                    d={symbolGenerator()}
+                                                    transform={`translate(${x}, ${y}) scale(${1 / transformState.k})`} // Scale symbol inverse to zoom
+                                                    className="hodo-bunkers"
+                                                    onMouseOver={(e) =>
+                                                        handleMouseOver(
+                                                            e,
+                                                            <div>
+                                                                Spd: {vec.mag.toFixed(0)}
+                                                                <br />
+                                                                Dir: {vec.drx.toFixed(0)}
+                                                            </div>,
+                                                        )
+                                                    }
+                                                    onMouseOut={() => setHoverInfo(null)}
+                                                />
+                                            );
+                                        },
+                                    )}
+                            </g>
+                        </g>
+                    </svg>
+
+                    {/* Legend */}
+                    <div className="hodo-legend">
+                        <strong style={{ display: 'block', marginBottom: '4px' }}>Mean Wind</strong>
+                        {LEGEND_DATA.map((item, i) => (
+                            <div className="hodo-legend-item" key={i}>
+                                {/* The Color Box */}
+                                <span
+                                    className="hodo-legend-colorbox"
+                                    style={{
+                                        backgroundColor: item.color,
+                                    }}
+                                />
+                                <span>{item.label}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Tooltip */}
+                    {hoverInfo && (
+                        <div
+                            className="hodo-tooltip"
+                            style={{
+                                left: hoverInfo.x,
+                                top: hoverInfo.y,
+                            }}
+                        >
+                            {hoverInfo.content}
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
 }

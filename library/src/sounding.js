@@ -609,6 +609,7 @@ const calculateStats = (components, key, stat) => {
         returnStat = calculateStatsScalar(validComponents, stat);
     } else {
         console.error('Error: Data array must contain either numbers or Vector objects.');
+        console.log(components, key, stat);
         return null;
     }
     return returnStat;
@@ -666,6 +667,7 @@ export default function createSounding() {
 
         /**
          * Getter to safely access the processed profile data.
+         * Organized by element first.
          * @returns {Array|null} The profile data.
          */
         getProfileData() {
@@ -674,6 +676,7 @@ export default function createSounding() {
 
         /**
          * Getter to safely access the processed level data.
+         * Organized by level first
          * @returns {Array|null} The profile data.
          */
         getLevelData() {
