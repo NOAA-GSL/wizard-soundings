@@ -3,9 +3,13 @@ import 'desi-soundings/draw.scss';
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 
+/*--------------------------------*/
+/* --- StatsTable and Helpers --- */
+/*--------------------------------*/
+
 // --- Helper: Safe Number Formatting ---
 const fmt = (val, decimals = 0) => {
-    if (val === null || val === undefined || isNaN(val)) return '-';
+    if (!Number.isFinite(val)) return '-';
     return val.toFixed(decimals);
 };
 
@@ -14,6 +18,70 @@ const fmtVec = (vec) => {
     if (!vec || vec.drx === null || vec.mag === null) return '-/-';
     return `${vec.drx.toFixed(0)}/${vec.mag.toFixed(0)}`;
 };
+
+// --- Configuration: Thermo Grid --
+// This defines the structure: 4 rows, 5 columns
+const THERMO_GRID = [
+    [
+        // Row 1
+        { id: 'pw', label: 'PW =', prec: 2 },
+        { id: 'kIndex', label: 'K =', prec: 0 },
+        { id: 'wndg', label: 'WNDG =', prec: 1 },
+        { id: 'meanMR', label: 'MeanW =', prec: 1 },
+        { id: 'tTotals', label: 'TT =', prec: 0 },
+    ],
+    [
+        // Row 2
+        { id: 'tei', label: 'TEI =', prec: 0 },
+        { id: 'lowRH', label: 'lowRH =', prec: 0 },
+        { id: 'midRH', label: 'midRH =', prec: 0 },
+        { id: 'cTemp', label: 'convT =', prec: 0 },
+        { id: 'mlcape3', label: '3CAPE =', prec: 0 },
+    ],
+    [
+        // Row 3
+        { id: 'maxT', label: 'maxT =', prec: 0 },
+        { id: 'mburst', label: 'MBURST =', prec: 1 },
+        { id: 'dcape', label: 'dCAPE =', prec: 0 },
+        { id: 'esp', label: 'ESP =', prec: 2 },
+        { id: 'downT', label: 'downT =', prec: 1 },
+    ],
+    [
+        // Row 4 (with tooltips)
+        { id: 'mmp', label: 'MMP =', prec: 2 },
+        { id: 'sigsvr', label: 'SigSvr =', prec: 0 },
+        {
+            id: 'momentumTransferMag',
+            label: 'Mean MT =',
+            prec: 1,
+            // Custom getter for nested value
+            getValue: (s) => s.momentumTransferVector?.mag,
+            tooltip: {
+                title: 'Mean MT',
+                body: 'Calculated via Cook and Williams method, using mean wind vector through depth of PBL.',
+            },
+        },
+        {
+            id: 'momentumTransferMagMax',
+            label: 'Max MT =',
+            prec: 1,
+            getValue: (s) => s.momentumTransferVectorMax?.mag,
+            tooltip: {
+                title: 'Max MT',
+                body: 'Calculated by taking the max wind within the PBL and bringing it to the surface.',
+            },
+        },
+        {
+            id: 'pblDepth',
+            label: 'PBL Top =',
+            prec: 1,
+            tooltip: {
+                title: 'PBL Depth',
+                body: 'Defined as the first level at which Tv >= 0.5 + Tv,sfc.',
+            },
+        },
+    ],
+];
 
 // --- Configuration: Parcel Table ---
 const PARCEL_ROWS = [
@@ -24,6 +92,33 @@ const PARCEL_ROWS = [
 const PARCEL_COLS = ['CAPE', 'CINH', 'LCL', 'LI', 'LFC', 'EL'];
 
 // --- Configuration: Wind Table ---
+const WIND_COLS = [
+    {
+        header: 'SRH',
+        keyProp: 'srh', // Matches the property in WIND_ROWS objects
+        formatter: (val) => fmt(val, 0),
+        isInteractive: true,
+    },
+    {
+        header: 'Shear',
+        keyProp: 'shear',
+        formatter: (val) => fmt(val, 0),
+        isInteractive: true,
+    },
+    {
+        header: 'MnWind',
+        keyProp: 'mw',
+        formatter: fmtVec, // Uses the vector formatter
+        isInteractive: false, // Adds 'noClick' class
+    },
+    {
+        header: 'SRW',
+        keyProp: 'srw',
+        formatter: fmtVec,
+        isInteractive: false,
+    },
+];
+
 const WIND_ROWS = [
     {
         label: 'SFC-1km',
@@ -76,13 +171,118 @@ const WIND_ROWS = [
     },
 ];
 
+// --- Configuration: Extra Wind Stats ---
+
+const EXTRA_WIND_ROWS = [
+    {
+        label: 'BRN Shear =',
+        id: 'brnShear',
+        formatter: (val) => fmt(val, 0),
+        isInteractive: true,
+    },
+    {
+        label: '4-6 km SR Wind =',
+        getValue: (s) => s.srw46Vector, // Custom getter for vectors
+        formatter: fmtVec,
+        isInteractive: false,
+    },
+    {
+        label: 'Bunkers Right =',
+        getValue: (s) => s.rstVector,
+        formatter: fmtVec,
+        isInteractive: false,
+    },
+    {
+        label: 'Bunkers Left =',
+        getValue: (s) => s.lstVector,
+        formatter: fmtVec,
+        isInteractive: false,
+    },
+    {
+        label: 'Corfidi Upshear =',
+        getValue: (s) => s.upVector,
+        formatter: fmtVec,
+        isInteractive: false,
+    },
+    {
+        label: 'Corfidi Downshear =',
+        getValue: (s) => s.dnVector,
+        formatter: fmtVec,
+        isInteractive: false,
+    },
+];
+
+/* Component: StatCell
+   A reusable table cell that can handle clicks and tooltips.
+*/
+
+function StatCell({
+    label,
+    value,
+    statKey, // The key used for statClick
+    tooltip, // Object: { title: string, body: string }
+    className, // e.g., "noClick"
+    handlers, // { onStatClick, onMouseOver, onMouseOut }
+}) {
+    const { onStatClick, onShowTooltip, onHideTooltip } = handlers;
+
+    // Determine if this cell is interactive
+    const isInteractive = !!statKey && !className?.includes('noClick');
+
+    // Handle Tooltip Hover (reusable JSX)
+    const handleActive = (e) => {
+        if (!tooltip) return;
+        const content = (
+            <div style={{ maxWidth: '200px' }}>
+                <strong>{tooltip.title}</strong>
+                <br />
+                {tooltip.body}
+            </div>
+        );
+        onShowTooltip(e, content);
+    };
+
+    // Handle Click
+    const handleClick = (e) => {
+        if (isInteractive && onStatClick) {
+            onStatClick(statKey, e);
+        }
+    };
+
+    // Handle Keyboard Enter/Space
+    const handleKeyDown = (e) => {
+        if (isInteractive && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            handleClick(e);
+        }
+    };
+
+    return (
+        <td
+            className={className}
+            onClick={handleClick}
+            onMouseOver={tooltip ? handleActive : undefined}
+            onMouseOut={onHideTooltip}
+            role={isInteractive ? 'button' : undefined}
+            tabIndex={isInteractive ? 0 : undefined}
+            style={isInteractive ? { cursor: 'pointer' } : undefined}
+            onKeyDown={isInteractive ? handleKeyDown : undefined}
+            onFocus={isInteractive && tooltip ? handleActive : undefined}
+            onBlur={isInteractive && tooltip ? onHideTooltip : undefined}
+        >
+            {label} {value}
+        </td>
+    );
+}
+
+/* Component: StatsTable
+   Renders the meteorological statistics table with parcels, thermo, and wind stats.
+*/
+
 export function StatsTable({ statsDictParam }) {
     const stats = statsDictParam;
-
-    // 1. Tooltip State
     const [hoverInfo, setHoverInfo] = useState(null);
 
-    // 2. Tooltip Handlers (Same as Hodograph)
     const handleMouseOver = (e, content) => {
         setHoverInfo({
             x: e.clientX + 10,
@@ -92,10 +292,15 @@ export function StatsTable({ statsDictParam }) {
     };
 
     const handleMouseOut = () => setHoverInfo(null);
-
     const statClick = (key, event) => {
-        // Placeholder for click logic
-        return null;
+        console.log('Clicked', key);
+    }; // Placeholder
+
+    // Group handlers to pass down easily
+    const handlers = {
+        onStatClick: statClick,
+        onShowTooltip: handleMouseOver,
+        onHideTooltip: handleMouseOut,
     };
 
     if (!stats) return null;
@@ -105,7 +310,7 @@ export function StatsTable({ statsDictParam }) {
             <div id="meteostats" className="meteostats">
                 {/* --- Left Column: Parcels & Thermo --- */}
                 <div className="statscolumn">
-                    {/* Parcel Stats Matrix */}
+                    {/* 1. Parcel Stats */}
                     <table id="parcelstats">
                         <tbody>
                             <tr>
@@ -121,9 +326,12 @@ export function StatsTable({ statsDictParam }) {
                                         const key = `${row.prefix}${col}`;
                                         const prec = col === 'LI' ? 1 : 0;
                                         return (
-                                            <td key={key} onClick={(e) => statClick(key, e)}>
-                                                {fmt(stats[key], prec)}
-                                            </td>
+                                            <StatCell
+                                                key={key}
+                                                statKey={key}
+                                                value={fmt(stats[key], prec)}
+                                                handlers={handlers}
+                                            />
                                         );
                                     })}
                                 </tr>
@@ -131,119 +339,30 @@ export function StatsTable({ statsDictParam }) {
                         </tbody>
                     </table>
 
-                    {/* Thermo Stats (Irregular Grid) */}
+                    {/* 2. Thermo Stats (Refactored to Grid) */}
                     <table id="thermostats">
                         <tbody>
-                            <tr>
-                                <td onClick={(e) => statClick('pw', e)}>PW = {fmt(stats.pw, 2)}</td>
-                                <td onClick={(e) => statClick('kIndex', e)}>
-                                    K = {fmt(stats.kIndex, 0)}
-                                </td>
-                                <td onClick={(e) => statClick('wndg', e)}>
-                                    WNDG = {fmt(stats.wndg, 1)}
-                                </td>
-                                <td onClick={(e) => statClick('meanMR', e)}>
-                                    MeanW = {fmt(stats.meanMR, 1)}
-                                </td>
-                                <td onClick={(e) => statClick('tTotals', e)}>
-                                    TT = {fmt(stats.tTotals, 0)}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td onClick={(e) => statClick('tei', e)}>
-                                    TEI = {fmt(stats.tei, 0)}
-                                </td>
-                                <td onClick={(e) => statClick('lowRH', e)}>
-                                    lowRH = {fmt(stats.lowRH, 0)}
-                                </td>
-                                <td onClick={(e) => statClick('midRH', e)}>
-                                    midRH = {fmt(stats.midRH, 0)}
-                                </td>
-                                <td onClick={(e) => statClick('cTemp', e)}>
-                                    convT = {fmt(stats.cTemp, 0)}
-                                </td>
-                                <td onClick={(e) => statClick('mlcape3', e)}>
-                                    3CAPE = {fmt(stats.mlcape3, 0)}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td onClick={(e) => statClick('maxT', e)}>
-                                    maxT = {fmt(stats.maxT, 0)}
-                                </td>
-                                <td onClick={(e) => statClick('mburst', e)}>
-                                    MBURST = {fmt(stats.mburst, 1)}
-                                </td>
-                                <td onClick={(e) => statClick('dcape', e)}>
-                                    dCAPE = {fmt(stats.dcape, 0)}
-                                </td>
-                                <td onClick={(e) => statClick('esp', e)}>
-                                    ESP = {fmt(stats.esp, 2)}
-                                </td>
-                                <td onClick={(e) => statClick('downT', e)}>
-                                    downT = {fmt(stats.downT, 1)}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td onClick={(e) => statClick('mmp', e)}>
-                                    MMP = {fmt(stats.mmp, 2)}
-                                </td>
-                                <td onClick={(e) => statClick('sigsvr', e)}>
-                                    SigSvr = {fmt(stats.sigsvr, 0)}
-                                </td>
-                                <td
-                                    onClick={(e) => statClick('momentumTransferMag', e)}
-                                    onMouseOver={(e) =>
-                                        handleMouseOver(
-                                            e,
-                                            <div style={{ maxWidth: '200px' }}>
-                                                <strong>Mean MT</strong>
-                                                <br />
-                                                Calculated via Cook and Williams method, using mean
-                                                wind vector through depth of PBL.
-                                            </div>,
-                                        )
-                                    }
-                                    onMouseOut={handleMouseOut}
-                                >
-                                    Mean MT = {fmt(stats.momentumTransferVector?.mag, 1)}
-                                </td>
+                            {THERMO_GRID.map((row, rIndex) => (
+                                <tr key={rIndex}>
+                                    {row.map((cell) => {
+                                        // Determine the value: use custom getter or standard key lookup
+                                        const rawVal = cell.getValue
+                                            ? cell.getValue(stats)
+                                            : stats[cell.id];
 
-                                <td
-                                    onClick={(e) => statClick('momentumTransferMagMax', e)}
-                                    onMouseOver={(e) =>
-                                        handleMouseOver(
-                                            e,
-                                            <div style={{ maxWidth: '200px' }}>
-                                                <strong>Max MT</strong>
-                                                <br />
-                                                Calculated by taking the max wind within the PBL and
-                                                bringing it to the surface.
-                                            </div>,
-                                        )
-                                    }
-                                    onMouseOut={handleMouseOut}
-                                >
-                                    Max MT = {fmt(stats.momentumTransferVectorMax?.mag, 1)}
-                                </td>
-
-                                <td
-                                    onClick={(e) => statClick('pblDepth', e)}
-                                    onMouseOver={(e) =>
-                                        handleMouseOver(
-                                            e,
-                                            <div style={{ maxWidth: '200px' }}>
-                                                <strong>PBL Depth</strong>
-                                                <br />
-                                                Defined as the first level at which Tv &ge; 0.5 +
-                                                Tv,sfc.
-                                            </div>,
-                                        )
-                                    }
-                                    onMouseOut={handleMouseOut}
-                                >
-                                    PBL Top = {fmt(stats.pblDepth, 1)}
-                                </td>
-                            </tr>
+                                        return (
+                                            <StatCell
+                                                key={cell.id}
+                                                statKey={cell.id}
+                                                label={cell.label}
+                                                value={fmt(rawVal, cell.prec)}
+                                                tooltip={cell.tooltip}
+                                                handlers={handlers}
+                                            />
+                                        );
+                                    })}
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>
@@ -254,61 +373,54 @@ export function StatsTable({ statsDictParam }) {
                         <tbody>
                             <tr>
                                 <th>Layer</th>
-                                <th>SRH</th>
-                                <th>Shear</th>
-                                <th>MnWind</th>
-                                <th>SRW</th>
+                                {WIND_COLS.map((col) => (
+                                    <th key={col.header}>{col.header}</th>
+                                ))}
                             </tr>
                             {WIND_ROWS.map((row) => (
                                 <tr key={row.label}>
                                     <th>{row.label}</th>
-                                    <td onClick={(e) => statClick(row.srh, e)}>
-                                        {fmt(stats[row.srh], 0)}
-                                    </td>
-                                    <td onClick={(e) => statClick(row.shear, e)}>
-                                        {fmt(stats[row.shear], 0)}
-                                    </td>
-                                    <td className="noClick">{fmtVec(stats[row.mw])}</td>
-                                    <td className="noClick">{fmtVec(stats[row.srw])}</td>
+                                    {WIND_COLS.map((col) => {
+                                        const dataKey = row[col.keyProp]; // e.g., 'right_srh1km'
+                                        const rawValue = stats[dataKey];
+
+                                        return (
+                                            <StatCell
+                                                key={col.header}
+                                                statKey={col.isInteractive ? dataKey : undefined}
+                                                value={col.formatter(rawValue)}
+                                                className={
+                                                    !col.isInteractive ? 'noClick' : undefined
+                                                }
+                                                handlers={handlers}
+                                            />
+                                        );
+                                    })}
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
+
                 {/* Extra Wind Vectors */}
                 <div className="statscolumn">
                     <table id="morewindstats">
                         <tbody>
-                            <tr>
-                                <td onClick={(e) => statClick('brnShear', e)}>
-                                    BRN Shear = {fmt(stats.brnShear, 0)}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="noClick">
-                                    4-6 km SR Wind = {fmtVec(stats.srw46Vector)}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="noClick">
-                                    Bunkers Right = {fmtVec(stats.rstVector)}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="noClick">
-                                    Bunkers Left = {fmtVec(stats.lstVector)}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="noClick">
-                                    Corfidi Upshear = {fmtVec(stats.upVector)}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td className="noClick">
-                                    Corfidi Downshear = {fmtVec(stats.dnVector)}
-                                </td>
-                            </tr>
+                            {EXTRA_WIND_ROWS.map((row, i) => {
+                                const rawVal = row.getValue ? row.getValue(stats) : stats[row.id];
+
+                                return (
+                                    <tr key={i}>
+                                        <StatCell
+                                            label={row.label}
+                                            statKey={row.isInteractive ? row.id : undefined}
+                                            value={row.formatter(rawVal)}
+                                            className={!row.isInteractive ? 'noClick' : undefined}
+                                            handlers={handlers}
+                                        />
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -319,7 +431,7 @@ export function StatsTable({ statsDictParam }) {
                 <div
                     className="hodo-tooltip"
                     style={{
-                        position: 'fixed', // Must match Hodograph logic
+                        position: 'fixed',
                         left: hoverInfo.x,
                         top: hoverInfo.y,
                         zIndex: 9999,
@@ -333,6 +445,11 @@ export function StatsTable({ statsDictParam }) {
     );
 }
 
+/*--------------------------------*/
+/* --- Hodograph and Helpers --- */
+/*--------------------------------*/
+
+// --- Configuration: Altitude Segments for Mean Line ---
 const SEGMENT_CONFIG = [
     { maxHeight: 1000, color: 'red' },
     { maxHeight: 3000, color: 'orange' },
@@ -389,16 +506,17 @@ const BackgroundGrid = React.memo(({ rScale }) => (
     </g>
 ));
 
+/* Component: Hodograph
+    Renders an interactive hodograph with wind data.
+*/
+
 export function Hodograph({ soundingParam, statsDictParam }) {
     // --- Dimensions and Setup ---
     const [containerNode, setContainerNode] = useState(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0, innerW: 0, innerH: 0 });
     const [transformState, setTransformState] = useState({ k: 1, x: 0, y: 0 });
-    // const [zoomK, setZoomK] = useState(1);
     const transformRef = useRef({ k: 1, x: 0, y: 0 });
-    // const gRef = useRef(null);
     const [hoverInfo, setHoverInfo] = useState(null);
-    // const svgRef = useRef(null);
 
     // --- ResizeObserver: update size on container changes ---
     useEffect(() => {
@@ -516,8 +634,6 @@ export function Hodograph({ soundingParam, statsDictParam }) {
         });
     };
 
-    // if (!dimensions.width || !soundingParam) return null;
-
     const centerX = dimensions.width / 2;
     const centerY = dimensions.height / 2;
     const transformString = `translate(${transformState.x},${transformState.y}) scale(${transformState.k})`;
@@ -607,7 +723,7 @@ export function Hodograph({ soundingParam, statsDictParam }) {
                                     );
                                 })}
 
-                                {/* Bunkers Storm Motion */}
+                                {/* Bunkers Storm Motion (Crosses) */}
                                 {statsDictParam &&
                                     [statsDictParam.rstVector, statsDictParam.lstVector].map(
                                         (vec, i) => {
@@ -627,6 +743,11 @@ export function Hodograph({ soundingParam, statsDictParam }) {
                                                         handleMouseOver(
                                                             e,
                                                             <div>
+                                                                <b>
+                                                                    Bunkers{' '}
+                                                                    {i === 0 ? 'Right' : 'Left'}
+                                                                </b>
+                                                                <br />
                                                                 Spd: {vec.mag.toFixed(0)}
                                                                 <br />
                                                                 Dir: {vec.drx.toFixed(0)}
