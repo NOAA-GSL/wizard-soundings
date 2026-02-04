@@ -1,0 +1,60 @@
+#meteostats {
+    /*  height: $statsHeight; */
+    /* height:100%; */
+    font-size: 0.7rem;
+    min-width: 855px;
+    width: 100%;
+    margin: 0 10px;
+    display: flex;
+    text-align: center;
+    /*    border: 1px solid var(--2d-line-contrast1); */
+    td {
+        cursor: pointer;
+    }
+    td.noClick {
+        cursor: default;
+    }
+    .statscolumn {
+        flex: 3 1 max-content;
+        height: 100%;
+        border-right: 1px solid; /* var(--2d-line-contrast1); */
+
+        /* #firsthalf {
+             width: 100%;
+             height: 100%; 
+        */
+
+        #morewindstats {
+            width: 100%;
+            /*    flex: 0.5; */
+            height: 100%;
+        }
+
+        /* #secondhalf {
+             width: 50%;
+             height: 100%;
+             float: left;
+         }
+        */
+
+        #parcelstats {
+            width: 100%;
+            height: 50%;
+            border-bottom: 1px solid var(--2d-line-contrast1);
+        }
+
+        #thermostats {
+            width: 100%;
+            height: 50%;
+        }
+
+        #windstats {
+            width: 100%;
+            height: 100%;
+        }
+    }
+
+    .statscolumn:last-child {
+        flex: 1 1 auto;
+    }
+}
