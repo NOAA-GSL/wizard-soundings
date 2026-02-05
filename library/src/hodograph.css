@@ -1,7 +1,17 @@
 /* --- Hodograph styles --- */
 
+.hodobox {
+    --background-color: none;
+    --ring-color: lightgray;
+
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: var(--background-color);
+}
+
 .hodorings {
-    stroke: lightgray;
+    stroke: var(--ring-color);
     stroke-width: 1px;
     fill: none;
     pointer-events: none;

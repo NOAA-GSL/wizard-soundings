@@ -22,7 +22,7 @@ const sounding = getSounding();
 function RenderStatsPage() {
     // Create a state variable to tie table updates to derived data changes.
     const [statsDict, setStatsDict] = useState(null);
-    //const [soundingData, setSoundingData] = useState(null);
+    // const [soundingData, setSoundingData] = useState(null);
     const [levelData, setLevelData] = useState(null);
     const hodographContainerDiv = useRef();
 
@@ -44,6 +44,8 @@ function RenderStatsPage() {
         //setSoundingData(sounding.getProfileData());
         setLevelData(sounding.getLevelData());
     };
+    const statsTableStyles = { '--background-color': 'lightblue' };
+    const hodographStyles = { '--background-color': 'lightblue', '--ring-color': 'black' };
 
     // Insert StatsTable where you'd like it to appear with the statsDictParam specified.
     return (
@@ -60,10 +62,14 @@ function RenderStatsPage() {
                 Calculate Stats{' '}
             </button>
             <div id="stats-table">
-                <StatsTable statsDictParam={statsDict} />
+                <StatsTable statsDictParam={statsDict} styles={statsTableStyles} />
             </div>
             <div id="hodograph">
-                <Hodograph soundingParam={levelData} statsDictParam={statsDict} />
+                <Hodograph
+                    soundingParam={levelData}
+                    statsDictParam={statsDict}
+                    styles={hodographStyles}
+                />
             </div>
         </>
     );

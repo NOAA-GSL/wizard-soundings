@@ -67,7 +67,7 @@ const BackgroundGrid = React.memo(({ rScale }) => (
     Renders an interactive hodograph with wind data.
 */
 
-export function Hodograph({ soundingParam, statsDictParam }) {
+export default function Hodograph({ soundingParam, statsDictParam, styles = {} }) {
     // --- Dimensions and Setup ---
     const [containerNode, setContainerNode] = useState(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0, innerW: 0, innerH: 0 });
@@ -196,11 +196,7 @@ export function Hodograph({ soundingParam, statsDictParam }) {
     const transformString = `translate(${transformState.x},${transformState.y}) scale(${transformState.k})`;
 
     return (
-        <div
-            ref={setContainerNode}
-            className="hodobox"
-            style={{ position: 'relative', width: '100%', height: '100%' }}
-        >
+        <div ref={setContainerNode} className="hodobox" style={styles}>
             {/* Only render SVG if we have dimensions */}
             {dimensions.width > 0 && (
                 <>

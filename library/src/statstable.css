@@ -1,3 +1,12 @@
+#statsContainer {
+    --background-color: none;
+
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 #meteostats {
     /*  height: $statsHeight; */
     /* height:100%; */
@@ -7,6 +16,7 @@
     margin: 0 10px;
     display: flex;
     text-align: center;
+    background-color: var(--background-color);
     /*    border: 1px solid var(--2d-line-contrast1); */
     td {
         cursor: pointer;

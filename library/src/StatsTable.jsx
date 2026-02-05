@@ -278,7 +278,7 @@ function StatCell({
    Renders the meteorological statistics table with parcels, thermo, and wind stats.
 */
 
-export function StatsTable({ statsDictParam }) {
+export default function StatsTable({ statsDictParam, styles = {} }) {
     const stats = statsDictParam;
     const [hoverInfo, setHoverInfo] = useState(null);
 
@@ -305,7 +305,7 @@ export function StatsTable({ statsDictParam }) {
     if (!stats) return null;
 
     return (
-        <div id="statsContainer">
+        <div id="statsContainer" style={styles}>
             <div id="meteostats" className="meteostats">
                 {/* --- Left Column: Parcels & Thermo --- */}
                 <div className="statscolumn">
