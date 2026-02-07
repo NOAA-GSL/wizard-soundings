@@ -6,32 +6,39 @@ import * as d3 from 'd3';
 /* --- Hodograph and Helpers --- */
 /*--------------------------------*/
 
-// --- Configuration: Altitude Segments for Mean Line ---
-const SEGMENT_CONFIG = [
-    { maxHeight: 1000, color: 'red' },
-    { maxHeight: 3000, color: 'orange' },
-    { maxHeight: 6000, color: 'purple' },
-    { maxHeight: Infinity, color: 'blue' },
-];
-
-const LEGEND_DATA = [
-    { label: '0-1 km', color: 'red' },
-    { label: '1-3 km', color: 'orange' },
-    { label: '3-6 km', color: 'purple' },
-    { label: '>6 km', color: 'blue' },
-];
-
-const MAX_WIND = 80; // Max wind speed for scaling
+// --- Configuration: ---
+const DEFAULT_CONFIG = {
+    // Max wind speed for scaling
+    maxWind: 80,
+    // Ring settings for background grid
+    rings: {
+        interval: 10,
+        labelInterval: 20,
+        units: 'kts',
+    },
+    // Altitude Segments for Mean Line
+    segments: [
+        { maxHeight: 1000, color: 'red', label: '0-1 km' },
+        { maxHeight: 3000, color: 'orange', label: '1-3 km' },
+        { maxHeight: 6000, color: 'purple', label: '3-6 km' },
+        { maxHeight: Infinity, color: 'blue', label: '>6 km' },
+    ],
+    // Zoom settings
+    zoom: {
+        enabled: true,
+        extent: [1, 10],
+    },
+};
 
 // Helper to split the mean line into colored altitude segments
-function getColoredSegments(meanMemberData) {
+function getColoredSegments(meanMemberData, segmentConfig) {
     if (!meanMemberData || meanMemberData.length === 0) return [];
 
     const segments = [];
     let minHeight = -Infinity;
     let lastPoint = null;
 
-    SEGMENT_CONFIG.forEach((config) => {
+    segmentConfig.forEach((config) => {
         const currentSegment = meanMemberData.filter(
             (d) => d.hght >= minHeight && d.hght < config.maxHeight,
         );
@@ -50,30 +57,59 @@ function getColoredSegments(meanMemberData) {
     return segments;
 }
 
-const BackgroundGrid = React.memo(({ rScale }) => (
-    <g className="grid">
-        {d3.range(10, MAX_WIND + 1, 10).map((tick) => (
-            <circle key={tick} cx={0} cy={0} r={rScale(tick)} className="hodorings" />
-        ))}
-        {d3.range(10, MAX_WIND + 1, 20).map((tick) => (
-            <text key={`label-${tick}`} x={0} y={rScale(tick)} dy="0.4em" className="hodolabels">
-                {tick}kts
-            </text>
-        ))}
-    </g>
-));
+const BackgroundGrid = React.memo(({ rScale, maxWind, ringConfig }) => {
+    const { interval, labelInterval, units } = ringConfig;
+
+    const ringTicks = useMemo(() => d3.range(interval, maxWind + 1, interval), [interval, maxWind]);
+
+    const labelTicks = useMemo(
+        () => d3.range(interval, maxWind + 1, labelInterval),
+        [interval, maxWind, labelInterval],
+    );
+
+    return (
+        <g className="grid">
+            {ringTicks.map((tick) => (
+                <circle key={tick} cx={0} cy={0} r={rScale(tick)} className="hodorings" />
+            ))}
+            {labelTicks.map((tick) => (
+                <text
+                    key={`label-${tick}`}
+                    x={0}
+                    y={rScale(tick)}
+                    dy="0.4em"
+                    className="hodolabels"
+                >
+                    {tick}
+                    {units}
+                </text>
+            ))}
+        </g>
+    );
+});
 
 /* Component: Hodograph
     Renders an interactive hodograph with wind data.
 */
 
-export default function Hodograph({ soundingParam, statsDictParam, styles = {} }) {
+export default function Hodograph({ soundingParam, statsDictParam, config = {}, styles = {} }) {
     // --- Dimensions and Setup ---
     const [containerNode, setContainerNode] = useState(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0, innerW: 0, innerH: 0 });
     const [transformState, setTransformState] = useState({ k: 1, x: 0, y: 0 });
     const transformRef = useRef({ k: 1, x: 0, y: 0 });
     const [hoverInfo, setHoverInfo] = useState(null);
+
+    const settings = useMemo(
+        () => ({
+            ...DEFAULT_CONFIG,
+            ...config,
+            rings: { ...DEFAULT_CONFIG.rings, ...config.rings },
+            zoom: { ...DEFAULT_CONFIG.zoom, ...config.zoom },
+        }),
+        [config],
+    );
+    console.log(settings);
 
     // --- ResizeObserver: update size on container changes ---
     useEffect(() => {
@@ -121,7 +157,7 @@ export default function Hodograph({ soundingParam, statsDictParam, styles = {} }
         const radius = minDim / 2;
 
         // Scale
-        const scale = d3.scaleLinear().domain([0, MAX_WIND]).range([0, radius]);
+        const scale = d3.scaleLinear().domain([0, settings.maxWind]).range([0, radius]);
 
         // Line Generator
         const lineGen = d3
@@ -133,15 +169,28 @@ export default function Hodograph({ soundingParam, statsDictParam, styles = {} }
         const symbolGen = d3.symbol().type(d3.symbolCross).size(30);
 
         return { rScale: scale, lineGenerator: lineGen, symbolGenerator: symbolGen };
-    }, [dimensions]);
+    }, [dimensions, settings.maxWind]);
 
     // --- Zoom Logic ---
     const zoomRefCallback = useCallback(
         (node) => {
             if (!node || dimensions.width === 0) return;
+
+            const selection = d3.select(node);
+            const { enabled, extent } = settings.zoom;
+
+            // 1. Handle "Disabled" State
+            if (!enabled) {
+                // Remove all zoom event listeners to "lock" the view
+                selection.on('.zoom', null);
+                // Optional: If you want to force reset when disabled, uncomment next line:
+                // selection.call(d3.zoom().transform, d3.zoomIdentity);
+                return;
+            }
+
             const zoom = d3
                 .zoom()
-                .scaleExtent([1, 10])
+                .scaleExtent(extent)
                 .translateExtent([
                     [0, 0],
                     [dimensions.width, dimensions.height],
@@ -152,8 +201,7 @@ export default function Hodograph({ soundingParam, statsDictParam, styles = {} }
                     transformRef.current = { k: t.k, x: t.x, y: t.y };
                 });
 
-            const selection = d3.select(node);
-            selection.on('.zoom', null); // Clear previous zoom handlers
+            // selection.on('.zoom', null); // Clear previous zoom handlers
             selection.call(zoom);
             // Restore previous transform so re-renders don't reset view
             const { k, x, y } = transformRef.current;
@@ -161,7 +209,7 @@ export default function Hodograph({ soundingParam, statsDictParam, styles = {} }
                 selection.call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(k));
             }
         },
-        [dimensions],
+        [dimensions, settings.zoom],
     );
 
     // --- Data Preparation ---
@@ -171,7 +219,7 @@ export default function Hodograph({ soundingParam, statsDictParam, styles = {} }
         // Flatten logic
         const meanM =
             soundingParam?.filter((d) => d?.length > 0 && d[0]?.mem === 'grandensemble')?.[0] || [];
-        const segs = getColoredSegments(meanM);
+        const segs = getColoredSegments(meanM, settings.segments);
 
         const points = segs.map((s) => s.points[0]);
 
@@ -180,7 +228,7 @@ export default function Hodograph({ soundingParam, statsDictParam, styles = {} }
             majorPoints: points,
             allMembers: soundingParam,
         };
-    }, [soundingParam]);
+    }, [soundingParam, settings.segments]);
 
     // --- Tooltip Helper ---
     const handleMouseOver = (e, content) => {
@@ -213,7 +261,13 @@ export default function Hodograph({ soundingParam, statsDictParam, styles = {} }
                         />
                         <g transform={transformString} style={{ pointerEvents: 'none' }}>
                             <g transform={`translate(${centerX}, ${centerY})`}>
-                                {rScale && <BackgroundGrid rScale={rScale} />}
+                                {rScale && (
+                                    <BackgroundGrid
+                                        rScale={rScale}
+                                        maxWind={settings.maxWind}
+                                        ringConfig={settings.rings}
+                                    />
+                                )}
 
                                 {/* Ensemble Member Lines */}
                                 <g className="member-lines-group">
@@ -319,7 +373,7 @@ export default function Hodograph({ soundingParam, statsDictParam, styles = {} }
                     {/* Legend */}
                     <div className="hodo-legend">
                         <strong style={{ display: 'block', marginBottom: '4px' }}>Mean Wind</strong>
-                        {LEGEND_DATA.map((item, i) => (
+                        {settings.segments.map((item, i) => (
                             <div className="hodo-legend-item" key={i}>
                                 {/* The Color Box */}
                                 <span
