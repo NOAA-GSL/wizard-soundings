@@ -1,9 +1,9 @@
-//@import '../../../../css/variables.scss';
-
-$timeSliderHeight: 50px;
-$soundingHeight: 100%;
-$statsHeight: 175px;
-$soundingWidth: 60%;
+:root {
+    --timeSliderHeight: 50px;
+    --soundingHeight: 100%;
+    --statsHeight: 175px;
+    --soundingWidth: 60%;
+}
 
 #main-window-2d #forecast-hour-controls {
     box-shadow: none;
@@ -15,26 +15,26 @@ $soundingWidth: 60%;
     display: flex;
     text-align: center;
     flex-direction: column;
-    //background-color: gray;
+    /* background-color: gray; */
 
     .columns {
         width: 100%;
-        //    height: $soundingHeight;
+        /* height: $soundingHeight; */
         display: flex;
         flex-direction: row; /* Set to 'column' for vertical columns */
     }
 
     .rows {
         width: 100%;
-        //    height: calc(100% - $timeSliderHeight - $statsHeight);
+        /* height: calc(100% - $timeSliderHeight - $statsHeight); */
         display: flex;
         flex-direction: column; /* Set to 'column' for vertical columns */
     }
 
     #soundingContainer {
-        //    width: $soundingWidth;
+        /* width: $soundingWidth; */
         height: 100%;
-        //background-color: green;
+        /* background-color: green; */
         display: flex;
         justify-content: center;
         align-items: center;
@@ -50,24 +50,23 @@ $soundingWidth: 60%;
             max-width: 100%;
             max-height: 100%;
             aspect-ratio: 1.25 / 1; /* Sets a 1:2 aspect ratio */
-            //background-color: purple;
+            /* background-color: purple; */
         }
     }
     #rightContainer {
-        //    width: calc(100% - $soundingWidth);
         height: 100%;
-        //background-color: blue;
+        /* background-color: blue; */
 
         #hodographContainer {
             width: 100%;
             height: 80%;
-            //background-color: aqua;
+            /* background-color: aqua; */
             display: flex;
             justify-content: center;
             align-items: center;
             position: relative;
 
-            // Container should be a perfect square
+            /* Container should be a perfect square */
             .hodobox {
                 position: absolute;
                 top: 0;
@@ -78,21 +77,22 @@ $soundingWidth: 60%;
                 max-width: 100%;
                 max-height: 100%;
                 aspect-ratio: 1 / 1; /* Sets a 1:2 aspect ratio */
-                //background-color: gray; /* Optional: To visualize the child div */
+                /* Optional: To visualize the child div */
+                /* background-color: gray; */
             }
         }
         #boxWhiskerContainer {
             width: 100%;
             height: 20%;
-            //background-color: pink;
+            /* background-color: pink; */
         }
     }
 }
 
 #x2dsoundingSVG {
     .readoutCircle {
-        //    fill: var(--primary-color);
-        //    stroke: var(--primary-color);
+        /* fill: var(--primary-color); */
+        /* stroke: var(--primary-color); */
         stroke-width: 1px;
         pointer-events: none;
     }
@@ -112,12 +112,12 @@ $soundingWidth: 60%;
 .axis path,
 .axis line {
     fill: none;
-    //  stroke: var(--2d-line-contrast2);
+    /* stroke: var(--2d-line-contrast2); */
     stroke-width: 1px;
     shape-rendering: crispEdges;
 }
-// .x.axis path {  }
-// .y.axis path {  }
+/* .x.axis path {  } */
+/* .y.axis path {  } */
 .axis {
     fill: 'white';
 }
@@ -135,7 +135,7 @@ $soundingWidth: 60%;
     display: none;
 }
 .y.axis.ticks path {
-    //  stroke: var(--2d-line-contrast2);
+    /* stroke: var(--2d-line-contrast2); */
 }
 
 .temp {
@@ -159,7 +159,7 @@ $soundingWidth: 60%;
 }
 
 .moistad {
-    //  stroke: var(--2d-line-contrast1);
+    /* stroke: var(--2d-line-contrast1); */
     fill: none;
     stroke-dasharray: 5;
     pointer-events: none;
@@ -173,15 +173,15 @@ $soundingWidth: 60%;
 }
 
 .mtbarb {
-    //  stroke: var(--2d-mtbarb-color);
+    /* stroke: var(--2d-mtbarb-color); */
     stroke-width: 2.245px;
-    //  fill: var(--2d-mtbarb-color);
+    /* fill: var(--2d-mtbarb-color); */
     pointer-events: none;
 }
 
 .tailsBox {
-    //  fill: var(--2d-pbl-color);
-    //  stroke: var(--2d-pbl-color);
+    /* fill: var(--2d-pbl-color); */
+    /* stroke: var(--2d-pbl-color); */
 }
 
 .quantilesBox {
@@ -196,21 +196,21 @@ $soundingWidth: 60%;
 .main-svg {
     background: transparent;
 }
-//member stoke-width and color set in skewt.js
+/* member stoke-width and color set in skewt.js */
 .member {
     opacity: 0.8;
     pointer-events: none;
 }
 .mean {
     stroke-width: 3px;
-    //   stroke: var(--2d-line-contrast4);
+    /* stroke: var(--2d-line-contrast4); */
     opacity: 1;
     pointer-events: none;
 }
 
 .gridline,
 .tempzero {
-    //  stroke: var(--2d-line-contrast1);
+    /* stroke: var(--2d-line-contrast1); */
     stroke-width: 1px;
     fill: none;
     pointer-events: none;
@@ -218,7 +218,7 @@ $soundingWidth: 60%;
 }
 
 .dryline {
-    //   stroke: var(--2d-line-contrast2);
+    /* stroke: var(--2d-line-contrast2); */
     /* stroke-width: 0.75px; */
     fill: none;
     pointer-events: none;
@@ -227,7 +227,7 @@ $soundingWidth: 60%;
 .tempzero {
     stroke: var(--2d-line-contrast2);
     stroke-width: 1.25px;
-    //  pointer-events: none;
+    /* pointer-events: none; */
 }
 
 .barline {
@@ -257,13 +257,13 @@ $soundingWidth: 60%;
 }
 
 .windbarb {
-    //  stroke: var(--2d-line-contrast4);
+    /* stroke: var(--2d-line-contrast4); */
     stroke-width: 0.75px;
-    //   fill: var(--2d-line-contrast4);
+    /* fill: var(--2d-line-contrast4); */
     pointer-events: none;
 }
 .flag {
-    //  fill: var(--2d-line-contrast4);
+    /* fill: var(--2d-line-contrast4); */
 }
 
 .overlay {

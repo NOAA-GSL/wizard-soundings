@@ -43,8 +43,6 @@
         "eslint-plugin-react-hooks": "^4.6.0",
         "eslint-plugin-react-refresh": "^0.4.19",
         "globals": "^16.0.0",
-        "sass-embedded": "^1.91.0",
-        "sass-embedded-win32-x64": "^1.91.0",
         "vite": "^6.3.5"
     },
     "//": "Still figuring out best way to manage peerDependency versions",
