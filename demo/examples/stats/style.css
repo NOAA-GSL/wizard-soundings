@@ -1,9 +1,36 @@
-#hodograph {
-    width: 500px;
-    height: 500px;
+/* main.css update */
+.app-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #121212;
+    color: white;
 }
 
-#stats-table {
-    width: 1500px;
-    height: 300px;
+.main-content {
+    display: grid;
+    grid-template-columns: 250px 1fr; /* Sidebar is 250px, Content takes rest */
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.settings-sidebar {
+    background-color: #1e1e1e;
+    padding: 20px;
+    border-right: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.display-area {
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.settings-sidebar label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9rem;
+    gap: 5px;
 }

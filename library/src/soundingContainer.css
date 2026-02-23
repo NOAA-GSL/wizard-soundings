@@ -1,0 +1,57 @@
+.sounding-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+}
+
+.viz-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 15px;
+    height: 850px; /* This is the "Anchor" height */
+    overflow: hidden; /* Prevents children from pushing the grid open */
+}
+
+.viz-item {
+    background: #fff;
+    border: 1px solid #333;
+    position: relative; /* Essential for ResizeObserver accuracy */
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* STOPS THE GROWTH LOOP */
+}
+
+.skewt-container {
+    width: 100%;
+    height: 100%;
+    position: absolute; /* Takes it out of the layout flow so it doesn't push the parent */
+    top: 0;
+    left: 0;
+}
+
+/* Ensure Hodograph stays top-left instead of centering */
+.hodobox {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Responsive adjustment: Stack on small screens */
+@media (max-width: 1000px) {
+    .viz-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    .skewt-wrapper {
+        height: 600px;
+    }
+    .hodo-wrapper {
+        height: 400px;
+    }
+}
