@@ -1,6 +1,7 @@
-import 'desi-soundings/statstable.css';
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import * as d3 from 'd3';
+import ChartTooltip from '../utilities/tooltip';
+import './statstable.css';
 
 /*--------------------------------*/
 /* --- StatsTable and Helpers --- */
@@ -279,9 +280,12 @@ function StatCell({
 */
 
 export default function StatsTable({ statsDictParam, styles = {} }) {
-    const stats = statsDictParam;
+    // --- Dimensions and Setup ---
     const [hoverInfo, setHoverInfo] = useState(null);
 
+    const stats = statsDictParam;
+
+    // Mouse handlers for showing/hiding tooltips
     const handleMouseOver = (e, content) => {
         setHoverInfo({
             x: e.clientX + 10,
@@ -427,18 +431,12 @@ export default function StatsTable({ statsDictParam, styles = {} }) {
 
             {/* --- Shared Tooltip Renderer --- */}
             {hoverInfo && (
-                <div
-                    className="hodo-tooltip"
-                    style={{
-                        position: 'fixed',
-                        left: hoverInfo.x,
-                        top: hoverInfo.y,
-                        zIndex: 9999,
-                        pointerEvents: 'none',
-                    }}
-                >
-                    {hoverInfo.content}
-                </div>
+                <ChartTooltip
+                    x={hoverInfo.x}
+                    y={hoverInfo.y}
+                    content={hoverInfo.content}
+                    positionType="fixed"
+                />
             )}
         </div>
     );

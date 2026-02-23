@@ -1,14 +1,19 @@
-import 'desi-soundings/hodograph.css';
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import * as d3 from 'd3';
+import useContainerDimensions from '../utilities/useContainerDimensions';
+import useZoomHandler from '../utilities/useZoomHandler';
+import ChartTooltip from '../utilities/tooltip';
+import HodographBackground from './hodographBackground';
+import './hodograph.css';
 
-/*--------------------------------*/
+/*-------------------------------*/
 /* --- Hodograph and Helpers --- */
-/*--------------------------------*/
+/*-------------------------------*/
 
 // --- Configuration: ---
 const DEFAULT_CONFIG = {
     // Max wind speed for scaling
+    margin: 25,
     maxWind: 80,
     // Ring settings for background grid
     rings: {
@@ -26,7 +31,8 @@ const DEFAULT_CONFIG = {
     // Zoom settings
     zoom: {
         enabled: true,
-        extent: [1, 10],
+        min: 1,
+        max: 10,
     },
 };
 
@@ -57,47 +63,13 @@ function getColoredSegments(meanMemberData, segmentConfig) {
     return segments;
 }
 
-const BackgroundGrid = React.memo(({ rScale, maxWind, ringConfig }) => {
-    const { interval, labelInterval, units } = ringConfig;
-
-    const ringTicks = useMemo(() => d3.range(interval, maxWind + 1, interval), [interval, maxWind]);
-
-    const labelTicks = useMemo(
-        () => d3.range(interval, maxWind + 1, labelInterval),
-        [interval, maxWind, labelInterval],
-    );
-
-    return (
-        <g className="grid">
-            {ringTicks.map((tick) => (
-                <circle key={tick} cx={0} cy={0} r={rScale(tick)} className="hodorings" />
-            ))}
-            {labelTicks.map((tick) => (
-                <text
-                    key={`label-${tick}`}
-                    x={0}
-                    y={rScale(tick)}
-                    dy="0.4em"
-                    className="hodolabels"
-                >
-                    {tick}
-                    {units}
-                </text>
-            ))}
-        </g>
-    );
-});
-
 /* Component: Hodograph
     Renders an interactive hodograph with wind data.
 */
 
 export default function Hodograph({ soundingParam, statsDictParam, config = {}, styles = {} }) {
     // --- Dimensions and Setup ---
-    const [containerNode, setContainerNode] = useState(null);
-    const [dimensions, setDimensions] = useState({ width: 0, height: 0, innerW: 0, innerH: 0 });
-    const [transformState, setTransformState] = useState({ k: 1, x: 0, y: 0 });
-    const transformRef = useRef({ k: 1, x: 0, y: 0 });
+    const [containerRef, dimensions] = useContainerDimensions();
     const [hoverInfo, setHoverInfo] = useState(null);
 
     const settings = useMemo(
@@ -109,51 +81,14 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
         }),
         [config],
     );
-    console.log(settings);
-
-    // --- ResizeObserver: update size on container changes ---
-    useEffect(() => {
-        if (!containerNode) return () => {};
-        const margin = 25;
-
-        const updateSize = () => {
-            const { clientWidth, clientHeight } = containerNode;
-            setDimensions({
-                width: clientWidth,
-                height: clientHeight,
-                innerW: Math.max(0, clientWidth - margin * 2),
-                innerH: Math.max(0, clientHeight - margin * 2),
-            });
-        };
-
-        // initial measurement
-        updateSize();
-
-        // Observe size changes
-        const supportsResizeObserver = typeof ResizeObserver !== 'undefined';
-        let ro;
-
-        if (supportsResizeObserver) {
-            ro = new ResizeObserver(() => updateSize());
-            ro.observe(containerNode);
-        } else {
-            window.addEventListener('resize', updateSize);
-        }
-
-        return () => {
-            if (supportsResizeObserver) {
-                if (ro) ro.disconnect();
-            } else {
-                window.removeEventListener('resize', updateSize);
-            }
-        };
-    }, [containerNode]);
 
     // --- D3 Scales & Generators ---
     const { rScale, lineGenerator, symbolGenerator } = useMemo(() => {
         if (dimensions.width === 0) return {};
 
-        const minDim = Math.min(dimensions.innerW, dimensions.innerH);
+        const innerW = dimensions.width - settings.margin * 2;
+        const innerH = dimensions.height - settings.margin * 2;
+        const minDim = Math.min(innerW, innerH);
         const radius = minDim / 2;
 
         // Scale
@@ -169,48 +104,10 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
         const symbolGen = d3.symbol().type(d3.symbolCross).size(30);
 
         return { rScale: scale, lineGenerator: lineGen, symbolGenerator: symbolGen };
-    }, [dimensions, settings.maxWind]);
+    }, [dimensions, settings.margin, settings.maxWind]);
 
     // --- Zoom Logic ---
-    const zoomRefCallback = useCallback(
-        (node) => {
-            if (!node || dimensions.width === 0) return;
-
-            const selection = d3.select(node);
-            const { enabled, extent } = settings.zoom;
-
-            // 1. Handle "Disabled" State
-            if (!enabled) {
-                // Remove all zoom event listeners to "lock" the view
-                selection.on('.zoom', null);
-                // Optional: If you want to force reset when disabled, uncomment next line:
-                // selection.call(d3.zoom().transform, d3.zoomIdentity);
-                return;
-            }
-
-            const zoom = d3
-                .zoom()
-                .scaleExtent(extent)
-                .translateExtent([
-                    [0, 0],
-                    [dimensions.width, dimensions.height],
-                ])
-                .on('zoom', (event) => {
-                    const t = event.transform;
-                    setTransformState({ k: t.k, x: t.x, y: t.y });
-                    transformRef.current = { k: t.k, x: t.x, y: t.y };
-                });
-
-            // selection.on('.zoom', null); // Clear previous zoom handlers
-            selection.call(zoom);
-            // Restore previous transform so re-renders don't reset view
-            const { k, x, y } = transformRef.current;
-            if (k !== 1 || x !== 0 || y !== 0) {
-                selection.call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(k));
-            }
-        },
-        [dimensions, settings.zoom],
-    );
+    const [zoomRefCallback, transformState] = useZoomHandler(dimensions, settings.zoom);
 
     // --- Data Preparation ---
     const { segments, majorPoints, allMembers } = useMemo(() => {
@@ -244,7 +141,7 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
     const transformString = `translate(${transformState.x},${transformState.y}) scale(${transformState.k})`;
 
     return (
-        <div ref={setContainerNode} className="hodobox" style={styles}>
+        <div ref={containerRef} className="hodobox" style={styles}>
             {/* Only render SVG if we have dimensions */}
             {dimensions.width > 0 && (
                 <>
@@ -262,7 +159,7 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
                         <g transform={transformString} style={{ pointerEvents: 'none' }}>
                             <g transform={`translate(${centerX}, ${centerY})`}>
                                 {rScale && (
-                                    <BackgroundGrid
+                                    <HodographBackground
                                         rScale={rScale}
                                         maxWind={settings.maxWind}
                                         ringConfig={settings.rings}
@@ -389,15 +286,11 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
 
                     {/* Tooltip */}
                     {hoverInfo && (
-                        <div
-                            className="hodo-tooltip"
-                            style={{
-                                left: hoverInfo.x,
-                                top: hoverInfo.y,
-                            }}
-                        >
-                            {hoverInfo.content}
-                        </div>
+                        <ChartTooltip
+                            x={hoverInfo.x || hoverInfo.screenX}
+                            y={hoverInfo.y || hoverInfo.screenY}
+                            content={hoverInfo.content}
+                        />
                     )}
                 </>
             )}
