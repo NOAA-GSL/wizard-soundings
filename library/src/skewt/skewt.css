@@ -1,16 +1,13 @@
-/* c:\documents\Coding\VSCode\DESI\desi-soundings\library\src\SkewT.css */
-
-/* Color tokens pulled from DEFAULT_CONFIG.colors */
 :root {
-    --skewt-isobar: rgba(255, 255, 255, 0.2);
-    --skewt-isotherm: rgba(255, 255, 255, 0.2);
-    --skewt-dry-adiabat: rgba(200, 150, 150, 0.3);
-    --skewt-moist-adiabat: rgba(100, 200, 100, 0.3);
-    --skewt-mixing-ratio: rgba(150, 255, 0, 0.2);
-    --skewt-temp: #ff0000;
-    --skewt-dwpt: #00ff00;
-    --skewt-wetbulb: #00ffff;
-    --skewt-parcel: #ffffff;
+    --bg: #fff;
+    --text: #333;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #222;
+        --text: #fff;
+    }
 }
 
 /* Container */
@@ -23,6 +20,9 @@
 /* Make SVG behave as block-level to avoid gaps */
 .skewt-container svg {
     display: block;
+    background-color: var(--bg);
+    stroke: var(--text);
+    stroke-width: 2px;
 }
 
 /* Background grid group - non-interactive */
@@ -34,37 +34,33 @@
      Individual strokes in JSX override color/width where necessary, but these
      provide sensible fallbacks consistent with DEFAULT_CONFIG. */
 .skewt-grid line {
-    stroke: var(--skewt-isotherm);
     stroke-width: 1px;
 }
 
 .skewt-grid .isobar {
-    stroke: var(--skewt-isobar);
 }
 
-/* Text labels for pressure (isobars) */
+/* Tick labels */
 .skewt-grid text {
-    fill: rgba(255, 255, 255, 0.7);
-    font-size: 10px;
+    font-size: 14px;
     dominant-baseline: hanging;
     pointer-events: none;
+    fill: var(--text);
+    stroke: none;
 }
 
 /* Specific cadence for adiabats and mixing ratio if needed */
 .skewt-grid path.dry-adiabat {
-    stroke: var(--skewt-dry-adiabat);
     fill: none;
     stroke-width: 1px;
 }
 
 .skewt-grid path.moist-adiabat {
-    stroke: var(--skewt-moist-adiabat);
     fill: none;
     stroke-width: 1px;
 }
 
 .skewt-grid path.mixing-ratio {
-    stroke: var(--skewt-mixing-ratio);
     fill: none;
     stroke-width: 1px;
     stroke-dasharray: 4 4;
@@ -72,22 +68,18 @@
 
 /* Main profile colors (overridable inline in JSX) */
 .profile-temp {
-    stroke: var(--skewt-temp);
     fill: none;
 }
 
 .profile-dwpt {
-    stroke: var(--skewt-dwpt);
     fill: none;
 }
 
 .profile-wetb {
-    stroke: var(--skewt-wetbulb);
     fill: none;
 }
 
 .profile-parcel {
-    stroke: var(--skewt-parcel);
     fill: none;
 }
 
@@ -97,30 +89,15 @@
 }
 
 .wind-barbs-container path {
-    stroke: black;
+    stroke: var(--text);
     stroke-width: 1.5;
     fill: none;
 }
 
 .wind-barbs-container circle {
-    stroke: black;
+    stroke: var(--text);
     stroke-width: 1;
     fill: none;
-}
-
-/* Tooltip moved to CSS (component still sets positioning offsets inline) */
-.skewt-tooltip {
-    position: fixed; /* left/top are set inline by component to match mouse/scale */
-    pointer-events: none;
-    background-color: rgba(0, 0, 0, 0.85);
-    color: #fff;
-    padding: 6px;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    line-height: 1.25;
-    white-space: nowrap;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-    z-index: 1000;
 }
 
 /* Small utility helpers */

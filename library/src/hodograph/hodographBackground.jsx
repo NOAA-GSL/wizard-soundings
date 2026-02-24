@@ -21,7 +21,7 @@ function HodographBackground({ rScale, maxWind, ringConfig }) {
                     key={`label-${tick}`}
                     x={0}
                     y={rScale(tick)}
-                    dy="0.4em"
+                    dy="0.9em"
                     className="hodolabels"
                 >
                     {tick}

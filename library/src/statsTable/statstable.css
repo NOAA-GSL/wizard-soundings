@@ -1,6 +1,18 @@
-#statsContainer {
-    --background-color: none;
+:root {
+    --bg: #fff;
+    --text: #333;
+    --border: #333;
+}
 
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #222;
+        --text: #fff;
+        --border: #fff;
+    }
+}
+
+#statsContainer {
     width: 100%;
     display: flex;
     justify-content: center;
@@ -16,7 +28,9 @@
     margin: 0 10px;
     display: flex;
     text-align: center;
-    background-color: var(--background-color);
+    color: var(--text);
+    background-color: var(--bg);
+    border: 1px solid var(--border);
     /*    border: 1px solid var(--2d-line-contrast1); */
     td {
         cursor: pointer;
@@ -27,7 +41,7 @@
     .statscolumn {
         flex: 3 1 max-content;
         height: 100%;
-        border-right: 1px solid; /* var(--2d-line-contrast1); */
+        border-right: 1px solid var(--border);
 
         /* #firsthalf {
              width: 100%;
@@ -50,7 +64,7 @@
         #parcelstats {
             width: 100%;
             height: 50%;
-            border-bottom: 1px solid var(--2d-line-contrast1);
+            border-bottom: 1px solid var(--border);
         }
 
         #thermostats {
