@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import * as d3 from 'd3';
-//import PropTypes from 'prop-types';
 import sharp from '../Sharp';
 import useContainerDimensions from '../utilities/useContainerDimensions';
 import useZoomHandler from '../utilities/useZoomHandler';
@@ -470,23 +469,3 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
         </div>
     );
 }
-
-// SkewT.propTypes = {
-//     // Accepts either row-based (Array of objects) or column-based (Object of arrays)
-//     soundingParam: PropTypes.oneOfType([
-//         PropTypes.arrayOf(PropTypes.object),
-//         PropTypes.shape({
-//             pres: PropTypes.arrayOf(PropTypes.number),
-//             tmpc: PropTypes.arrayOf(PropTypes.number),
-//             dwpc: PropTypes.arrayOf(PropTypes.number),
-//             uwnd: PropTypes.arrayOf(PropTypes.number),
-//             vwnd: PropTypes.arrayOf(PropTypes.number)
-//         })
-//     ]),
-//     parcelTraceData: PropTypes.arrayOf(PropTypes.shape({
-//         press: PropTypes.number,
-//         temp: PropTypes.number
-//     })),
-//     config: PropTypes.object,
-//     style: PropTypes.object
-// };
