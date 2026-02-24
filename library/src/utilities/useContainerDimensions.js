@@ -5,26 +5,32 @@ const useContainerDimensions = () => {
     const [node, setNode] = useState(null);
 
     // 1. Ref Callback: triggers update only when the DOM node actually changes
-    const ref = useCallback((node) => {
-        setNode(node);
+    const ref = useCallback((element) => {
+        setNode(element);
     }, []);
 
     // 2. LayoutEffect: Sync measurement to prevent visual jumps
     useLayoutEffect(() => {
-        if (!node) return;
+        let observer; // Declare the observer outside the if-block
 
-        const observer = new ResizeObserver((entries) => {
-            // Wrapping in requestAnimationFrame avoids "ResizeObserver loop limit exceeded" errors
-            window.requestAnimationFrame(() => {
-                if (!Array.isArray(entries) || !entries.length) return;
-                const { width, height } = entries[0].contentRect;
-                setDimensions({ width, height });
+        if (node) {
+            observer = new ResizeObserver((entries) => {
+                window.requestAnimationFrame(() => {
+                    if (Array.isArray(entries) && entries.length > 0) {
+                        const { width, height } = entries[0].contentRect;
+                        setDimensions({ width, height });
+                    }
+                });
             });
-        });
 
-        observer.observe(node);
+            observer.observe(node);
+        }
 
-        return () => observer.disconnect();
+        return () => {
+            if (observer) {
+                observer.disconnect();
+            }
+        };
     }, [node]);
 
     return [ref, dimensions];

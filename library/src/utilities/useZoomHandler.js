@@ -18,7 +18,6 @@ function useZoomHandler(dimensions, zoomConfig) {
             const selection = d3.select(node);
             const { enabled } = zoomConfig;
 
-            // Handle different config keys between your SkewT and Hodograph
             const scaleExtent = [zoomConfig.min || 1, zoomConfig.max || 10];
 
             if (!enabled) {
