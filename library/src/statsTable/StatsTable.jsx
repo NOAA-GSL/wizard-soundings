@@ -221,12 +221,16 @@ function StatCell({
     statKey, // The key used for statClick
     tooltip, // Object: { title: string, body: string }
     className, // e.g., "noClick"
+    isSelected,
     handlers, // { onStatClick, onMouseOver, onMouseOut }
 }) {
     const { onStatClick, onShowTooltip, onHideTooltip } = handlers;
 
     // Determine if this cell is interactive
     const isInteractive = !!statKey && !className?.includes('noClick');
+
+    let finalClass = className || '';
+    if (isSelected) finalClass += ' selected-stat';
 
     // Handle Tooltip Hover (reusable JSX)
     const handleActive = (e) => {
@@ -258,7 +262,7 @@ function StatCell({
 
     return (
         <td
-            className={className}
+            className={finalClass.trim()}
             onClick={handleClick}
             onMouseOver={tooltip ? handleActive : undefined}
             onMouseOut={onHideTooltip}
@@ -278,11 +282,34 @@ function StatCell({
    Renders the meteorological statistics table with parcels, thermo, and wind stats.
 */
 
-export default function StatsTable({ statsDictParam, styles = {} }) {
+export default function StatsTable({
+    statsDictParam,
+    selectedStat: externalStat,
+    onStatSelect,
+    styles = {},
+}) {
     // --- Dimensions and Setup ---
     const [hoverInfo, setHoverInfo] = useState(null);
 
+    const [internalStat, setInternalStat] = useState(null);
+    const isControlled = externalStat !== undefined;
+    const activeStat = isControlled ? externalStat : internalStat;
+
     const stats = statsDictParam;
+
+    const statClick = (key, event) => {
+        if (!key) return;
+
+        // If a parent wants to know about the click, tell them
+        if (onStatSelect) {
+            onStatSelect(key, event);
+        }
+
+        // If we are uncontrolled, manage our own highlighting
+        if (!isControlled) {
+            setInternalStat(key);
+        }
+    };
 
     // Mouse handlers for showing/hiding tooltips
     const handleMouseOver = (e, content) => {
@@ -294,9 +321,6 @@ export default function StatsTable({ statsDictParam, styles = {} }) {
     };
 
     const handleMouseOut = () => setHoverInfo(null);
-    const statClick = (key, event) => {
-        console.log('Clicked', key);
-    }; // Placeholder
 
     // Group handlers to pass down easily
     const handlers = {
@@ -333,6 +357,7 @@ export default function StatsTable({ statsDictParam, styles = {} }) {
                                                 statKey={key}
                                                 value={fmt(stats[key], prec)}
                                                 handlers={handlers}
+                                                isSelected={activeStat === key}
                                             />
                                         );
                                     })}
@@ -359,6 +384,7 @@ export default function StatsTable({ statsDictParam, styles = {} }) {
                                                 label={cell.label}
                                                 value={fmt(rawVal, cell.prec)}
                                                 tooltip={cell.tooltip}
+                                                isSelected={activeStat === cell.id}
                                                 handlers={handlers}
                                             />
                                         );
@@ -394,6 +420,7 @@ export default function StatsTable({ statsDictParam, styles = {} }) {
                                                 className={
                                                     !col.isInteractive ? 'noClick' : undefined
                                                 }
+                                                isSelected={activeStat === dataKey}
                                                 handlers={handlers}
                                             />
                                         );
@@ -418,6 +445,7 @@ export default function StatsTable({ statsDictParam, styles = {} }) {
                                             statKey={row.isInteractive ? row.id : undefined}
                                             value={row.formatter(rawVal)}
                                             className={!row.isInteractive ? 'noClick' : undefined}
+                                            isSelected={activeStat === row.id}
                                             handlers={handlers}
                                         />
                                     </tr>

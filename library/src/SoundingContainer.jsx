@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import { useState } from 'react';
 import SkewT from './skewt/SkewT';
 import Hodograph from './hodograph/Hodograph';
 import StatsTable from './statsTable/StatsTable';
-import BoxPlot from './statsTable/boxplot';
+import BoxPlot from './statsTable/BoxPlot';
 import './soundingContainer.css';
 
 /**
@@ -13,6 +13,8 @@ import './soundingContainer.css';
  */
 export default function SoundingContainer({ soundingData, stats, derivedData, globalConfig = {} }) {
     // If data is missing, we can show a loading state or a placeholder
+    const [selectedStat, setSelectedStat] = useState('sfcCAPE');
+
     if (!soundingData || !stats) {
         return <div className="sounding-loading">Loading sounding data...</div>;
     }
@@ -39,10 +41,14 @@ export default function SoundingContainer({ soundingData, stats, derivedData, gl
 
             {/* Bottom Section: Data Table */}
             <div className="table-wrapper">
-                <StatsTable statsDictParam={stats} />
+                <StatsTable
+                    statsDictParam={stats}
+                    selectedStat={selectedStat}
+                    onStatSelect={setSelectedStat}
+                />
             </div>
             <div>
-                <BoxPlot statsDictParam={derivedData} curStat="muCAPE" />
+                <BoxPlot statsDictParam={derivedData} curStat={selectedStat} />
             </div>
         </div>
     );

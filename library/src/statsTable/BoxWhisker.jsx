@@ -1,40 +1,54 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import * as d3 from 'd3';
-import './BoxWhisker.css'; // Importing separated styles
+import './boxwhisker.css';
 
 function BoxWhisker({
     data = [],
     width = 600,
     height = 400,
     margin = { top: 20, right: 30, bottom: 40, left: 50 },
+    orientation = 'horizontal',
 }) {
-    // Defensive coding: Validate data
-    if (!data || data.length === 0) {
-        return <div className="box-whisker-empty">No data available to plot.</div>;
-    }
-
     // Calculate inner dimensions
+    const isHoriz = orientation === 'horizontal';
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
     // Memoize the D3 scales so they only recalculate when data/dimensions change
-    const { xScale, yScale } = useMemo(() => {
+    const { linearScale, bandScale } = useMemo(() => {
+        // Handle empty data safely
+        const hasData = Array.isArray(data) && data.length > 0;
+
         // Y Scale: Categorical data (Names)
-        const yaxisNames = data.map((d) => d.name);
-        const y = d3.scaleBand().range([innerHeight, 0]).domain(yaxisNames).padding(0.1);
+        const minVal = hasData ? d3.min(data, (d) => d.whisker1) : 0;
+        const maxVal = hasData ? d3.max(data, (d) => d.whisker2) : 1;
 
-        // X Scale: Linear data (Values)
-        // Dynamically find the min and max across ALL data points for a safer axis
-        const minX = d3.min(data, (d) => d.whisker1);
-        const maxX = d3.max(data, (d) => d.whisker2);
+        const linear = d3.scaleLinear().domain([minVal, maxVal]);
+        if (hasData) linear.nice();
 
-        const x = d3.scaleLinear().domain([minX, maxX]).range([0, innerWidth]).nice(); // .nice() rounds the domain to readable numbers
+        const band = d3
+            .scaleBand()
+            .domain(hasData ? data.map((d) => d.name) : [])
+            .padding(0.1);
 
-        return { xScale: x, yScale: y };
-    }, [data, innerWidth, innerHeight]);
+        // Assign ranges based on orientation
+        if (isHoriz) {
+            linear.range([0, innerWidth]);
+            band.range([innerHeight, 0]);
+        } else {
+            // Vertical: SVG Y goes top-to-bottom, so lower values = higher Y coordinate
+            linear.range([innerHeight, 0]);
+            band.range([0, innerWidth]);
+        }
+
+        return { linearScale: linear, bandScale: band };
+    }, [data, innerWidth, innerHeight, isHoriz]);
+
+    // Return early if no data to render (hooks are already called)
+    if (!data || data.length === 0) return null;
 
     // Generate tick values for the X-axis
-    const xTicks = xScale.ticks(4);
+    const ticks = linearScale.ticks(4);
 
     return (
         <svg
@@ -44,101 +58,99 @@ function BoxWhisker({
             aria-label="Box and whisker plot"
         >
             <g transform={`translate(${margin.left},${margin.top})`}>
-                {/* --- X Axis --- */}
-                <g className="xaxis" transform={`translate(0,0)`}>
-                    {xTicks.map((tickValue, i) => (
-                        <g
-                            key={i}
-                            className="axis-tick"
-                            transform={`translate(${xScale(tickValue)},0)`}
-                        >
-                            <line
-                                y1={0}
-                                y2={innerHeight}
-                                className="axis-line"
-                                strokeDasharray="4 4"
-                            />
-                            <text y={innerHeight + 20} textAnchor="middle">
-                                {tickValue}
-                            </text>
-                        </g>
-                    ))}
-                </g>
-
-                {/* --- Y Axis --- */}
-                <g className="yaxis" transform={`translate(-15,0)`}>
-                    {data.map((d) => {
-                        const yCenter = yScale(d.name) + yScale.bandwidth() / 2;
+                <g className="value-axis" transform="translate(0,0)">
+                    {ticks.map((tickValue, i) => {
+                        const pos = linearScale(tickValue);
                         return (
-                            <text
-                                key={d.name}
-                                y={yCenter}
-                                dy=".32em"
-                                textAnchor="end"
+                            <g
+                                key={i}
                                 className="axis-tick"
+                                transform={isHoriz ? `translate(${pos},0)` : `translate(0,${pos})`}
                             >
-                                {d.name}
-                            </text>
+                                {/* Grid Line */}
+                                <line
+                                    x1={0}
+                                    y1={0}
+                                    x2={isHoriz ? 0 : innerWidth}
+                                    y2={isHoriz ? innerHeight : 0}
+                                    className="axis-line"
+                                    strokeDasharray="4 4"
+                                />
+                                {/* Label */}
+                                <text
+                                    x={isHoriz ? 0 : -10}
+                                    y={isHoriz ? innerHeight + 20 : 4}
+                                    textAnchor={isHoriz ? 'middle' : 'end'}
+                                >
+                                    {tickValue}
+                                </text>
+                            </g>
                         );
                     })}
                 </g>
 
-                {/* --- Box & Whisker Data Marks --- */}
+                {/* --- Data Marks --- */}
                 {data.map((d, i) => {
-                    // Pre-calculate common Y positions for this row
-                    const yPos = yScale(d.name);
-                    const bandwidth = yScale.bandwidth();
-                    const yCenter = yPos + bandwidth / 2;
-                    // Prevent negative widths if data is malformed
-                    const boxWidth = Math.max(0, xScale(d.box2) - xScale(d.box1)) || 0;
+                    // Map data to pixels based on scale
+                    const w1 = linearScale(d.whisker1);
+                    const b1 = linearScale(d.box1);
+                    const med = linearScale(d.median);
+                    const b2 = linearScale(d.box2);
+                    const w2 = linearScale(d.whisker2);
+
+                    const bandPos = bandScale(d.name);
+                    const bw = bandScale.bandwidth();
+                    const bandCenter = bandPos + bw / 2;
+
+                    // Compute dynamic coordinates
+                    // For vertical, b2 (higher value) has a SMALLER Y-coordinate.
+                    const rectX = isHoriz ? b1 : bandPos;
+                    const rectY = isHoriz ? bandPos : b2;
+                    const rectWidth = isHoriz ? Math.max(0, b2 - b1) : bw;
+                    const rectHeight = isHoriz ? bw : Math.max(0, b1 - b2);
 
                     return (
-                        <g key={`mark-${d.name || i}`} className="data-row">
-                            {/* Left Whisker */}
+                        <g key={`mark-${i}`} className="data-row">
+                            {/* Whisker 1 (Lower) */}
                             <line
-                                x1={xScale(d.whisker1)}
-                                x2={xScale(d.box1)}
-                                y1={yCenter}
-                                y2={yCenter}
+                                x1={isHoriz ? w1 : bandCenter}
+                                y1={isHoriz ? bandCenter : w1}
+                                x2={isHoriz ? b1 : bandCenter}
+                                y2={isHoriz ? bandCenter : b1}
                                 className="whisker-line"
                             />
-
-                            {/* Right Whisker */}
+                            {/* Whisker 2 (Upper) */}
                             <line
-                                x1={xScale(d.box2)}
-                                x2={xScale(d.whisker2)}
-                                y1={yCenter}
-                                y2={yCenter}
+                                x1={isHoriz ? b2 : bandCenter}
+                                y1={isHoriz ? bandCenter : b2}
+                                x2={isHoriz ? w2 : bandCenter}
+                                y2={isHoriz ? bandCenter : w2}
                                 className="whisker-line"
                             />
-
                             {/* Main Box */}
                             <rect
-                                x={xScale(d.box1)}
-                                y={yPos}
-                                width={boxWidth}
-                                height={bandwidth}
+                                x={rectX}
+                                y={rectY}
+                                width={rectWidth}
+                                height={rectHeight}
                                 className="box-rect"
                             />
-
                             {/* Median Line */}
                             <line
-                                x1={xScale(d.median)}
-                                x2={xScale(d.median)}
-                                y1={yPos}
-                                y2={yPos + bandwidth}
+                                x1={isHoriz ? med : rectX}
+                                y1={isHoriz ? rectY : med}
+                                x2={isHoriz ? med : rectX + rectWidth}
+                                y2={isHoriz ? rectY + rectHeight : med}
                                 className="median-line"
                             />
-
-                            {/* Foci / Data points (from your original code) */}
-                            {[d.whisker1, d.box1, d.box2, d.whisker2].map((val, idx) => (
+                            {/* Data points (Foci) */}
+                            {[w1, b1, b2, w2].map((val, idx) => (
                                 <circle
-                                    key={`focus-${i}-${idx}`}
+                                    key={`focus-${idx}`}
                                     className="focus-circle"
                                     r={4}
-                                    style={{
-                                        transform: `translate(${xScale(val)}px, ${yCenter}px)`,
-                                    }}
+                                    cx={isHoriz ? val : bandCenter}
+                                    cy={isHoriz ? bandCenter : val}
                                 />
                             ))}
                         </g>

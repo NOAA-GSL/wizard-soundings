@@ -108,3 +108,20 @@
         flex-direction: column; /* Stack vertically */
     }
 }
+
+/* Highlight state for the currently active stat */
+#meteostats td.selected-stat {
+    background-color: rgba(31, 119, 180, 0.2);
+    font-weight: bold;
+    outline: 2px solid rgb(31, 119, 180);
+    outline-offset: -2px; /* Keeps the outline strictly inside the cell */
+    border-radius: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+    #meteostats td.selected-stat {
+        background-color: rgba(100, 180, 255, 0.3);
+        outline: 2px solid rgb(100, 180, 255);
+        color: #fff;
+    }
+}

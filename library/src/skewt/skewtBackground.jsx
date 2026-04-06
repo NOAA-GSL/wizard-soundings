@@ -135,9 +135,9 @@ const SkewTBackground = React.memo(({ dimensions, scales, config }) => {
                 {/* Isotherm Lines */}
                 {isothermLines.map((t) => {
                     const xTop = getSkewX(t, config.topP, xScale, yScale, tanAlpha, baseY);
-                    console.log('Isotherm:', t, 'xTop:', xTop);
+                    // console.log('Isotherm:', t, 'xTop:', xTop);
                     const xBottom = getSkewX(t, config.baseP, xScale, yScale, tanAlpha, baseY);
-                    console.log('Isotherm:', t, 'xBottom:', xBottom, 'height:', height);
+                    // console.log('Isotherm:', t, 'xBottom:', xBottom, 'height:', height);
 
                     return (
                         <g key={`iso-${t}`}>
