@@ -549,6 +549,8 @@ const calculateStatsScalar = (componentOne, stat) => {
     let value;
     if (stat === 'mean') {
         value = math.mean(componentOne);
+    } else if (stat === 'list') {
+        value = componentOne;
     } else {
         const q = Number(stat.substring(0, stat.length - 1));
         value = math.quantile(componentOne, q / 100);
@@ -570,6 +572,8 @@ const calculateStatsVector = (components, stat) => {
     const mags = uList.map((element, idx) => sharp.mag(element, vList[idx]));
     if (stat == 'mean') {
         mag = math.mean(mags);
+    } else if (stat === 'list') {
+        mag = mags;
     } else {
         const q = Number(stat.substring(0, stat.length - 1));
         mag = math.quantile(mags, q / 100);

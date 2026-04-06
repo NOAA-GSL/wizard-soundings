@@ -11,7 +11,7 @@ const useContainerDimensions = () => {
 
     // 2. LayoutEffect: Sync measurement to prevent visual jumps
     useLayoutEffect(() => {
-        let observer; // Declare the observer outside the if-block
+        let observer;
 
         if (node) {
             observer = new ResizeObserver((entries) => {

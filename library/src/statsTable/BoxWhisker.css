@@ -1,0 +1,48 @@
+/* BoxWhisker.css */
+
+.box-whisker-container {
+    font-family: sans-serif;
+}
+
+.box-rect {
+    fill: rgba(31, 119, 180, 0.5);
+    stroke: rgb(31, 119, 180);
+    /* CSS transitions replace d3.transition() */
+    transition:
+        x 0.5s ease,
+        width 0.5s ease,
+        y 0.5s ease,
+        height 0.5s ease;
+}
+
+.whisker-line,
+.median-line {
+    stroke: rgb(31, 119, 180);
+    transition:
+        x1 0.5s ease,
+        x2 0.5s ease,
+        y1 0.5s ease,
+        y2 0.5s ease;
+}
+
+.whisker-line {
+    stroke-width: 3px;
+}
+
+.median-line {
+    stroke-width: 4px;
+}
+
+.focus-circle {
+    fill: rgb(31, 119, 180);
+    transition: transform 0.5s ease;
+}
+
+.axis-line {
+    stroke: #ccc;
+}
+
+.axis-tick text {
+    fill: #333;
+    font-size: 12px;
+}

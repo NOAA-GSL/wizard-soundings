@@ -20,6 +20,7 @@ function App() {
     const sounding = getSounding();
     const soundingData = sounding.getLevelData(); // Your data source
     const stats = sounding.calcStats(sounding.getMembers(), 'mean'); // Your stats source
+    const derivedData = sounding.calcStats(sounding.getMembers(), 'list'); // Your derived data source
 
     return (
         <div className="app-layout">
@@ -29,7 +30,11 @@ function App() {
 
             <main className="main-content">
                 <section className="display-area">
-                    <SoundingContainer soundingData={soundingData} stats={stats} />
+                    <SoundingContainer
+                        soundingData={soundingData}
+                        stats={stats}
+                        derivedData={derivedData}
+                    />
                 </section>
             </main>
         </div>

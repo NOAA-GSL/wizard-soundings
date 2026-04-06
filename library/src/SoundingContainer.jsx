@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import SkewT from './skewt/SkewT';
 import Hodograph from './hodograph/Hodograph';
 import StatsTable from './statsTable/StatsTable';
+import BoxPlot from './statsTable/boxplot';
 import './soundingContainer.css';
 
 /**
@@ -10,7 +11,7 @@ import './soundingContainer.css';
  * @param {Object} stats - The calculated thermo/wind statistics.
  * @param {Object} globalConfig - (Optional) Overrides for chart settings.
  */
-export default function SoundingContainer({ soundingData, stats, globalConfig = {} }) {
+export default function SoundingContainer({ soundingData, stats, derivedData, globalConfig = {} }) {
     // If data is missing, we can show a loading state or a placeholder
     if (!soundingData || !stats) {
         return <div className="sounding-loading">Loading sounding data...</div>;
@@ -39,6 +40,9 @@ export default function SoundingContainer({ soundingData, stats, globalConfig = 
             {/* Bottom Section: Data Table */}
             <div className="table-wrapper">
                 <StatsTable statsDictParam={stats} />
+            </div>
+            <div>
+                <BoxPlot statsDictParam={derivedData} curStat="muCAPE" />
             </div>
         </div>
     );
