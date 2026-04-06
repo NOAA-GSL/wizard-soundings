@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import * as d3 from 'd3';
-import sharp from '../Sharp';
 import useContainerDimensions from '../utilities/useContainerDimensions';
 import useZoomHandler from '../utilities/useZoomHandler';
 import ChartTooltip from '../utilities/tooltip';

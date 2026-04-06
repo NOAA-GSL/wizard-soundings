@@ -17,68 +17,94 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    box-sizing: border-box;
+    padding: 10px;
 }
 
 #meteostats {
-    /*  height: $statsHeight; */
-    /* height:100%; */
     font-size: 0.7rem;
-    min-width: 855px;
     width: 100%;
-    margin: 0 10px;
+    max-width: 1200px;
+    margin: 0 auto;
     display: flex;
+    flex-wrap: wrap;
     text-align: center;
     color: var(--text);
     background-color: var(--bg);
     border: 1px solid var(--border);
-    /*    border: 1px solid var(--2d-line-contrast1); */
-    td {
-        cursor: pointer;
-    }
-    td.noClick {
-        cursor: default;
-    }
-    .statscolumn {
-        flex: 3 1 max-content;
-        height: 100%;
-        border-right: 1px solid var(--border);
+}
 
-        /* #firsthalf {
-             width: 100%;
-             height: 100%; 
-        */
+#meteostats td {
+    cursor: pointer;
+    padding: 2px 4px; /* Slightly pad cells for better touch targets on mobile */
+}
 
-        #morewindstats {
-            width: 100%;
-            /*    flex: 0.5; */
-            height: 100%;
-        }
+#meteostats td.noClick {
+    cursor: default;
+}
 
-        /* #secondhalf {
-             width: 50%;
-             height: 100%;
-             float: left;
-         }
-        */
+/* Ensure inner tables take up the full column width */
+#meteostats table {
+    width: 100%;
+    border-collapse: collapse;
+}
 
-        #parcelstats {
-            width: 100%;
-            height: 50%;
-            border-bottom: 1px solid var(--border);
-        }
+/* Base rules that apply to ALL columns */
+.statscolumn {
+    height: 100%;
+    border-right: 1px solid var(--border);
+    overflow-x: auto;
+    min-width: 0;
+}
 
-        #thermostats {
-            width: 100%;
-            height: 50%;
-        }
+/* Left Column (Parcels & Thermo)*/
+.statscolumn:first-child {
+    flex: 1 0.5 360px;
+}
 
-        #windstats {
-            width: 100%;
-            height: 100%;
-        }
+/* Middle Column (Wind Stats)*/
+.statscolumn:nth-child(2) {
+    flex: 1 1 280px;
+}
+
+/* Right Column (Extra Wind)*/
+.statscolumn:last-child {
+    flex: 1 2 140px;
+    border-right: none; /* Clears the double border */
+}
+
+/* Inner table sizing */
+#parcelstats {
+    height: 50%;
+    border-bottom: 1px solid var(--border);
+}
+
+#thermostats {
+    height: 50%;
+}
+
+#windstats,
+#morewindstats {
+    height: 100%;
+}
+
+/* --- Responsive Breakpoints --- */
+@media (max-width: 795px) {
+    .statscolumn,
+    .statscolumn:first-child,
+    .statscolumn:nth-child(2),
+    .statscolumn:last-child {
+        flex: 1 1 100%;
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
     }
 
     .statscolumn:last-child {
-        flex: 1 1 auto;
+        border-bottom: none; /* Clean up the last divider */
+    }
+
+    #meteostats {
+        flex-direction: column; /* Stack vertically */
     }
 }

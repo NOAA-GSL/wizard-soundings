@@ -1,5 +1,4 @@
-import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
-import * as d3 from 'd3';
+import { useState } from 'react';
 import ChartTooltip from '../utilities/tooltip';
 import './statstable.css';
 
