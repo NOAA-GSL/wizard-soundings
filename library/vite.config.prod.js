@@ -16,6 +16,7 @@ export default defineConfig({
         lib: {
             // Defines the entry point for the library build. It resolves
             // to src/index.ts,indicating that the library starts from this file.
+            // eslint-disable-next-line no-undef
             entry: path.resolve(__dirname, 'src/index.js'),
             name: 'wizardSoundings',
             // A function that generates the output file
@@ -32,6 +33,7 @@ export default defineConfig({
                     react: 'React',
                     'react-dom': 'ReactDOM',
                     'react/jsx-runtime': 'ReactJsxRuntime',
+                    d3: 'd3',
                 },
             },
         },
