@@ -4,7 +4,7 @@ import './main.css';
 function App() {
     return (
         <div>
-            <h1> Welcome to desi soundings!</h1>
+            <h1> Welcome to Wizard Soundings!</h1>
 
             <ul>
                 <li>

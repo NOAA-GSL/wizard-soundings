@@ -1,10 +1,10 @@
-# DESI Soundings
+# Wizard Soundings
 
 A javascript sounding library
 
 ## Getting Started
 
-This is a monorepo setup using NPM Workspaces. The `/library` directory contains the `desi-soundings` package and the `/demo` directory contains the examples, which can be run with [Vite](https://vitejs.dev/).
+This is a monorepo setup using NPM Workspaces. The `/library` directory contains the `@noaa-gsl/wizard-soundings` package and the `/demo` directory contains the examples, which can be run with [Vite](https://vitejs.dev/).
 
 ### To install dependencies:
 
@@ -16,7 +16,7 @@ _**Note:** Following commands are all from the root directory_
     npm install
     ```
 
-2. Build the `desi-soundings` package
+2. Build the `@noaa-gsl/wizard-soundings` package
 
     ```bash
     npm run build

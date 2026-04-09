@@ -1,7 +1,7 @@
-import { StrictMode, useMemo, useState, useRef } from 'react';
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createSounding, SoundingContainer, data } from 'desi-soundings';
-import 'desi-soundings/desi-soundings.css';
+import { createSounding, SoundingContainer, data } from '@noaa-gsl/wizard-soundings';
+import '@noaa-gsl/wizard-soundings/styles.css';
 import './style.css';
 
 // Data contains the sample data.
@@ -25,7 +25,7 @@ function App() {
     return (
         <div className="app-layout">
             <header>
-                <h1>Welcome to desi soundings!</h1>
+                <h1>Welcome to Wizard Soundings!</h1>
             </header>
 
             <main className="main-content">

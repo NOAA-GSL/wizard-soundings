@@ -1,4 +1,4 @@
-# DESI Soundings
+# Wizard Soundings
 
 A javascript sounding library
 
@@ -6,8 +6,10 @@ A javascript sounding library
 
 ### To install:
 
+The soundings library is built on top of `d3` and will also require the installation of that dependency.
+
 ```bash
-npm install desi-soundings
+npm install @noaa-gsl/wizard-soundings d3
 ```
 
 ## Library

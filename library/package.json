@@ -1,22 +1,22 @@
 {
-    "name": "desi-soundings",
-    "version": "1.0.7",
-    "description": "An extension of deck.gl for producing weather graphics",
+    "name": "@noaa-gsl/wizard-soundings",
+    "version": "1.0.1",
+    "description": "An extension of D3 that visualizes upper-air soundings.",
     "type": "module",
-    "license": "MIT",
-    "main": "./dist/desi-soundings.umd.cjs",
-    "module": "./dist/desi-soundings.es.js",
+    "license": "Apache-2.0",
+    "main": "./dist/wizard-soundings.umd.cjs",
+    "module": "./dist/wizard-soundings.es.js",
     "exports": {
         ".": {
-            "import": "./dist/desi-soundings.es.js",
-            "require": "./dist/desi-soundings.umd.cjs"
+            "import": "./dist/wizard-soundings.es.js",
+            "require": "./dist/wizard-soundings.umd.cjs"
         },
-        "./desi-soundings.css": "./dist/desi-soundings.css"
+        "./styles.css": "./dist/styles.css"
     },
     "files": [
         "dist"
     ],
-    "homepage": "https://vlab.noaa.gov/gitlab-community/OAR/GSL/DESI/desi-soundings",
+    "homepage": "https://github.com/NOAA-GSL/wizard-soundings",
     "scripts": {
         "dev": "vite",
         "build:dev": "vite build --config vite.config.dev.js",
@@ -26,30 +26,15 @@
         "preview": "vite preview",
         "size": "npx vite-bundle-visualizer"
     },
-    "dependencies": {
-        "rbush": "^4.0.1"
-    },
     "devDependencies": {
-        "@eslint/js": "^9.25.0",
-        "@types/react": "^19.1.2",
-        "@types/react-dom": "^19.1.2",
-        "@vitejs/plugin-react": "^4.3.1",
-        "eslint": "^8.56.0",
-        "eslint-config-airbnb": "^19.0.4",
-        "eslint-config-prettier": "^9.1.2",
-        "eslint-plugin-import": "^2.31.0",
-        "eslint-plugin-prettier": "^5.2.1",
-        "eslint-plugin-react": "^7.35.0",
-        "eslint-plugin-react-hooks": "^4.6.0",
-        "eslint-plugin-react-refresh": "^0.4.19",
-        "globals": "^16.0.0",
-        "vite": "^6.3.5"
+        "@types/react": "^19.2.0",
+        "@types/react-dom": "^19.2.0",
+        "@vitejs/plugin-react": "^5.1.2",
+        "vite": "^8.0.8"
     },
-    "//": "Still figuring out best way to manage peerDependency versions",
     "peerDependencies": {
-        "d3": "~7.9.0",
-        "react": "^19.2.4",
-        "react-dom": ">=18.0.0",
-        "react-map-gl": ">=7.1.7"
+        "d3": "^7.9.0",
+        "react": "^18 || ^19",
+        "react-dom": "^18 || ^19"
     }
 }
