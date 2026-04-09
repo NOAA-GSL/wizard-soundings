@@ -1,5 +1,8 @@
 {
     "name": "@noaa-gsl/wizard-soundings",
+    "publishConfig": {
+        "access": "public"
+    },
     "version": "1.0.1",
     "description": "An extension of D3 that visualizes upper-air soundings.",
     "type": "module",
