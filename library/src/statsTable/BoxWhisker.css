@@ -15,22 +15,14 @@
         height 0.5s ease;
 }
 
-.whisker-line,
-.median-line {
-    stroke: rgb(31, 119, 180);
+.whisker-rect,
+.median-rect {
+    fill: rgb(31, 119, 180);
     transition:
-        x1 0.5s ease,
-        x2 0.5s ease,
-        y1 0.5s ease,
-        y2 0.5s ease;
-}
-
-.whisker-line {
-    stroke-width: 3px;
-}
-
-.median-line {
-    stroke-width: 4px;
+        x 0.5s ease,
+        width 0.5s ease,
+        y 0.5s ease,
+        height 0.5s ease;
 }
 
 .focus-circle {

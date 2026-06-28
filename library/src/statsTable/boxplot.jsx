@@ -47,9 +47,7 @@ export default function BoxPlot({ statsDictParam, curStat, config }) {
     const plotHeight = settings.height || (isVertical ? 400 : 120);
 
     const plotData = useMemo(() => {
-        console.log('BoxPlot statsDictParam:', statsDictParam); // Debugging log
         const data = statsDictParam[curStat];
-        console.log('BoxPlot data:', data); // Debugging log
         if (!data) return null;
 
         return [
