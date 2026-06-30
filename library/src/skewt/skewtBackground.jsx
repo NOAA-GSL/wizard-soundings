@@ -9,7 +9,7 @@ function getSkewX(temp, press, xScale, yScale, tanAlpha, baseY) {
     return xScale(temp) + (baseY - yScale(press)) / tanAlpha;
 }
 
-const SkewTBackground = React.memo(({ dimensions, scales, config }) => {
+function SkewTBackground({ dimensions, scales, config, transformString, transformState }) {
     const { width, height } = dimensions;
     const { xScale, yScale, tanAlpha, baseY } = scales;
 
@@ -104,97 +104,112 @@ const SkewTBackground = React.memo(({ dimensions, scales, config }) => {
             />
 
             <g clipPath="url(#skewt-clip-bg)">
-                {dryAdiabatPaths.map((d, i) => (
-                    <path
-                        key={`dry-${i}`}
-                        d={lineGen(d)}
-                        fill="none"
-                        stroke={config.colors.dryAdiabat}
-                        strokeWidth={1}
-                    />
-                ))}
-                {moistAdiabatPaths.map((d, i) => (
-                    <path
-                        key={`moist-${i}`}
-                        d={lineGen(d)}
-                        fill="none"
-                        stroke={config.colors.moistAdiabat}
-                        strokeWidth={1}
-                    />
-                ))}
-                {mixingRatioPaths.map((d, i) => (
-                    <path
-                        key={`mr-${i}`}
-                        d={lineGen(d)}
-                        fill="none"
-                        stroke={config.colors.mixingRatio}
-                        strokeWidth={1}
-                        strokeDasharray="4,4"
-                    />
-                ))}
-                {/* Isotherm Lines */}
-                {isothermLines.map((t) => {
-                    const xTop = getSkewX(t, config.topP, xScale, yScale, tanAlpha, baseY);
-                    // console.log('Isotherm:', t, 'xTop:', xTop);
-                    const xBottom = getSkewX(t, config.baseP, xScale, yScale, tanAlpha, baseY);
-                    // console.log('Isotherm:', t, 'xBottom:', xBottom, 'height:', height);
+                <g transform={transformString}>
+                    {dryAdiabatPaths.map((d, i) => (
+                        <path
+                            key={`dry-${i}`}
+                            d={lineGen(d)}
+                            fill="none"
+                            stroke={config.colors.dryAdiabat}
+                            strokeWidth={1}
+                        />
+                    ))}
+                    {moistAdiabatPaths.map((d, i) => (
+                        <path
+                            key={`moist-${i}`}
+                            d={lineGen(d)}
+                            fill="none"
+                            stroke={config.colors.moistAdiabat}
+                            strokeWidth={1}
+                        />
+                    ))}
+                    {mixingRatioPaths.map((d, i) => (
+                        <path
+                            key={`mr-${i}`}
+                            d={lineGen(d)}
+                            fill="none"
+                            stroke={config.colors.mixingRatio}
+                            strokeWidth={1}
+                            strokeDasharray="4,4"
+                        />
+                    ))}
+                    {/* Isotherm Lines */}
+                    {isothermLines.map((t) => {
+                        const xTop = getSkewX(t, config.topP, xScale, yScale, tanAlpha, baseY);
+                        const xBottom = getSkewX(t, config.baseP, xScale, yScale, tanAlpha, baseY);
 
-                    return (
-                        <g key={`iso-${t}`}>
+                        return (
+                            <g key={`iso-${t}`}>
+                                <line
+                                    x1={xTop}
+                                    y1={0}
+                                    x2={xBottom}
+                                    y2={height}
+                                    stroke={config.colors.isotherm}
+                                    strokeWidth={4}
+                                    strokeDasharray={t === 0 ? '' : '2,2'}
+                                />
+                            </g>
+                        );
+                    })}
+                    {/* Isobar Lines */}
+                    {config.isobars.map((p) => (
+                        <g key={`p-${p}`}>
                             <line
-                                x1={xTop}
-                                y1={0}
-                                x2={xBottom}
-                                y2={height}
-                                stroke={config.colors.isotherm}
-                                strokeWidth={4}
-                                strokeDasharray={t === 0 ? '' : '2,2'}
+                                x1={0}
+                                y1={yScale(p)}
+                                x2={width}
+                                y2={yScale(p)}
+                                stroke={config.colors.isobar}
+                                strokeWidth={1}
                             />
                         </g>
+                    ))}
+                </g>
+            </g>
+            {/* Isotherm Labels (outside of clipping area) */}
+            <g>
+                {isothermLines.map((t) => {
+                    // Calculate exactly where the slanted line crosses the visual bottom of the chart
+                    const yDataAtBottom = (height - transformState.y) / transformState.k;
+                    const xDataAtBottom = xScale(t) + (baseY - yDataAtBottom) / tanAlpha;
+                    const zoomedX = transformState.k * xDataAtBottom + transformState.x;
+                    if (zoomedX < 0 || zoomedX > width) return null;
+
+                    return (
+                        <text
+                            key={`label-iso-${t}`}
+                            x={zoomedX}
+                            y={height + 8}
+                            fontSize="14px"
+                            textAnchor="middle"
+                        >
+                            {t}
+                        </text>
+                    );
+                })}
+                {/* Isobar Labels */}
+                {config.isobars.map((p) => {
+                    // Calculate exact screen Y coordinate
+                    const zoomedY = transformState.k * yScale(p) + transformState.y;
+                    if (zoomedY < 0 || zoomedY > height) return null;
+
+                    return (
+                        <text
+                            key={`p-lbl-${p}`}
+                            x={-5}
+                            y={zoomedY}
+                            dy="-0.35em"
+                            fontSize="14px"
+                            textAnchor="end"
+                        >
+                            {p}
+                        </text>
                     );
                 })}
             </g>
-            {/* Isotherm Labels (outside of clipping area) */}
-            {isothermLines.map((t) => {
-                const xBottom = getSkewX(t, config.baseP, xScale, yScale, tanAlpha, baseY);
-                // Only draw if the label falls within the horizontal bounds of the chart
-                if (xBottom < 0 || xBottom > width) return null;
-                return (
-                    <text
-                        key={`label-iso-${t}`}
-                        x={xBottom}
-                        y={height + 8} // Safely below the clipped area
-                        fontSize="14px"
-                        textAnchor="middle"
-                    >
-                        {t}
-                    </text>
-                );
-            })}
-            {/* Isobar Lines and Labels */}
-            {config.isobars.map((p) => (
-                <g key={`p-${p}`}>
-                    <line
-                        x1={0}
-                        y1={yScale(p)}
-                        x2={width}
-                        y2={yScale(p)}
-                        stroke={config.colors.isobar}
-                        strokeWidth={1}
-                    />
-                    <text
-                        x={-5} // Positioned to the left of the border
-                        y={yScale(p)}
-                        dy="-0.35em"
-                        fontSize="14px"
-                        textAnchor="end"
-                    >
-                        {p}
-                    </text>
-                </g>
-            ))}
         </g>
     );
-});
+}
 
-export default SkewTBackground;
+export default React.memo(SkewTBackground);

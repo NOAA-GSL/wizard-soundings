@@ -59,7 +59,6 @@ function getSkewX(temp, press, xScale, yScale, tanAlpha, baseY) {
 
 /**
  * Extracts and formats parcel trace data from the stats object.
- * Supports 'sfc' (Surface), 'ml' (Mixed Layer), 'mu' (Most Unstable).
  */
 function useParcelTrace(stats, parcelType) {
     return useMemo(() => {
@@ -100,7 +99,6 @@ function SkewTTooltipContent({ data, colors }) {
 /* Component: SkewT
     Renders an interactive skew-t with sounding data.
 */
-
 export default function SkewT({ soundingParam, statsDictParam, config = {}, style = {} }) {
     // --- Dimensions and Setup ---
     const [containerRef, dimensions] = useContainerDimensions();
@@ -121,13 +119,9 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
     // --- D3 Scales & Generators ---
     const { scales, lineGens } = useMemo(() => {
         if (dimensions.width === 0) return { scales: {}, lineGens: {} };
-
-        // const { w, h } = dims;
         const { margin, baseP, topP, minT, maxT, skewAngle } = settings;
-        // 1. Calculate the available space
         const availableW = dimensions.width - margin.left - margin.right;
         const availableH = dimensions.height - margin.top - margin.bottom;
-
         let innerW;
         let innerH;
 
@@ -142,8 +136,8 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
         }
 
         // Calculate offsets to center the plot area
-        const offsetX = (dimensions.width - innerW) / 2;
-        const offsetY = (dimensions.height - innerH) / 2;
+        const offsetX = margin.left + (availableW - innerW) / 2;
+        const offsetY = margin.top + (availableH - innerH) / 2;
 
         // Scales
         const yScale = d3.scaleLog().domain([baseP, topP]).range([innerH, 0]);
@@ -217,19 +211,12 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
         (e) => {
             if (!meanProfile || !scales.yScale) return;
 
-            // 1. Get raw mouse coordinates relative to the SVG using currentTarget!
+            // Get raw mouse coordinates relative to the SVG using currentTarget
             const rect = e.currentTarget.getBoundingClientRect();
-            // const rawX = e.clientX - rect.left;
             const rawY = e.clientY - rect.top;
 
-            // 2. Adjust for Margin
-            // const xInGroup = rawX - scales.offsetX;
-            const yInGroup = rawY - scales.offsetY;
-
-            // 3. Inverse Zoom (Apply transform inverse to mouse Y)
-            const transformedY = (yInGroup - transformState.y) / transformState.k;
-
-            // 4. Invert scale to get Pressure
+            // Inverse Zoom (Apply transform inverse to mouse Y)
+            const transformedY = (rawY - transformState.y) / transformState.k;
             const pHover = scales.yScale.invert(transformedY);
 
             let closest = null;
@@ -275,22 +262,19 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
         [meanProfile, scales, transformState],
     );
 
-    const transformString = `translate(${transformState.x},${transformState.y}) scale(${transformState.k})`;
+    const transformString = `translate(${transformState.x || 0},${transformState.y || 0}) scale(${transformState.k || 1})`;
 
     return (
         <div ref={containerRef} className="skewt-container">
             {dimensions.width > 0 && scales.yScale && (
                 <>
-                    <svg
-                        ref={zoomRefCallback}
-                        width={dimensions.width}
-                        height={dimensions.height}
-                        onMouseMove={handleMouseMove}
-                        onMouseLeave={() => setHoverInfo(null)}
-                    >
+                    <svg width={dimensions.width} height={dimensions.height}>
                         {/* Clip Path for the chart area */}
                         <defs>
                             <clipPath id="skewt-chart-area">
+                                <rect x={0} y={0} width={scales.innerW} height={scales.innerH} />
+                            </clipPath>
+                            <clipPath id="skewt-barb-area">
                                 <rect
                                     x={0}
                                     y={0}
@@ -301,14 +285,28 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
                         </defs>
                         <g transform={`translate(${scales.offsetX}, ${scales.offsetY})`}>
                             {/* ZOOMABLE GROUP */}
-                            <g transform={transformString}>
-                                <SkewTBackground
-                                    dimensions={{ width: scales.innerW, height: scales.innerH }}
-                                    scales={scales}
-                                    config={settings}
-                                />
-                                <g clipPath="url(#skewt-chart-area)">
-                                    {/* 2. Parcel Trace */}
+                            <rect
+                                ref={zoomRefCallback}
+                                x={0}
+                                y={0}
+                                width={scales.innerW + settings.margin.right} // Covers chart & barbs
+                                height={scales.innerH}
+                                fill="transparent"
+                                stroke="none"
+                                onMouseMove={handleMouseMove}
+                                onMouseLeave={() => setHoverInfo(null)}
+                                style={{ touchAction: 'none', cursor: 'move' }}
+                            />
+                            <SkewTBackground
+                                dimensions={{ width: scales.innerW, height: scales.innerH }}
+                                scales={scales}
+                                config={settings}
+                                transformString={transformString}
+                                transformState={transformState}
+                            />
+                            <g clipPath="url(#skewt-chart-area)" pointerEvents="none">
+                                <g transform={transformString}>
+                                    {/* Parcel Trace */}
                                     {parcelTraceData && (
                                         <path
                                             d={lineGens.parcel(parcelTraceData)}
@@ -319,66 +317,60 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
                                             opacity={0.8}
                                         />
                                     )}
-                                    {
-                                        <>
-                                            {/* 3. Background Ensemble Member Profiles */}
-                                            {memberProfiles.map((member, i) => (
-                                                <React.Fragment
-                                                    key={`member-${member[0]?.mem || i}`}
-                                                >
-                                                    {/* Member Dewpoint */}
-                                                    <path
-                                                        d={lineGens.dwpt(member)}
-                                                        fill="none"
-                                                        stroke={settings.colors.dwpt}
-                                                        strokeWidth={1}
-                                                        opacity={0.35}
-                                                    />
-                                                    {/* Member Temperature */}
-                                                    <path
-                                                        d={lineGens.temp(member)}
-                                                        fill="none"
-                                                        stroke={settings.colors.temp}
-                                                        strokeWidth={1}
-                                                        opacity={0.35}
-                                                    />
-                                                </React.Fragment>
-                                            ))}
+                                    {/* Background Ensemble Member Profiles */}
+                                    {memberProfiles.map((member, i) => (
+                                        <React.Fragment key={`member-${member[0]?.mem || i}`}>
+                                            {/* Member Dewpoint */}
+                                            <path
+                                                d={lineGens.dwpt(member)}
+                                                fill="none"
+                                                stroke={settings.colors.dwpt}
+                                                strokeWidth={1}
+                                                opacity={0.35}
+                                            />
+                                            {/* Member Temperature */}
+                                            <path
+                                                d={lineGens.temp(member)}
+                                                fill="none"
+                                                stroke={settings.colors.temp}
+                                                strokeWidth={1}
+                                                opacity={0.35}
+                                            />
+                                        </React.Fragment>
+                                    ))}
 
-                                            {/* 4. Mean Profile (Drawn on top) */}
-                                            {meanProfile && (
-                                                <g className="mean-profile-group">
-                                                    {/* Mean Wetbulb */}
-                                                    {meanProfile[0]?.wetb != null && (
-                                                        <path
-                                                            d={lineGens.wetbulb(meanProfile)}
-                                                            fill="none"
-                                                            stroke={settings.colors.wetbulb}
-                                                            strokeWidth={2}
-                                                            opacity={0.9}
-                                                        />
-                                                    )}
-                                                    {/* Mean Dewpoint */}
-                                                    <path
-                                                        d={lineGens.dwpt(meanProfile)}
-                                                        fill="none"
-                                                        stroke={settings.colors.dwpt}
-                                                        strokeWidth={3}
-                                                        opacity={1}
-                                                    />
-                                                    {/* Mean Temperature */}
-                                                    <path
-                                                        d={lineGens.temp(meanProfile)}
-                                                        fill="none"
-                                                        stroke={settings.colors.temp}
-                                                        strokeWidth={3}
-                                                        opacity={1}
-                                                    />
-                                                </g>
+                                    {/* Mean Profile (Drawn on top) */}
+                                    {meanProfile && (
+                                        <g className="mean-profile-group">
+                                            {/* Mean Wetbulb */}
+                                            {meanProfile[0]?.wetb != null && (
+                                                <path
+                                                    d={lineGens.wetbulb(meanProfile)}
+                                                    fill="none"
+                                                    stroke={settings.colors.wetbulb}
+                                                    strokeWidth={2}
+                                                    opacity={0.9}
+                                                />
                                             )}
-                                        </>
-                                    }
-                                    {/* 5. Tooltip Highlight Circles */}
+                                            {/* Mean Dewpoint */}
+                                            <path
+                                                d={lineGens.dwpt(meanProfile)}
+                                                fill="none"
+                                                stroke={settings.colors.dwpt}
+                                                strokeWidth={3}
+                                                opacity={1}
+                                            />
+                                            {/* Mean Temperature */}
+                                            <path
+                                                d={lineGens.temp(meanProfile)}
+                                                fill="none"
+                                                stroke={settings.colors.temp}
+                                                strokeWidth={3}
+                                                opacity={1}
+                                            />
+                                        </g>
+                                    )}
+                                    {/* Tooltip Highlight Circles */}
                                     {hoverInfo && (
                                         <g pointerEvents="none">
                                             <line
@@ -407,47 +399,59 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
                                         </g>
                                     )}
                                 </g>
-                                {
-                                    <g className="wind-barbs-container">
-                                        {/* 1. Ensemble Member Barbs (Background) */}
-                                        {memberBarbs.map((barbSet, i) => (
-                                            <g
-                                                key={`member-barbs-${i}`}
-                                                opacity={0.35}
-                                                strokeWidth={1}
-                                            >
-                                                {barbSet.map((d, j) => (
+                            </g>
+                            {/* --- Wind Barbs --- */}
+                            {/* Drawn OUTSIDE the zoom group so they stay locked horizontally. */}
+                            {
+                                <g
+                                    className="wind-barbs-container"
+                                    pointerEvents="none"
+                                    clipPath="url(#skewt-barb-area)"
+                                >
+                                    {/* 1. Ensemble Member Barbs (Background) */}
+                                    {memberBarbs.map((barbSet, i) => (
+                                        <g key={`member-barbs-${i}`} opacity={0.35} strokeWidth={1}>
+                                            {barbSet.map((d, j) => {
+                                                // Manually calculate the exact screen Y coordinate based on the current zoom level
+                                                const zoomedY =
+                                                    transformState.k * scales.yScale(d.press) +
+                                                    transformState.y;
+                                                return (
                                                     <WindBarb
                                                         key={`m-barb-${i}-${j}`}
                                                         u={d.uwnd}
                                                         v={d.vwnd}
-                                                        x={scales.innerW + 25}
-                                                        y={scales.yScale(d.press)}
+                                                        x={scales.innerW}
+                                                        y={zoomedY}
                                                     />
-                                                ))}
-                                            </g>
-                                        ))}
+                                                );
+                                            })}
+                                        </g>
+                                    ))}
 
-                                        {/* 2. Mean Barbs (Foreground) */}
-                                        {meanBarbs.length > 0 && (
-                                            <g key="mean-barbs" opacity={1} strokeWidth={1.5}>
-                                                {meanBarbs.map((d, j) => (
+                                    {/* 2. Mean Barbs (Foreground) */}
+                                    {meanBarbs.length > 0 && (
+                                        <g key="mean-barbs" opacity={1} strokeWidth={1.5}>
+                                            {meanBarbs.map((d, j) => {
+                                                // Manually calculate the exact screen Y coordinate based on the current zoom level
+                                                const zoomedY =
+                                                    transformState.k * scales.yScale(d.press) +
+                                                    transformState.y;
+                                                return (
                                                     <WindBarb
                                                         key={`mean-barb-${j}`}
                                                         u={d.uwnd}
                                                         v={d.vwnd}
-                                                        x={scales.innerW + 25}
-                                                        y={scales.yScale(d.press)}
+                                                        x={scales.innerW}
+                                                        y={zoomedY}
                                                     />
-                                                ))}
-                                            </g>
-                                        )}
-                                    </g>
-                                }
-                            </g>
+                                                );
+                                            })}
+                                        </g>
+                                    )}
+                                </g>
+                            }
                         </g>
-                        {/* --- Wind Barbs --- */}
-                        {/* Drawn OUTSIDE the zoom group so they stay locked horizontally. */}
                     </svg>
 
                     {/* HTML Tooltip */}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import useContainerDimensions from '../utilities/useContainerDimensions';
 import useZoomHandler from '../utilities/useZoomHandler';
@@ -10,7 +10,6 @@ import './hodograph.css';
 /* --- Hodograph and Helpers --- */
 /*-------------------------------*/
 
-// --- Configuration: ---
 const DEFAULT_CONFIG = {
     // Max wind speed for scaling
     margin: 25,
@@ -63,10 +62,19 @@ function getColoredSegments(meanMemberData, segmentConfig) {
     return segments;
 }
 
+// Helper: Convert meteorological polar coordinates (wind) to Cartesian (X/Y)
+function getCartesianCoords(wdir, twnd, rScale) {
+    const angleRad = (wdir + 180) * (Math.PI / 180);
+    const r = rScale(twnd);
+    return {
+        x: r * Math.sin(angleRad),
+        y: -r * Math.cos(angleRad),
+    };
+}
+
 /* Component: Hodograph
     Renders an interactive hodograph with wind data.
 */
-
 export default function Hodograph({ soundingParam, statsDictParam, config = {}, styles = {} }) {
     // --- Dimensions and Setup ---
     const [containerRef, dimensions] = useContainerDimensions();
@@ -81,6 +89,12 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
         }),
         [config],
     );
+
+    const innerW = Math.max(0, dimensions.width);
+    const innerH = Math.max(0, dimensions.height);
+    const minDim = Math.min(innerW, innerH);
+    const xOffset = (innerW - minDim) / 2;
+    const yOffset = (innerH - minDim) / 2;
 
     // --- D3 Scales & Generators ---
     const { rScale, lineGenerator, symbolGenerator } = useMemo(() => {
@@ -115,9 +129,8 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
 
         // Flatten logic
         const meanM =
-            soundingParam?.filter((d) => d?.length > 0 && d[0]?.mem === 'grandensemble')?.[0] || [];
+            soundingParam?.find((d) => d?.length > 0 && d[0]?.mem === 'grandensemble') || [];
         const segs = getColoredSegments(meanM, settings.segments);
-
         const points = segs.map((s) => s.points[0]);
 
         return {
@@ -136,133 +149,147 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
         });
     };
 
-    const centerX = dimensions.width / 2;
-    const centerY = dimensions.height / 2;
-    const transformString = `translate(${transformState.x},${transformState.y}) scale(${transformState.k})`;
+    const transformString = `translate(${transformState.x || 0},${transformState.y || 0}) scale(${transformState.k || 1})`;
 
     return (
         <div ref={containerRef} className="hodobox" style={styles}>
-            {/* Only render SVG if we have dimensions */}
             {dimensions.width > 0 && (
                 <>
                     <svg
-                        ref={zoomRefCallback}
                         width={dimensions.width}
                         height={dimensions.height}
-                        style={{ cursor: 'move', display: 'block' }}
+                        style={{ display: 'block' }}
                     >
-                        <rect
-                            width={dimensions.width}
-                            height={dimensions.height}
-                            fill="transparent"
-                        />
-                        <g transform={transformString} style={{ pointerEvents: 'none' }}>
-                            <g transform={`translate(${centerX}, ${centerY})`}>
-                                {rScale && (
-                                    <HodographBackground
-                                        rScale={rScale}
-                                        maxWind={settings.maxWind}
-                                        ringConfig={settings.rings}
-                                    />
-                                )}
+                        <defs>
+                            {/* Clip Path for the chart area */}
+                            <clipPath id="hodo-chart-area">
+                                <rect x={xOffset} y={yOffset} width={minDim} height={minDim} />
+                            </clipPath>
+                        </defs>
+                        <g>
+                            {/* ZOOMABLE GROUP */}
+                            <rect
+                                ref={zoomRefCallback}
+                                x={xOffset}
+                                y={yOffset}
+                                width={minDim}
+                                height={minDim}
+                                fill="transparent"
+                                stroke="black"
+                                style={{ touchAction: 'none', cursor: 'move' }}
+                            />
+                            <g clipPath="url(#hodo-chart-area)" style={{ pointerEvents: 'none' }}>
+                                <g transform={transformString}>
+                                    <g transform={`translate(${innerW / 2}, ${innerH / 2})`}>
+                                        {rScale && (
+                                            <HodographBackground
+                                                rScale={rScale}
+                                                maxWind={settings.maxWind}
+                                                ringConfig={settings.rings}
+                                            />
+                                        )}
 
-                                {/* Ensemble Member Lines */}
-                                <g className="member-lines-group">
-                                    {allMembers.map((memberData, i) => (
-                                        <path
-                                            key={i}
-                                            d={lineGenerator(memberData)}
-                                            className="hodoline member"
-                                            onMouseOver={(e) =>
-                                                handleMouseOver(
-                                                    e,
-                                                    <div>Member: {memberData[0]?.mem}</div>,
-                                                )
-                                            }
-                                            onMouseOut={() => setHoverInfo(null)}
-                                        />
-                                    ))}
-                                </g>
-
-                                {/* Mean Line Segments */}
-                                <g className="mean-line-group">
-                                    {segments.map((seg, i) => (
-                                        <path
-                                            key={i}
-                                            d={lineGenerator(seg.points)}
-                                            stroke={seg.color}
-                                            className="hodoline mean"
-                                        />
-                                    ))}
-                                </g>
-
-                                {/* Major Data Points (Circles) */}
-                                {majorPoints.map((d, i) => {
-                                    const angleRad = (d.wdir + 180) * (Math.PI / 180);
-                                    const r = rScale(d.twnd);
-                                    const cx = r * Math.sin(angleRad);
-                                    const cy = -r * Math.cos(angleRad);
-
-                                    return (
-                                        <circle
-                                            key={i}
-                                            cx={cx}
-                                            cy={cy}
-                                            r={3 / transformState.k} // Adjust radius based on zoom
-                                            className="hodo-datapoint"
-                                            onMouseOver={(e) =>
-                                                handleMouseOver(
-                                                    e,
-                                                    <div>
-                                                        Height: {d.hght.toFixed(0)}
-                                                        <br />
-                                                        Spd: {d.twnd.toFixed(0)}
-                                                        <br />
-                                                        Dir: {d.wdir.toFixed(0)}
-                                                    </div>,
-                                                )
-                                            }
-                                            onMouseOut={() => setHoverInfo(null)}
-                                        />
-                                    );
-                                })}
-
-                                {/* Bunkers Storm Motion (Crosses) */}
-                                {statsDictParam &&
-                                    [statsDictParam.rstVector, statsDictParam.lstVector].map(
-                                        (vec, i) => {
-                                            if (!vec) return null;
-                                            const angleRad = (vec.drx + 180) * (Math.PI / 180);
-                                            const r = rScale(vec.mag);
-                                            const x = r * Math.sin(angleRad);
-                                            const y = -r * Math.cos(angleRad);
-
-                                            return (
+                                        {/* Ensemble Member Lines */}
+                                        <g className="member-lines-group">
+                                            {allMembers.map((memberData, i) => (
                                                 <path
-                                                    key={`bunker-${i}`}
-                                                    d={symbolGenerator()}
-                                                    transform={`translate(${x}, ${y}) scale(${1 / transformState.k})`} // Scale symbol inverse to zoom
-                                                    className="hodo-bunkers"
+                                                    key={i}
+                                                    d={lineGenerator(memberData)}
+                                                    className="hodoline member"
+                                                    onMouseOver={(e) =>
+                                                        handleMouseOver(
+                                                            e,
+                                                            <div>Member: {memberData[0]?.mem}</div>,
+                                                        )
+                                                    }
+                                                    onMouseOut={() => setHoverInfo(null)}
+                                                />
+                                            ))}
+                                        </g>
+
+                                        {/* Mean Line Segments */}
+                                        <g className="mean-line-group">
+                                            {segments.map((seg, i) => (
+                                                <path
+                                                    key={i}
+                                                    d={lineGenerator(seg.points)}
+                                                    stroke={seg.color}
+                                                    className="hodoline mean"
+                                                />
+                                            ))}
+                                        </g>
+
+                                        {/* Major Data Points (Circles) */}
+                                        {majorPoints.map((d, i) => {
+                                            const { x, y } = getCartesianCoords(
+                                                d.wdir,
+                                                d.twnd,
+                                                rScale,
+                                            );
+                                            return (
+                                                <circle
+                                                    key={`point-${i}`}
+                                                    cx={x}
+                                                    cy={y}
+                                                    r={3 / transformState.k} // Adjust radius based on zoom
+                                                    className="hodo-datapoint"
                                                     onMouseOver={(e) =>
                                                         handleMouseOver(
                                                             e,
                                                             <div>
-                                                                <b>
-                                                                    Bunkers{' '}
-                                                                    {i === 0 ? 'Right' : 'Left'}
-                                                                </b>
+                                                                Height: {d.hght.toFixed(0)}
                                                                 <br />
-                                                                Spd: {vec.mag.toFixed(0)}
+                                                                Spd: {d.twnd.toFixed(0)}
                                                                 <br />
-                                                                Dir: {vec.drx.toFixed(0)}
+                                                                Dir: {d.wdir.toFixed(0)}
                                                             </div>,
                                                         )
                                                     }
                                                     onMouseOut={() => setHoverInfo(null)}
                                                 />
                                             );
-                                        },
-                                    )}
+                                        })}
+
+                                        {/* Bunkers Storm Motion (Crosses) */}
+                                        {statsDictParam &&
+                                            [
+                                                statsDictParam.rstVector,
+                                                statsDictParam.lstVector,
+                                            ].map((vec, i) => {
+                                                if (!vec) return null;
+                                                const { x, y } = getCartesianCoords(
+                                                    vec.drx,
+                                                    vec.mag,
+                                                    rScale,
+                                                );
+
+                                                return (
+                                                    <path
+                                                        key={`bunker-${i}`}
+                                                        d={symbolGenerator()}
+                                                        transform={`translate(${x}, ${y}) scale(${1 / transformState.k})`}
+                                                        className="hodo-bunkers"
+                                                        onMouseOver={(e) =>
+                                                            handleMouseOver(
+                                                                e,
+                                                                <div>
+                                                                    <b>
+                                                                        Bunkers{' '}
+                                                                        {i === 0 ? 'Right' : 'Left'}
+                                                                    </b>
+                                                                    <br />
+                                                                    Spd: {vec.mag.toFixed(0)}
+                                                                    <br />
+                                                                    Dir: {vec.drx.toFixed(0)}
+                                                                </div>,
+                                                            )
+                                                        }
+                                                        onMouseOut={() => setHoverInfo(null)}
+                                                    />
+                                                );
+                                            })}
+                                    </g>
+                                </g>
                             </g>
                         </g>
                     </svg>
@@ -275,9 +302,7 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
                                 {/* The Color Box */}
                                 <span
                                     className="hodo-legend-colorbox"
-                                    style={{
-                                        backgroundColor: item.color,
-                                    }}
+                                    style={{ backgroundColor: item.color }}
                                 />
                                 <span>{item.label}</span>
                             </div>

@@ -48,6 +48,14 @@ function useZoomHandler(dimensions, zoomConfig) {
 
             selection.call(zoom);
 
+            // Explicitly trap the wheel event to prevent the page from scrolling
+            // We store the function on the node to ensure we can clean it up safely
+            if (node._preventScroll) {
+                node.removeEventListener('wheel', node._preventScroll);
+            }
+            node._preventScroll = (e) => e.preventDefault();
+            node.addEventListener('wheel', node._preventScroll, { passive: false });
+
             // Restore previous transform so re-renders don't reset the view
             const currentT = d3.zoomTransform(node);
             const { k, x, y } = transformRef.current;
