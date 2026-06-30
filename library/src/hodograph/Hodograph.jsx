@@ -166,17 +166,16 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
                                 <rect x={xOffset} y={yOffset} width={minDim} height={minDim} />
                             </clipPath>
                         </defs>
-                        <g>
+                        <g ref={zoomRefCallback} style={{ cursor: 'move' }}>
                             {/* ZOOMABLE GROUP */}
                             <rect
-                                ref={zoomRefCallback}
                                 x={xOffset}
                                 y={yOffset}
                                 width={minDim}
                                 height={minDim}
                                 fill="transparent"
                                 stroke="black"
-                                style={{ touchAction: 'none', cursor: 'move' }}
+                                style={{ touchAction: 'none' }}
                             />
                             <g clipPath="url(#hodo-chart-area)" style={{ pointerEvents: 'none' }}>
                                 <g transform={transformString}>
