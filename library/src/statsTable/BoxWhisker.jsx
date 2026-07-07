@@ -109,23 +109,41 @@ function BoxWhisker({
                     const rectWidth = isHoriz ? Math.max(0, b2 - b1) : bw;
                     const rectHeight = isHoriz ? bw : Math.max(0, b1 - b2);
 
+                    // Whisker 1 (Lower) Math (3px thick)
+                    const w1Width = isHoriz ? Math.max(0, b1 - w1) : 3;
+                    const w1Height = isHoriz ? 3 : Math.max(0, w1 - b1);
+                    const w1X = isHoriz ? w1 : bandCenter - 1.5;
+                    const w1Y = isHoriz ? bandCenter - 1.5 : b1;
+
+                    // Whisker 2 (Upper) Math (3px thick)
+                    const w2Width = isHoriz ? Math.max(0, w2 - b2) : 3;
+                    const w2Height = isHoriz ? 3 : Math.max(0, b2 - w2);
+                    const w2X = isHoriz ? b2 : bandCenter - 1.5;
+                    const w2Y = isHoriz ? bandCenter - 1.5 : w2;
+
+                    // Median Line Math (4px thick)
+                    const medX = isHoriz ? med - 2 : rectX;
+                    const medY = isHoriz ? rectY : med - 2;
+                    const medWidth = isHoriz ? 4 : rectWidth;
+                    const medHeight = isHoriz ? rectHeight : 4;
+
                     return (
-                        <g key={`mark-${i}`} className="data-row">
+                        <g key={`mark-${d}`} className="data-row">
                             {/* Whisker 1 (Lower) */}
-                            <line
-                                x1={isHoriz ? w1 : bandCenter}
-                                y1={isHoriz ? bandCenter : w1}
-                                x2={isHoriz ? b1 : bandCenter}
-                                y2={isHoriz ? bandCenter : b1}
-                                className="whisker-line"
+                            <rect
+                                x={w1X}
+                                y={w1Y}
+                                width={w1Width}
+                                height={w1Height}
+                                className="whisker-rect"
                             />
                             {/* Whisker 2 (Upper) */}
-                            <line
-                                x1={isHoriz ? b2 : bandCenter}
-                                y1={isHoriz ? bandCenter : b2}
-                                x2={isHoriz ? w2 : bandCenter}
-                                y2={isHoriz ? bandCenter : w2}
-                                className="whisker-line"
+                            <rect
+                                x={w2X}
+                                y={w2Y}
+                                width={w2Width}
+                                height={w2Height}
+                                className="whisker-rect"
                             />
                             {/* Main Box */}
                             <rect
@@ -136,23 +154,26 @@ function BoxWhisker({
                                 className="box-rect"
                             />
                             {/* Median Line */}
-                            <line
-                                x1={isHoriz ? med : rectX}
-                                y1={isHoriz ? rectY : med}
-                                x2={isHoriz ? med : rectX + rectWidth}
-                                y2={isHoriz ? rectY + rectHeight : med}
-                                className="median-line"
+                            <rect
+                                x={medX}
+                                y={medY}
+                                width={medWidth}
+                                height={medHeight}
+                                className="median-rect"
                             />
                             {/* Data points (Foci) */}
-                            {[w1, b1, b2, w2].map((val, idx) => (
-                                <circle
-                                    key={`focus-${idx}`}
-                                    className="focus-circle"
-                                    r={4}
-                                    cx={isHoriz ? val : bandCenter}
-                                    cy={isHoriz ? bandCenter : val}
-                                />
-                            ))}
+                            {[w1, b1, b2, w2].map((val, idx) => {
+                                const cx = isHoriz ? val : bandCenter;
+                                const cy = isHoriz ? bandCenter : val;
+                                return (
+                                    <circle
+                                        key={`focus-${idx}`}
+                                        className="focus-circle"
+                                        r={4}
+                                        transform={`translate(${cx}, ${cy})`}
+                                    />
+                                );
+                            })}
                         </g>
                     );
                 })}
