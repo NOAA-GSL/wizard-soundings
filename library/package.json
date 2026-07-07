@@ -27,13 +27,16 @@
         "build": "vite build --config vite.config.prod.js",
         "lint": "eslint .",
         "preview": "vite preview",
-        "size": "npx vite-bundle-visualizer"
+        "size": "npx vite-bundle-visualizer",
+        "test": "vitest run",
+        "test:watch": "vitest"
     },
     "devDependencies": {
         "@types/react": "^19.2.0",
         "@types/react-dom": "^19.2.0",
         "@vitejs/plugin-react": "^5.1.2",
-        "vite": "^8.0.8"
+        "vite": "^8.0.8",
+        "vitest": "^4.1.10"
     },
     "peerDependencies": {
         "d3": "^7.9.0",
