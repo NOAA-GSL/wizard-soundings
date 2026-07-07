@@ -36,4 +36,17 @@ _**Note:** Following commands are all from the root directory_
 npm run dev
 ```
 
+### To run tests:
+
+```bash
+# from the root directory
+npm test
+```
+
+To run tests in watch mode (re-runs on file changes):
+
+```bash
+npm run test:watch --workspace=library
+```
+
 ## Library

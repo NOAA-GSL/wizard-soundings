@@ -192,7 +192,7 @@ const soundingFormat = (d, time) => {
  */
 
 // Calculate thermo statistics
-const sharpStats = (profile) => {
+export const sharpStats = (profile) => {
     // Most unstable pressure
     const { mem } = profile;
     const mupclpres = sharp.mostUnstableLayer(profile);
