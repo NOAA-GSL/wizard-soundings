@@ -149,7 +149,7 @@ const WIND_ROWS = [
     },
     {
         label: 'SFC-8km',
-        srh: 'right_srh1km',
+        srh: 'right_srh8km',
         shear: 'sfc8kmshr',
         mw: 'mw8Vector',
         srw: 'srw8Vector',
