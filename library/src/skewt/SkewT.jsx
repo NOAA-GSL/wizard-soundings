@@ -47,6 +47,7 @@ const DEFAULT_CONFIG = {
         min: 1,
         max: 5,
     },
+    renderTooltip: null,
 };
 
 /*--------------------------------*/
@@ -81,6 +82,7 @@ function useParcelTrace(stats, parcelType) {
     }, [stats, parcelType]);
 }
 
+// Renders default tooltip content for the SkewT.
 function SkewTTooltipContent({ data, colors }) {
     return (
         <>
@@ -460,10 +462,16 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
                             x={hoverInfo.screenX}
                             y={hoverInfo.screenY}
                             content={
-                                <SkewTTooltipContent
-                                    data={hoverInfo.data}
-                                    colors={settings.colors}
-                                />
+                                // If the user provided a custom render function, use it.
+                                // Otherwise, fall back to the default component.
+                                settings.renderTooltip ? (
+                                    settings.renderTooltip(hoverInfo.data)
+                                ) : (
+                                    <SkewTTooltipContent
+                                        data={hoverInfo.data}
+                                        colors={settings.colors}
+                                    />
+                                )
                             }
                         />
                     )}
