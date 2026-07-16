@@ -111,7 +111,13 @@ function HodographTooltipContent({ data, type }) {
 /* Component: Hodograph
     Renders an interactive hodograph with wind data.
 */
-export default function Hodograph({ soundingParam, statsDictParam, config = {}, styles = {} }) {
+export default function Hodograph({
+    soundingParam,
+    statsDictParam,
+    config = {},
+    className = 'hodobox',
+    sx = {},
+}) {
     // --- Dimensions and Setup ---
     const [containerRef, dimensions] = useContainerDimensions();
     const [hoverInfo, setHoverInfo] = useState(null);
@@ -189,7 +195,7 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
     const transformString = `translate(${transformState.x || 0},${transformState.y || 0}) scale(${transformState.k || 1})`;
 
     return (
-        <div ref={containerRef} className="hodobox" style={styles}>
+        <div ref={containerRef} className={className} style={sx}>
             {dimensions.width > 0 && (
                 <>
                     <svg

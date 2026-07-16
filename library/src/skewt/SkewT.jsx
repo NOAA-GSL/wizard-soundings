@@ -101,7 +101,13 @@ function SkewTTooltipContent({ data, colors }) {
 /* Component: SkewT
     Renders an interactive skew-t with sounding data.
 */
-export default function SkewT({ soundingParam, statsDictParam, config = {}, style = {} }) {
+export default function SkewT({
+    soundingParam,
+    statsDictParam,
+    config = {},
+    className = 'skewt-container',
+    sx = {},
+}) {
     // --- Dimensions and Setup ---
     const [containerRef, dimensions] = useContainerDimensions();
     const [hoverInfo, setHoverInfo] = useState(null);
@@ -267,7 +273,7 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
     const transformString = `translate(${transformState.x || 0},${transformState.y || 0}) scale(${transformState.k || 1})`;
 
     return (
-        <div ref={containerRef} className="skewt-container">
+        <div ref={containerRef} className={className} style={sx}>
             {dimensions.width > 0 && scales.yScale && (
                 <>
                     <svg width={dimensions.width} height={dimensions.height}>
