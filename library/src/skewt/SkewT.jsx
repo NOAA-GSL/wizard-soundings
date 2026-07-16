@@ -2,7 +2,9 @@ import React, { useMemo, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import useContainerDimensions from '../utilities/useContainerDimensions';
 import useZoomHandler from '../utilities/useZoomHandler';
-import ChartTooltip from '../utilities/tooltip';
+import ChartTooltip from '../utilities/ToolTip';
+import sharp from '../Sharp';
+import { math } from '../Utilities';
 import SkewTBackground from './skewtBackground';
 import WindBarb from './windBarb';
 import './skewt.css';
@@ -84,16 +86,39 @@ function useParcelTrace(stats, parcelType) {
 
 // Renders default tooltip content for the SkewT.
 function SkewTTooltipContent({ data, colors }) {
+    if (!data) return null;
+
+    // Use sharp.rh to calculate Relative Humidity (returns an array)
+    const rhArray = sharp.rh([data.press], [data.temp], [data.dwpt]);
+    const rh = rhArray && rhArray.length > 0 ? rhArray[0] : null;
+
+    // Use math.convert for the height calculations
+    const hghtMslFt = data.hght != null ? math.convert(data.hght, 'm', 'ft') : null;
+    const hghtAglFt = data.hghtagl != null ? math.convert(data.hghtagl, 'm', 'ft') : null;
+
     return (
         <>
             <div>
-                <strong>{data.press.toFixed(0)} hPa</strong>
+                <strong>{data.press?.toFixed(0) ?? '--'} hPa</strong>
             </div>
-            <div style={{ color: colors.temp }}>T: {data.temp?.toFixed(1) ?? '--'} °C</div>
-            <div style={{ color: colors.dwpt }}>Td: {data.dwpt?.toFixed(1) ?? '--'} °C</div>
-            {data.uwnd != null && (
-                <div>Wind: {Math.round(Math.sqrt(data.uwnd ** 2 + data.vwnd ** 2))} kts</div>
+            <div style={{ color: colors.temp }}>T: {data.temp?.toFixed(1) ?? '--'} &deg;C</div>
+            <div style={{ color: colors.dwpt }}>Td: {data.dwpt?.toFixed(1) ?? '--'} &deg;C</div>
+            <div>
+                Wind: {data.wdir?.toFixed(0) ?? '--'}&deg; @ {data.twnd?.toFixed(0) ?? '--'} kts
+            </div>
+            {rh != null && <div>RH: {rh.toFixed(0)}%</div>}
+            {data.parcelTemp != null && (
+                <div style={{ color: colors.parcel }}>
+                    Parcel T: {data.parcelTemp.toFixed(1)} &deg;C
+                </div>
             )}
+            <div>
+                Hght (MSL): {data.hght?.toFixed(0) ?? '--'} m / {hghtMslFt?.toFixed(0) ?? '--'} ft
+            </div>
+            <div>
+                Hght (AGL): {data.hghtagl?.toFixed(0) ?? '--'} m / {hghtAglFt?.toFixed(0) ?? '--'}{' '}
+                ft
+            </div>
         </>
     );
 }

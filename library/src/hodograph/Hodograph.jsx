@@ -81,6 +81,9 @@ function HodographTooltipContent({ data, type }) {
         case 'datapoint':
             return (
                 <>
+                    <div>
+                        <strong>Wind Level</strong>
+                    </div>
                     <div>Height: {data.hght?.toFixed(0) ?? '--'} m</div>
                     <div>Spd: {data.twnd?.toFixed(0) ?? '--'} kts</div>
                     <div>Dir: {data.wdir?.toFixed(0) ?? '--'}°</div>

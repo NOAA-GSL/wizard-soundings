@@ -230,6 +230,9 @@ export class math {
         if (iUnits == 'm' && oUnits == 'km') {
             return value / 1000;
         }
+        if (iUnits == 'm' && oUnits == 'ft') {
+            return value * 3.28084;
+        }
         console.log(`ERROR: cannot find conversion from ${iUnits} to ${oUnits}`);
     }
 }
