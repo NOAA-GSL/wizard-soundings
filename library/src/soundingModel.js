@@ -611,6 +611,20 @@ const calculateStats = (components, key, stat) => {
         returnStat = calculateStatsVector(validComponents, stat);
     } else if (typeof validComponents[0] === 'number') {
         returnStat = calculateStatsScalar(validComponents, stat);
+    } else if (Array.isArray(validComponents[0])) {
+        // --- Defensively handle array-based stats (like parcel traces) ---
+        if (stat === 'list') {
+            returnStat = validComponents; // Safe to return the full list
+        } else if (validComponents.length === 1) {
+            // Safe to return the single trace if only one member was requested
+            returnStat = validComponents[0];
+        } else {
+            // DANGER: Cannot mathematically average traces across different pressure levels!
+            console.warn(
+                `Warning: Cannot calculate '${stat}' for array-based stat '${key}' across multiple members. Returning null.`,
+            );
+            returnStat = null;
+        }
     } else {
         console.error('Error: Data array must contain either numbers or Vector objects.');
         console.log(components, key, stat);

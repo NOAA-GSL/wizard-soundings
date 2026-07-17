@@ -39,7 +39,7 @@ const DEFAULT_CONFIG = {
         temp: '#ff0000',
         dwpt: '#00ff00',
         wetbulb: '#00ffff',
-        parcel: '#ffffff',
+        parcel: '#0000ff',
     },
     // Zoom settings
     zoom: {
@@ -233,8 +233,29 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
             }
 
             if (closest && minDiff < 50) {
+                // Clone the closest object so we don't mutate the raw data
+                const hoveredData = { ...closest };
+
+                // Find the closest parcel temperature from our trace
+                if (parcelTraceData && parcelTraceData.length > 0) {
+                    let closestParcelTemp = null;
+                    let minParcelDiff = Infinity;
+
+                    for (const pt of parcelTraceData) {
+                        const pDiff = Math.abs(pt.press - closest.press);
+                        if (pDiff < minParcelDiff) {
+                            minParcelDiff = pDiff;
+                            closestParcelTemp = pt.temp;
+                        }
+                    }
+
+                    // Only attach it if the parcel actually exists near this pressure level
+                    if (minParcelDiff < 50) {
+                        hoveredData.parcelTemp = closestParcelTemp;
+                    }
+                }
                 setHoverInfo({
-                    data: closest,
+                    data: hoveredData,
                     y: scales.yScale(closest.press),
                     xT: getSkewX(
                         closest.temp,
@@ -259,7 +280,7 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
                 setHoverInfo(null);
             }
         },
-        [meanProfile, scales, transformState],
+        [meanProfile, parcelTraceData, scales, transformState],
     );
 
     const transformString = `translate(${transformState.x || 0},${transformState.y || 0}) scale(${transformState.k || 1})`;

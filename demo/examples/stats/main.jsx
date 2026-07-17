@@ -19,7 +19,13 @@ function App() {
     // Data Fetching
     const sounding = getSounding();
     const soundingData = sounding.getLevelData(); // Your data source
-    const stats = sounding.calcStats(sounding.getMembers(), 'mean'); // Your stats source
+    const allProfilesStats = sounding.getDerivedData();
+    console.log('Mean?');
+    console.log(allProfilesStats.find((profile) => profile.mem === 'mean'));
+    const stats =
+        allProfilesStats.find(
+            (profile) => profile.mem === 'grandensemble' || profile.mem === 'mean',
+        ) || sounding.calcStats(sounding.getMembers(), 'mean');
     const derivedData = sounding.calcStats(sounding.getMembers(), 'list'); // Your derived data source
 
     return (
