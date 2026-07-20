@@ -1,13 +1,14 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import * as d3 from 'd3';
+import sharp from '../Sharp';
 import useContainerDimensions from '../utilities/useContainerDimensions';
 import useZoomHandler from '../utilities/useZoomHandler';
 import ChartTooltip from '../utilities/ToolTip';
-import sharp from '../Sharp';
 import { math } from '../Utilities';
 import SkewTBackground from './skewtBackground';
 import SkewTBoxWhisker from './skewtBoxWhisker';
 import WindBarb from './windBarb';
+import { computeMeanProfile } from './meanProfile';
 import './skewt.css';
 
 /*-------------------------*/
@@ -41,7 +42,7 @@ const DEFAULT_CONFIG = {
         mixingRatio: 'rgba(150, 255, 0, 0.2)',
         temp: '#ff0000',
         dwpt: '#00ff00',
-        wetbulb: '#00ffff',
+        wetb: '#00ffff',
         parcel: '#ffffff',
     },
     // Zoom settings
@@ -53,12 +54,43 @@ const DEFAULT_CONFIG = {
     renderTooltip: null,
 };
 
+const TRACE_RENDER_ORDER = ['wetb', 'dwpt', 'temp'];
+
 /*--------------------------------*/
 /* --- Sub-Components ----------- */
 /*--------------------------------*/
 
 function getSkewX(temp, press, xScale, yScale, tanAlpha, baseY) {
     return xScale(temp) + (baseY - yScale(press)) / tanAlpha;
+}
+
+function filterWindBarbs(profile, topP, baseP) {
+    if (!profile) return [];
+    return profile.filter(
+        (d) =>
+            (Math.round(d.press) % 50 === 0 || Math.round(d.press) === 1000) &&
+            d.uwnd != null &&
+            d.vwnd != null &&
+            d.press >= topP &&
+            d.press <= baseP,
+    );
+}
+
+function addWetBulbToProfile(profile) {
+    if (!profile) return [];
+    return profile.map((level) => {
+        const hasInputs =
+            typeof level.press === 'number' &&
+            typeof level.temp === 'number' &&
+            typeof level.dwpt === 'number' &&
+            !Number.isNaN(level.press) &&
+            !Number.isNaN(level.temp) &&
+            !Number.isNaN(level.dwpt);
+        return {
+            ...level,
+            wetb: hasInputs ? sharp.wetBulb([level.press], [level.temp], [level.dwpt])[0] : null,
+        };
+    });
 }
 
 /**
@@ -86,7 +118,7 @@ function useParcelTrace(stats, parcelType) {
 }
 
 // Renders default tooltip content for the SkewT.
-function SkewTTooltipContent({ data, colors }) {
+function SkewTTooltipContent({ data, colors, traceVisibility }) {
     if (!data) return null;
 
     // Use sharp.rh to calculate Relative Humidity (returns an array)
@@ -102,17 +134,21 @@ function SkewTTooltipContent({ data, colors }) {
             <div>
                 <strong>{data.press?.toFixed(0) ?? '--'} hPa</strong>
             </div>
-            <div style={{ color: colors.temp }}>T: {data.temp?.toFixed(1) ?? '--'} &deg;C</div>
-            <div style={{ color: colors.dwpt }}>Td: {data.dwpt?.toFixed(1) ?? '--'} &deg;C</div>
-            <div>
-                Wind: {data.wdir?.toFixed(0) ?? '--'}&deg; @ {data.twnd?.toFixed(0) ?? '--'} kts
-            </div>
-            {rh != null && <div>RH: {rh.toFixed(0)}%</div>}
-            {data.parcelTemp != null && (
-                <div style={{ color: colors.parcel }}>
-                    Parcel T: {data.parcelTemp.toFixed(1)} &deg;C
+            {traceVisibility.temp && (
+                <div style={{ color: colors.temp }}>T: {data.temp?.toFixed(1) ?? '--'} &deg;C</div>
+            )}
+            {traceVisibility.dwpt && (
+                <div style={{ color: colors.dwpt }}>Td: {data.dwpt?.toFixed(1) ?? '--'} &deg;C</div>
+            )}
+            {traceVisibility.wetb && (
+                <div style={{ color: colors.wetb }}>
+                    Tw: {typeof data.wetb === 'number' ? data.wetb.toFixed(1) : '--'} &deg;C
                 </div>
             )}
+            {data.uwnd != null && (
+                <div>Wind: {Math.round(Math.sqrt(data.uwnd ** 2 + data.vwnd ** 2))} kts</div>
+            )}
+            {rh != null && <div>RH: {rh.toFixed(0)}%</div>}
             <div>
                 Hght (MSL): {data.hght?.toFixed(0) ?? '--'} m / {hghtMslFt?.toFixed(0) ?? '--'} ft
             </div>
@@ -143,6 +179,12 @@ export default function SkewT({
     // Resolve displayMode and percentiles from props or config
     const resolvedDisplayMode = displayMode || config.displayMode || 'plumes';
     const resolvedPercentiles = percentiles || config.percentiles || [5, 25, 75, 95];
+    const traceVisibility = {
+        temp: config.showTemperature ?? config.traceVisibility?.temp ?? true,
+        dwpt: config.showDewPoint ?? config.traceVisibility?.dwpt ?? true,
+        wetb: config.showWetBulb ?? config.traceVisibility?.wetb ?? false,
+    };
+    const activeTraceKeys = TRACE_RENDER_ORDER.filter((key) => traceVisibility[key]);
 
     const settings = useMemo(
         () => ({
@@ -206,7 +248,7 @@ export default function SkewT({
             lineGens: {
                 temp: makeLine('temp'),
                 dwpt: makeLine('dwpt'),
-                wetbulb: makeLine('wetb'),
+                wetb: makeLine('wetb'),
                 parcel: makeLine('temp', 'press'),
             },
         };
@@ -216,40 +258,35 @@ export default function SkewT({
     const [zoomRefCallback, transformState] = useZoomHandler(dimensions, settings.zoom);
 
     // --- Data Preparation ---
-    const { meanProfile, memberProfiles, meanBarbs, memberBarbs } = useMemo(() => {
+    const { memberProfiles, memberBarbs } = useMemo(() => {
         if (!soundingParam || soundingParam.length === 0) {
-            return { meanProfile: null, memberProfiles: [], meanBarbs: [], memberBarbs: [] };
+            return { memberProfiles: [], memberBarbs: [] };
         }
 
-        // 1. Separate Profiles
-        const mean = soundingParam.find(
-            (profile) => profile[0]?.mem === 'grandensemble' || profile[0]?.mem === 'mean',
-        );
-        const members = soundingParam.filter((profile) => profile !== mean);
-
-        // 2. Prepare Wind Barb Data (50hPa intervals)
-        const filterBarbs = (profile) =>
-            profile.filter(
-                (d) =>
-                    (Math.round(d.press) % 50 === 0 || Math.round(d.press) === 1000) &&
-                    d.uwnd != null &&
-                    d.vwnd != null &&
-                    d.press >= settings.topP &&
-                    d.press <= settings.baseP,
-            );
+        // 1. Map member profiles and always compute mean from these members
+        const members = soundingParam.map(addWetBulbToProfile);
 
         return {
-            meanProfile: mean,
             memberProfiles: members,
-            meanBarbs: mean ? filterBarbs(mean) : [],
-            memberBarbs: members.map((m) => filterBarbs(m)),
+            memberBarbs: members.map((m) => filterWindBarbs(m, settings.topP, settings.baseP)),
         };
     }, [soundingParam, settings.topP, settings.baseP]);
+
+    // Compute mean profile from member profiles (used by 'mean' display mode)
+    const { computedMeanProfile, computedMeanBarbs } = useMemo(() => {
+        const profile = computeMeanProfile(memberProfiles);
+        if (!profile) return { computedMeanProfile: null, computedMeanBarbs: [] };
+
+        const barbs = filterWindBarbs(profile, settings.topP, settings.baseP);
+
+        return { computedMeanProfile: profile, computedMeanBarbs: barbs };
+    }, [memberProfiles, settings.topP, settings.baseP]);
 
     // Tooltip Logic
     const handleMouseMove = useCallback(
         (e) => {
-            if (!meanProfile || !scales.yScale) return;
+            const tooltipProfile = computedMeanProfile;
+            if (!tooltipProfile || !scales.yScale) return;
 
             // Get raw mouse coordinates relative to the SVG using currentTarget
             const rect = e.currentTarget.getBoundingClientRect();
@@ -262,7 +299,7 @@ export default function SkewT({
             let closest = null;
             let minDiff = Infinity;
 
-            const referenceData = meanProfile;
+            const referenceData = tooltipProfile;
 
             for (const pt of referenceData) {
                 const diff = Math.abs(pt.press - pHover);
@@ -273,25 +310,45 @@ export default function SkewT({
             }
 
             if (closest && minDiff < 50) {
+                const xTemp =
+                    traceVisibility.temp && typeof closest.temp === 'number'
+                        ? getSkewX(
+                              closest.temp,
+                              closest.press,
+                              scales.xScale,
+                              scales.yScale,
+                              scales.tanAlpha,
+                              scales.baseY,
+                          )
+                        : null;
+                const xDwpt =
+                    traceVisibility.dwpt && typeof closest.dwpt === 'number'
+                        ? getSkewX(
+                              closest.dwpt,
+                              closest.press,
+                              scales.xScale,
+                              scales.yScale,
+                              scales.tanAlpha,
+                              scales.baseY,
+                          )
+                        : null;
+                const xWetb =
+                    traceVisibility.wetb && typeof closest.wetb === 'number'
+                        ? getSkewX(
+                              closest.wetb,
+                              closest.press,
+                              scales.xScale,
+                              scales.yScale,
+                              scales.tanAlpha,
+                              scales.baseY,
+                          )
+                        : null;
                 setHoverInfo({
                     data: closest,
                     y: scales.yScale(closest.press),
-                    xT: getSkewX(
-                        closest.temp,
-                        closest.press,
-                        scales.xScale,
-                        scales.yScale,
-                        scales.tanAlpha,
-                        scales.baseY,
-                    ),
-                    xTd: getSkewX(
-                        closest.dwpt,
-                        closest.press,
-                        scales.xScale,
-                        scales.yScale,
-                        scales.tanAlpha,
-                        scales.baseY,
-                    ),
+                    xT: xTemp,
+                    xTd: xDwpt,
+                    xTw: xWetb,
                     screenX: e.clientX,
                     screenY: e.clientY,
                 });
@@ -299,7 +356,7 @@ export default function SkewT({
                 setHoverInfo(null);
             }
         },
-        [meanProfile, scales, transformState],
+        [computedMeanProfile, resolvedDisplayMode, scales, transformState, traceVisibility],
     );
 
     const transformString = `translate(${transformState.x || 0},${transformState.y || 0}) scale(${transformState.k || 1})`;
@@ -361,22 +418,16 @@ export default function SkewT({
                                     {resolvedDisplayMode === 'plumes' &&
                                         memberProfiles.map((member, i) => (
                                             <React.Fragment key={`member-${member[0]?.mem || i}`}>
-                                                {/* Member Dewpoint */}
-                                                <path
-                                                    d={lineGens.dwpt(member)}
-                                                    fill="none"
-                                                    stroke={settings.colors.dwpt}
-                                                    strokeWidth={1}
-                                                    opacity={0.35}
-                                                />
-                                                {/* Member Temperature */}
-                                                <path
-                                                    d={lineGens.temp(member)}
-                                                    fill="none"
-                                                    stroke={settings.colors.temp}
-                                                    strokeWidth={1}
-                                                    opacity={0.35}
-                                                />
+                                                {activeTraceKeys.map((key) => (
+                                                    <path
+                                                        key={`member-${member[0]?.mem || i}-${key}`}
+                                                        d={lineGens[key](member)}
+                                                        fill="none"
+                                                        stroke={settings.colors[key]}
+                                                        strokeWidth={1}
+                                                        opacity={0.35}
+                                                    />
+                                                ))}
                                             </React.Fragment>
                                         ))}
 
@@ -387,41 +438,28 @@ export default function SkewT({
                                                 memberProfiles={memberProfiles}
                                                 scales={scales}
                                                 percentiles={resolvedPercentiles}
+                                                variableKeys={activeTraceKeys}
+                                                visibleVariables={traceVisibility}
                                                 colors={settings.colors}
                                             />
                                         )}
 
-                                    {/* Mean Profile (Drawn on top, hidden in boxwhisker mode) */}
-                                    {meanProfile && resolvedDisplayMode !== 'boxwhisker' && (
-                                        <g className="mean-profile-group">
-                                            {/* Mean Wetbulb */}
-                                            {meanProfile[0]?.wetb != null && (
-                                                <path
-                                                    d={lineGens.wetbulb(meanProfile)}
-                                                    fill="none"
-                                                    stroke={settings.colors.wetbulb}
-                                                    strokeWidth={2}
-                                                    opacity={0.9}
-                                                />
-                                            )}
-                                            {/* Mean Dewpoint */}
-                                            <path
-                                                d={lineGens.dwpt(meanProfile)}
-                                                fill="none"
-                                                stroke={settings.colors.dwpt}
-                                                strokeWidth={3}
-                                                opacity={1}
-                                            />
-                                            {/* Mean Temperature */}
-                                            <path
-                                                d={lineGens.temp(meanProfile)}
-                                                fill="none"
-                                                stroke={settings.colors.temp}
-                                                strokeWidth={3}
-                                                opacity={1}
-                                            />
-                                        </g>
-                                    )}
+                                    {/* Mean Profile */}
+                                    {computedMeanProfile &&
+                                        resolvedDisplayMode !== 'boxwhisker' && (
+                                            <g className="mean-profile-group">
+                                                {activeTraceKeys.map((key) => (
+                                                    <path
+                                                        key={`mean-${key}`}
+                                                        d={lineGens[key](computedMeanProfile)}
+                                                        fill="none"
+                                                        stroke={settings.colors[key]}
+                                                        strokeWidth={3}
+                                                        opacity={1}
+                                                    />
+                                                ))}
+                                            </g>
+                                        )}
                                     {/* Tooltip Highlight Circles */}
                                     {hoverInfo && (
                                         <g pointerEvents="none">
@@ -434,20 +472,33 @@ export default function SkewT({
                                                 strokeWidth={1}
                                                 opacity={0.5}
                                             />
-                                            <circle
-                                                cx={hoverInfo.xT}
-                                                cy={hoverInfo.y}
-                                                r={4}
-                                                fill={settings.colors.temp}
-                                                stroke="white"
-                                            />
-                                            <circle
-                                                cx={hoverInfo.xTd}
-                                                cy={hoverInfo.y}
-                                                r={4}
-                                                fill={settings.colors.dwpt}
-                                                stroke="white"
-                                            />
+                                            {hoverInfo.xT != null && (
+                                                <circle
+                                                    cx={hoverInfo.xT}
+                                                    cy={hoverInfo.y}
+                                                    r={4}
+                                                    fill={settings.colors.temp}
+                                                    stroke="white"
+                                                />
+                                            )}
+                                            {hoverInfo.xTd != null && (
+                                                <circle
+                                                    cx={hoverInfo.xTd}
+                                                    cy={hoverInfo.y}
+                                                    r={4}
+                                                    fill={settings.colors.dwpt}
+                                                    stroke="white"
+                                                />
+                                            )}
+                                            {hoverInfo.xTw != null && (
+                                                <circle
+                                                    cx={hoverInfo.xTw}
+                                                    cy={hoverInfo.y}
+                                                    r={4}
+                                                    fill={settings.colors.wetb}
+                                                    stroke="white"
+                                                />
+                                            )}
                                         </g>
                                     )}
                                 </g>
@@ -460,31 +511,36 @@ export default function SkewT({
                                     pointerEvents="none"
                                     clipPath="url(#skewt-barb-area)"
                                 >
-                                    {/* 1. Ensemble Member Barbs (Background) */}
-                                    {memberBarbs.map((barbSet, i) => (
-                                        <g key={`member-barbs-${i}`} opacity={0.35} strokeWidth={1}>
-                                            {barbSet.map((d, j) => {
-                                                // Manually calculate the exact screen Y coordinate based on the current zoom level
-                                                const zoomedY =
-                                                    transformState.k * scales.yScale(d.press) +
-                                                    transformState.y;
-                                                return (
-                                                    <WindBarb
-                                                        key={`m-barb-${i}-${j}`}
-                                                        u={d.uwnd}
-                                                        v={d.vwnd}
-                                                        x={scales.innerW}
-                                                        y={zoomedY}
-                                                    />
-                                                );
-                                            })}
-                                        </g>
-                                    ))}
+                                    {/* 1. Ensemble Member Barbs (Background) - hidden in mean mode */}
+                                    {resolvedDisplayMode !== 'mean' &&
+                                        memberBarbs.map((barbSet, i) => (
+                                            <g
+                                                key={`member-barbs-${i}`}
+                                                opacity={0.35}
+                                                strokeWidth={1}
+                                            >
+                                                {barbSet.map((d, j) => {
+                                                    // Manually calculate the exact screen Y coordinate based on the current zoom level
+                                                    const zoomedY =
+                                                        transformState.k * scales.yScale(d.press) +
+                                                        transformState.y;
+                                                    return (
+                                                        <WindBarb
+                                                            key={`m-barb-${i}-${j}`}
+                                                            u={d.uwnd}
+                                                            v={d.vwnd}
+                                                            x={scales.innerW}
+                                                            y={zoomedY}
+                                                        />
+                                                    );
+                                                })}
+                                            </g>
+                                        ))}
 
-                                    {/* 2. Mean Barbs (Foreground) */}
-                                    {meanBarbs.length > 0 && (
+                                    {/* Mean Barbs */}
+                                    {computedMeanBarbs.length > 0 && (
                                         <g key="mean-barbs" opacity={1} strokeWidth={1.5}>
-                                            {meanBarbs.map((d, j) => {
+                                            {computedMeanBarbs.map((d, j) => {
                                                 // Manually calculate the exact screen Y coordinate based on the current zoom level
                                                 const zoomedY =
                                                     transformState.k * scales.yScale(d.press) +
@@ -520,6 +576,7 @@ export default function SkewT({
                                     <SkewTTooltipContent
                                         data={hoverInfo.data}
                                         colors={settings.colors}
+                                        traceVisibility={traceVisibility}
                                     />
                                 )
                             }

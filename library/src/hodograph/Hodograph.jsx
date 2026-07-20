@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import useContainerDimensions from '../utilities/useContainerDimensions';
 import useZoomHandler from '../utilities/useZoomHandler';
 import ChartTooltip from '../utilities/tooltip';
+import { computeMeanProfile } from '../skewt/meanProfile';
 import HodographBackground from './hodographBackground';
 import './hodograph.css';
 
@@ -172,9 +173,8 @@ export default function Hodograph({
     const { segments, majorPoints, allMembers } = useMemo(() => {
         if (!soundingParam) return { segments: [], majorPoints: [], allMembers: [] };
 
-        // Flatten logic
-        const meanM =
-            soundingParam?.find((d) => d?.length > 0 && d[0]?.mem === 'grandensemble') || [];
+        // Always compute mean line from member profiles.
+        const meanM = computeMeanProfile(soundingParam) || [];
         const segs = getColoredSegments(meanM, settings.segments);
         const points = segs.map((s) => s.points[0]);
 
