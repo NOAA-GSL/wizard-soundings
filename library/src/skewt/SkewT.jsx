@@ -6,6 +6,7 @@ import ChartTooltip from '../utilities/ToolTip';
 import sharp from '../Sharp';
 import { math } from '../Utilities';
 import SkewTBackground from './skewtBackground';
+import SkewTBoxWhisker from './skewtBoxWhisker';
 import WindBarb from './windBarb';
 import './skewt.css';
 
@@ -132,10 +133,16 @@ export default function SkewT({
     config = {},
     className = 'skewt-container',
     sx = {},
+    displayMode,
+    percentiles,
 }) {
     // --- Dimensions and Setup ---
     const [containerRef, dimensions] = useContainerDimensions();
     const [hoverInfo, setHoverInfo] = useState(null);
+
+    // Resolve displayMode and percentiles from props or config
+    const resolvedDisplayMode = displayMode || config.displayMode || 'plumes';
+    const resolvedPercentiles = percentiles || config.percentiles || [5, 25, 75, 95];
 
     const settings = useMemo(
         () => ({
@@ -351,29 +358,41 @@ export default function SkewT({
                                         />
                                     )}
                                     {/* Background Ensemble Member Profiles */}
-                                    {memberProfiles.map((member, i) => (
-                                        <React.Fragment key={`member-${member[0]?.mem || i}`}>
-                                            {/* Member Dewpoint */}
-                                            <path
-                                                d={lineGens.dwpt(member)}
-                                                fill="none"
-                                                stroke={settings.colors.dwpt}
-                                                strokeWidth={1}
-                                                opacity={0.35}
-                                            />
-                                            {/* Member Temperature */}
-                                            <path
-                                                d={lineGens.temp(member)}
-                                                fill="none"
-                                                stroke={settings.colors.temp}
-                                                strokeWidth={1}
-                                                opacity={0.35}
-                                            />
-                                        </React.Fragment>
-                                    ))}
+                                    {resolvedDisplayMode === 'plumes' &&
+                                        memberProfiles.map((member, i) => (
+                                            <React.Fragment key={`member-${member[0]?.mem || i}`}>
+                                                {/* Member Dewpoint */}
+                                                <path
+                                                    d={lineGens.dwpt(member)}
+                                                    fill="none"
+                                                    stroke={settings.colors.dwpt}
+                                                    strokeWidth={1}
+                                                    opacity={0.35}
+                                                />
+                                                {/* Member Temperature */}
+                                                <path
+                                                    d={lineGens.temp(member)}
+                                                    fill="none"
+                                                    stroke={settings.colors.temp}
+                                                    strokeWidth={1}
+                                                    opacity={0.35}
+                                                />
+                                            </React.Fragment>
+                                        ))}
 
-                                    {/* Mean Profile (Drawn on top) */}
-                                    {meanProfile && (
+                                    {/* Box-Whisker Mode */}
+                                    {resolvedDisplayMode === 'boxwhisker' &&
+                                        memberProfiles.length > 0 && (
+                                            <SkewTBoxWhisker
+                                                memberProfiles={memberProfiles}
+                                                scales={scales}
+                                                percentiles={resolvedPercentiles}
+                                                colors={settings.colors}
+                                            />
+                                        )}
+
+                                    {/* Mean Profile (Drawn on top, hidden in boxwhisker mode) */}
+                                    {meanProfile && resolvedDisplayMode !== 'boxwhisker' && (
                                         <g className="mean-profile-group">
                                             {/* Mean Wetbulb */}
                                             {meanProfile[0]?.wetb != null && (
