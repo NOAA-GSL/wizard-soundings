@@ -286,7 +286,8 @@ export default function StatsTable({
     statsDictParam,
     selectedStat: externalStat,
     onStatSelect,
-    styles = {},
+    className = 'statsContainer',
+    sx = {},
 }) {
     // --- Dimensions and Setup ---
     const [hoverInfo, setHoverInfo] = useState(null);
@@ -332,8 +333,8 @@ export default function StatsTable({
     if (!stats) return null;
 
     return (
-        <div id="statsContainer" style={styles}>
-            <div id="meteostats" className="meteostats">
+        <div className={className} style={sx}>
+            <div className="meteostats">
                 {/* --- Left Column: Parcels & Thermo --- */}
                 <div className="statscolumn">
                     {/* 1. Parcel Stats */}

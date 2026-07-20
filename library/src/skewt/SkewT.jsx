@@ -2,8 +2,11 @@ import React, { useMemo, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import useContainerDimensions from '../utilities/useContainerDimensions';
 import useZoomHandler from '../utilities/useZoomHandler';
-import ChartTooltip from '../utilities/tooltip';
+import ChartTooltip from '../utilities/ToolTip';
+import sharp from '../Sharp';
+import { math } from '../Utilities';
 import SkewTBackground from './skewtBackground';
+import SkewTBoxWhisker from './skewtBoxWhisker';
 import WindBarb from './windBarb';
 import './skewt.css';
 
@@ -47,6 +50,7 @@ const DEFAULT_CONFIG = {
         min: 1,
         max: 5,
     },
+    renderTooltip: null,
 };
 
 /*--------------------------------*/
@@ -81,17 +85,41 @@ function useParcelTrace(stats, parcelType) {
     }, [stats, parcelType]);
 }
 
+// Renders default tooltip content for the SkewT.
 function SkewTTooltipContent({ data, colors }) {
+    if (!data) return null;
+
+    // Use sharp.rh to calculate Relative Humidity (returns an array)
+    const rhArray = sharp.rh([data.press], [data.temp], [data.dwpt]);
+    const rh = rhArray && rhArray.length > 0 ? rhArray[0] : null;
+
+    // Use math.convert for the height calculations
+    const hghtMslFt = data.hght != null ? math.convert(data.hght, 'm', 'ft') : null;
+    const hghtAglFt = data.hghtagl != null ? math.convert(data.hghtagl, 'm', 'ft') : null;
+
     return (
         <>
             <div>
-                <strong>{data.press.toFixed(0)} hPa</strong>
+                <strong>{data.press?.toFixed(0) ?? '--'} hPa</strong>
             </div>
-            <div style={{ color: colors.temp }}>T: {data.temp?.toFixed(1) ?? '--'} °C</div>
-            <div style={{ color: colors.dwpt }}>Td: {data.dwpt?.toFixed(1) ?? '--'} °C</div>
-            {data.uwnd != null && (
-                <div>Wind: {Math.round(Math.sqrt(data.uwnd ** 2 + data.vwnd ** 2))} kts</div>
+            <div style={{ color: colors.temp }}>T: {data.temp?.toFixed(1) ?? '--'} &deg;C</div>
+            <div style={{ color: colors.dwpt }}>Td: {data.dwpt?.toFixed(1) ?? '--'} &deg;C</div>
+            <div>
+                Wind: {data.wdir?.toFixed(0) ?? '--'}&deg; @ {data.twnd?.toFixed(0) ?? '--'} kts
+            </div>
+            {rh != null && <div>RH: {rh.toFixed(0)}%</div>}
+            {data.parcelTemp != null && (
+                <div style={{ color: colors.parcel }}>
+                    Parcel T: {data.parcelTemp.toFixed(1)} &deg;C
+                </div>
             )}
+            <div>
+                Hght (MSL): {data.hght?.toFixed(0) ?? '--'} m / {hghtMslFt?.toFixed(0) ?? '--'} ft
+            </div>
+            <div>
+                Hght (AGL): {data.hghtagl?.toFixed(0) ?? '--'} m / {hghtAglFt?.toFixed(0) ?? '--'}{' '}
+                ft
+            </div>
         </>
     );
 }
@@ -99,10 +127,22 @@ function SkewTTooltipContent({ data, colors }) {
 /* Component: SkewT
     Renders an interactive skew-t with sounding data.
 */
-export default function SkewT({ soundingParam, statsDictParam, config = {}, style = {} }) {
+export default function SkewT({
+    soundingParam,
+    statsDictParam,
+    config = {},
+    className = 'skewt-container',
+    sx = {},
+    displayMode,
+    percentiles,
+}) {
     // --- Dimensions and Setup ---
     const [containerRef, dimensions] = useContainerDimensions();
     const [hoverInfo, setHoverInfo] = useState(null);
+
+    // Resolve displayMode and percentiles from props or config
+    const resolvedDisplayMode = displayMode || config.displayMode || 'plumes';
+    const resolvedPercentiles = percentiles || config.percentiles || [5, 25, 75, 95];
 
     const settings = useMemo(
         () => ({
@@ -286,7 +326,7 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
     const transformString = `translate(${transformState.x || 0},${transformState.y || 0}) scale(${transformState.k || 1})`;
 
     return (
-        <div ref={containerRef} className="skewt-container">
+        <div ref={containerRef} className={className} style={sx}>
             {dimensions.width > 0 && scales.yScale && (
                 <>
                     <svg width={dimensions.width} height={dimensions.height}>
@@ -339,29 +379,41 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
                                         />
                                     )}
                                     {/* Background Ensemble Member Profiles */}
-                                    {memberProfiles.map((member, i) => (
-                                        <React.Fragment key={`member-${member[0]?.mem || i}`}>
-                                            {/* Member Dewpoint */}
-                                            <path
-                                                d={lineGens.dwpt(member)}
-                                                fill="none"
-                                                stroke={settings.colors.dwpt}
-                                                strokeWidth={1}
-                                                opacity={0.35}
-                                            />
-                                            {/* Member Temperature */}
-                                            <path
-                                                d={lineGens.temp(member)}
-                                                fill="none"
-                                                stroke={settings.colors.temp}
-                                                strokeWidth={1}
-                                                opacity={0.35}
-                                            />
-                                        </React.Fragment>
-                                    ))}
+                                    {resolvedDisplayMode === 'plumes' &&
+                                        memberProfiles.map((member, i) => (
+                                            <React.Fragment key={`member-${member[0]?.mem || i}`}>
+                                                {/* Member Dewpoint */}
+                                                <path
+                                                    d={lineGens.dwpt(member)}
+                                                    fill="none"
+                                                    stroke={settings.colors.dwpt}
+                                                    strokeWidth={1}
+                                                    opacity={0.35}
+                                                />
+                                                {/* Member Temperature */}
+                                                <path
+                                                    d={lineGens.temp(member)}
+                                                    fill="none"
+                                                    stroke={settings.colors.temp}
+                                                    strokeWidth={1}
+                                                    opacity={0.35}
+                                                />
+                                            </React.Fragment>
+                                        ))}
 
-                                    {/* Mean Profile (Drawn on top) */}
-                                    {meanProfile && (
+                                    {/* Box-Whisker Mode */}
+                                    {resolvedDisplayMode === 'boxwhisker' &&
+                                        memberProfiles.length > 0 && (
+                                            <SkewTBoxWhisker
+                                                memberProfiles={memberProfiles}
+                                                scales={scales}
+                                                percentiles={resolvedPercentiles}
+                                                colors={settings.colors}
+                                            />
+                                        )}
+
+                                    {/* Mean Profile (Drawn on top, hidden in boxwhisker mode) */}
+                                    {meanProfile && resolvedDisplayMode !== 'boxwhisker' && (
                                         <g className="mean-profile-group">
                                             {/* Mean Wetbulb */}
                                             {meanProfile[0]?.wetb != null && (
@@ -481,10 +533,16 @@ export default function SkewT({ soundingParam, statsDictParam, config = {}, styl
                             x={hoverInfo.screenX}
                             y={hoverInfo.screenY}
                             content={
-                                <SkewTTooltipContent
-                                    data={hoverInfo.data}
-                                    colors={settings.colors}
-                                />
+                                // If the user provided a custom render function, use it.
+                                // Otherwise, fall back to the default component.
+                                settings.renderTooltip ? (
+                                    settings.renderTooltip(hoverInfo.data)
+                                ) : (
+                                    <SkewTTooltipContent
+                                        data={hoverInfo.data}
+                                        colors={settings.colors}
+                                    />
+                                )
                             }
                         />
                     )}

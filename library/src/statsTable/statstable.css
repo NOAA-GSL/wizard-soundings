@@ -12,7 +12,7 @@
     }
 }
 
-#statsContainer {
+.statsContainer {
     width: 100%;
     display: flex;
     justify-content: center;
@@ -21,7 +21,7 @@
     padding: 10px;
 }
 
-#meteostats {
+.meteostats {
     font-size: 0.7rem;
     width: 100%;
     max-width: 1200px;
@@ -33,18 +33,17 @@
     background-color: var(--bg);
     border: 1px solid var(--border);
 }
-
-#meteostats td {
+.meteostats td {
     cursor: pointer;
     padding: 2px 4px; /* Slightly pad cells for better touch targets on mobile */
 }
 
-#meteostats td.noClick {
+.meteostats td.noClick {
     cursor: default;
 }
 
 /* Ensure inner tables take up the full column width */
-#meteostats table {
+.meteostats table {
     width: 100%;
     border-collapse: collapse;
 }
@@ -104,13 +103,13 @@
         border-bottom: none; /* Clean up the last divider */
     }
 
-    #meteostats {
+    .meteostats {
         flex-direction: column; /* Stack vertically */
     }
 }
 
 /* Highlight state for the currently active stat */
-#meteostats td.selected-stat {
+.meteostats td.selected-stat {
     background-color: rgba(31, 119, 180, 0.2);
     font-weight: bold;
     outline: 2px solid rgb(31, 119, 180);
@@ -119,7 +118,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-    #meteostats td.selected-stat {
+    .meteostats td.selected-stat {
         background-color: rgba(100, 180, 255, 0.3);
         outline: 2px solid rgb(100, 180, 255);
         color: #fff;

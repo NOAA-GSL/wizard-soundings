@@ -33,6 +33,7 @@ const DEFAULT_CONFIG = {
         min: 1,
         max: 10,
     },
+    renderTooltip: null,
 };
 
 // Helper to split the mean line into colored altitude segments
@@ -72,10 +73,54 @@ function getCartesianCoords(wdir, twnd, rScale) {
     };
 }
 
+// Renders default tooltip content for the Hodograph based on data type.
+function HodographTooltipContent({ data, type }) {
+    if (!data) return null;
+
+    switch (type) {
+        case 'datapoint':
+            return (
+                <>
+                    <div>
+                        <strong>Wind Level</strong>
+                    </div>
+                    <div>Height: {data.hght?.toFixed(0) ?? '--'} m</div>
+                    <div>Spd: {data.twnd?.toFixed(0) ?? '--'} kts</div>
+                    <div>Dir: {data.wdir?.toFixed(0) ?? '--'}°</div>
+                </>
+            );
+        case 'member': {
+            const memberId = Array.isArray(data) ? data[0]?.mem : data.mem;
+            return <div>Member: {memberId || 'Unknown'}</div>;
+        }
+        case 'bunkers-right':
+        case 'bunkers-left': {
+            const title = type === 'bunkers-right' ? 'Bunkers Right' : 'Bunkers Left';
+            return (
+                <>
+                    <div>
+                        <b>{title}</b>
+                    </div>
+                    <div>Spd: {data.mag?.toFixed(0) ?? '--'} kts</div>
+                    <div>Dir: {data.drx?.toFixed(0) ?? '--'}°</div>
+                </>
+            );
+        }
+        default:
+            return <div>Unknown Data</div>;
+    }
+}
+
 /* Component: Hodograph
     Renders an interactive hodograph with wind data.
 */
-export default function Hodograph({ soundingParam, statsDictParam, config = {}, styles = {} }) {
+export default function Hodograph({
+    soundingParam,
+    statsDictParam,
+    config = {},
+    className = 'hodobox',
+    sx = {},
+}) {
     // --- Dimensions and Setup ---
     const [containerRef, dimensions] = useContainerDimensions();
     const [hoverInfo, setHoverInfo] = useState(null);
@@ -141,18 +186,19 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
     }, [soundingParam, settings.segments]);
 
     // --- Tooltip Helper ---
-    const handleMouseOver = (e, content) => {
+    const handleMouseOver = (e, data, type) => {
         setHoverInfo({
             x: e.clientX + 10,
             y: e.clientY - 15,
-            content,
+            data,
+            type,
         });
     };
 
     const transformString = `translate(${transformState.x || 0},${transformState.y || 0}) scale(${transformState.k || 1})`;
 
     return (
-        <div ref={containerRef} className="hodobox" style={styles}>
+        <div ref={containerRef} className={className} style={sx}>
             {dimensions.width > 0 && (
                 <>
                     <svg
@@ -196,10 +242,7 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
                                                     d={lineGenerator(memberData)}
                                                     className="hodoline member"
                                                     onMouseOver={(e) =>
-                                                        handleMouseOver(
-                                                            e,
-                                                            <div>Member: {memberData[0]?.mem}</div>,
-                                                        )
+                                                        handleMouseOver(e, memberData, 'member')
                                                     }
                                                     onMouseOut={() => setHoverInfo(null)}
                                                 />
@@ -233,16 +276,7 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
                                                     r={3 / transformState.k} // Adjust radius based on zoom
                                                     className="hodo-datapoint"
                                                     onMouseOver={(e) =>
-                                                        handleMouseOver(
-                                                            e,
-                                                            <div>
-                                                                Height: {d.hght.toFixed(0)}
-                                                                <br />
-                                                                Spd: {d.twnd.toFixed(0)}
-                                                                <br />
-                                                                Dir: {d.wdir.toFixed(0)}
-                                                            </div>,
-                                                        )
+                                                        handleMouseOver(e, d, 'datapoint')
                                                     }
                                                     onMouseOut={() => setHoverInfo(null)}
                                                 />
@@ -271,16 +305,10 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
                                                         onMouseOver={(e) =>
                                                             handleMouseOver(
                                                                 e,
-                                                                <div>
-                                                                    <b>
-                                                                        Bunkers{' '}
-                                                                        {i === 0 ? 'Right' : 'Left'}
-                                                                    </b>
-                                                                    <br />
-                                                                    Spd: {vec.mag.toFixed(0)}
-                                                                    <br />
-                                                                    Dir: {vec.drx.toFixed(0)}
-                                                                </div>,
+                                                                vec,
+                                                                i === 0
+                                                                    ? 'bunkers-right'
+                                                                    : 'bunkers-left',
                                                             )
                                                         }
                                                         onMouseOut={() => setHoverInfo(null)}
@@ -313,7 +341,16 @@ export default function Hodograph({ soundingParam, statsDictParam, config = {}, 
                         <ChartTooltip
                             x={hoverInfo.x || hoverInfo.screenX}
                             y={hoverInfo.y || hoverInfo.screenY}
-                            content={hoverInfo.content}
+                            content={
+                                settings.renderTooltip ? (
+                                    settings.renderTooltip(hoverInfo.data, hoverInfo.type)
+                                ) : (
+                                    <HodographTooltipContent
+                                        data={hoverInfo.data}
+                                        type={hoverInfo.type}
+                                    />
+                                )
+                            }
                         />
                     )}
                 </>
