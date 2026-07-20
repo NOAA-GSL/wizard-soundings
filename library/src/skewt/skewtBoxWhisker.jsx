@@ -3,14 +3,22 @@ import * as d3 from 'd3';
 
 /**
  * Computes percentile profiles from ensemble member data at each pressure level.
- * Groups all members by pressure and computes the requested percentiles for temp and dwpt.
+ * Groups all members by pressure and computes the requested percentiles for
+ * each variable in variableKeys.
  *
- * @param {Array} memberProfiles - Array of member arrays, each containing level objects with {press, temp, dwpt}
+ * @param {Array} memberProfiles - Array of member arrays, each containing level objects.
  * @param {Array} percentiles - Array of percentiles to compute, e.g. [5, 25, 75, 95]. Median (50) is always included.
- * @returns {Object} - { pressureLevels, temp: { p5: [...], p25: [...], ... }, dwpt: { ... } }
+ * @param {Array} variableKeys - Variable keys to compute, e.g. ['temp', 'dwpt', 'wetb'].
+ * @returns {Object} - { pressureLevels, [variableKey]: { p5: [...], p25: [...], ... } }
  */
-export function computePercentileProfiles(memberProfiles, percentiles) {
+export function computePercentileProfiles(
+    memberProfiles,
+    percentiles,
+    variableKeys = ['temp', 'dwpt'],
+) {
     if (!memberProfiles || memberProfiles.length === 0) return null;
+    const keys = [...new Set(variableKeys)].filter(Boolean);
+    if (keys.length === 0) return null;
 
     // Ensure 50 (median) is always included
     const allPercentiles = [...new Set([...percentiles, 50])].sort((a, b) => a - b);
@@ -24,37 +32,40 @@ export function computePercentileProfiles(memberProfiles, percentiles) {
     }
     const pressureLevels = [...pressureSet].sort((a, b) => b - a); // High to low pressure
 
-    // For each pressure level, gather temp/dwpt values across members
-    const result = {
-        pressureLevels,
-        temp: {},
-        dwpt: {},
-    };
+    // For each pressure level, gather variable values across members
+    const result = { pressureLevels };
+    for (const key of keys) result[key] = {};
 
     for (const p of allPercentiles) {
-        result.temp[`p${p}`] = [];
-        result.dwpt[`p${p}`] = [];
+        for (const key of keys) {
+            result[key][`p${p}`] = [];
+        }
     }
 
     for (const press of pressureLevels) {
-        const temps = [];
-        const dwpts = [];
+        const valuesByKey = Object.fromEntries(keys.map((key) => [key, []]));
 
         for (const member of memberProfiles) {
             const level = member.find((d) => d.press === press);
             if (level) {
-                if (level.temp != null && !Number.isNaN(level.temp)) temps.push(level.temp);
-                if (level.dwpt != null && !Number.isNaN(level.dwpt)) dwpts.push(level.dwpt);
+                for (const key of keys) {
+                    if (level[key] != null && !Number.isNaN(level[key])) {
+                        valuesByKey[key].push(level[key]);
+                    }
+                }
             }
         }
 
-        temps.sort((a, b) => a - b);
-        dwpts.sort((a, b) => a - b);
+        for (const key of keys) {
+            valuesByKey[key].sort((a, b) => a - b);
+        }
 
         for (const p of allPercentiles) {
             const q = p / 100;
-            result.temp[`p${p}`].push(temps.length >= 2 ? d3.quantile(temps, q) : null);
-            result.dwpt[`p${p}`].push(dwpts.length >= 2 ? d3.quantile(dwpts, q) : null);
+            for (const key of keys) {
+                const vals = valuesByKey[key];
+                result[key][`p${p}`].push(vals.length >= 2 ? d3.quantile(vals, q) : null);
+            }
         }
     }
 
@@ -116,25 +127,33 @@ function buildLinePath(pressureLevels, values, xScale, yScale, tanAlpha, baseY) 
  * - memberProfiles: Array of member data arrays
  * - scales: { xScale, yScale, tanAlpha, baseY }
  * - percentiles: Array of percentile values, e.g. [5, 25, 75, 95]
+ * - variableKeys: Variables to render, e.g. ['temp', 'dwpt', 'wetb']
+ * - visibleVariables: Optional variable visibility map, e.g. { temp: true, dwpt: true }
  * - colors: { temp, dwpt } - base colors for temp and dewpoint
  */
 export default function SkewTBoxWhisker({
     memberProfiles,
     scales,
     percentiles = [5, 25, 75, 95],
+    variableKeys = ['temp', 'dwpt'],
+    visibleVariables = {},
     colors,
 }) {
     const { xScale, yScale, tanAlpha, baseY } = scales;
+    const activeVariableKeys = useMemo(
+        () => variableKeys.filter((key) => visibleVariables[key] !== false),
+        [variableKeys, visibleVariables],
+    );
 
     const percentileData = useMemo(
-        () => computePercentileProfiles(memberProfiles, percentiles),
-        [memberProfiles, percentiles],
+        () => computePercentileProfiles(memberProfiles, percentiles, activeVariableKeys),
+        [memberProfiles, percentiles, activeVariableKeys],
     );
 
     const paths = useMemo(() => {
         if (!percentileData || !xScale) return null;
 
-        const { pressureLevels, temp, dwpt } = percentileData;
+        const { pressureLevels } = percentileData;
         const sortedPercentiles = [...new Set([...percentiles, 50])].sort((a, b) => a - b);
 
         // Build whisker and box areas for temp and dwpt
@@ -180,11 +199,11 @@ export default function SkewTBoxWhisker({
             return { whiskerPath, boxPath, medianPath, color };
         };
 
-        return {
-            temp: buildPaths(temp, colors.temp),
-            dwpt: buildPaths(dwpt, colors.dwpt),
-        };
-    }, [percentileData, xScale, yScale, tanAlpha, baseY, percentiles, colors]);
+        return activeVariableKeys.reduce((acc, key) => {
+            acc[key] = buildPaths(percentileData[key], colors[key]);
+            return acc;
+        }, {});
+    }, [percentileData, xScale, yScale, tanAlpha, baseY, percentiles, colors, activeVariableKeys]);
 
     if (!paths) return null;
 
@@ -231,8 +250,9 @@ export default function SkewTBoxWhisker({
 
     return (
         <g className="skewt-box-whisker">
-            {renderVariable(paths.dwpt)}
-            {renderVariable(paths.temp)}
+            {activeVariableKeys.map((key) => (
+                <g key={`boxwhisker-${key}`}>{renderVariable(paths[key])}</g>
+            ))}
         </g>
     );
 }

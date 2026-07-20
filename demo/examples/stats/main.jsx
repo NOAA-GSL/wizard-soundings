@@ -1,6 +1,7 @@
 import { StrictMode, useState, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createSounding, SoundingContainer, data } from '@noaa-gsl/wizard-soundings';
+import { createSounding, SoundingContainer } from '@noaa-gsl/wizard-soundings';
+import data from './soundingData.json';
 import '@noaa-gsl/wizard-soundings/styles.css';
 import './style.css';
 
@@ -237,6 +238,9 @@ function App() {
     const [displayMode, setDisplayMode] = useState('boxwhisker');
     const [percentileInput, setPercentileInput] = useState('5, 25, 75, 95');
     const [timeIndex, setTimeIndex] = useState(0);
+    const [showTemperature, setShowTemperature] = useState(true);
+    const [showDewPoint, setShowDewPoint] = useState(true);
+    const [showWetBulb, setShowWetBulb] = useState(false);
 
     // Parse percentile input into array of numbers
     const percentiles = percentileInput
@@ -248,6 +252,7 @@ function App() {
     const { soundingData, stats, derivedData } = useMemo(() => {
         const sounding = createSounding();
         sounding.updateData(data, String(DATES[timeIndex]));
+
         return {
             soundingData: sounding.getLevelData(),
             stats: sounding.calcStats(sounding.getMembers(), 'mean'),
@@ -258,16 +263,6 @@ function App() {
     // --- Tooltip Override Demo ---
     // Toggle this state to see the tooltips change!
     const [useCustomTooltips, setUseCustomTooltips] = useState(false);
-
-    // Apply the overrides if the toggle is active
-    const demoConfig = useCustomTooltips
-        ? {
-              skewt: { renderTooltip: skewTTooltipOverride, displayMode, percentiles },
-              hodo: { renderTooltip: hodoTooltipOverride },
-          }
-        : {
-              skewt: { displayMode, percentiles },
-          }; // Pass an empty object to fall back to the library defaults
 
     return (
         <div className="app-layout">
@@ -295,6 +290,7 @@ function App() {
                         >
                             <option value="plumes">Plumes</option>
                             <option value="boxwhisker">Box Whisker</option>
+                            <option value="mean">Mean</option>
                         </select>
                     </label>
                     <label>
@@ -304,6 +300,30 @@ function App() {
                             value={percentileInput}
                             onChange={(e) => setPercentileInput(e.target.value)}
                             placeholder="5, 25, 75, 95"
+                        />
+                    </label>
+                    <label className="checkbox-row">
+                        <span>Show Temperature</span>
+                        <input
+                            type="checkbox"
+                            checked={showTemperature}
+                            onChange={(e) => setShowTemperature(e.target.checked)}
+                        />
+                    </label>
+                    <label className="checkbox-row">
+                        <span>Show Dew Point</span>
+                        <input
+                            type="checkbox"
+                            checked={showDewPoint}
+                            onChange={(e) => setShowDewPoint(e.target.checked)}
+                        />
+                    </label>
+                    <label className="checkbox-row">
+                        <span>Show Wet Bulb</span>
+                        <input
+                            type="checkbox"
+                            checked={showWetBulb}
+                            onChange={(e) => setShowWetBulb(e.target.checked)}
                         />
                     </label>
                     {percentiles.length >= 2 && (
@@ -342,7 +362,23 @@ function App() {
                         soundingData={soundingData}
                         stats={stats}
                         derivedData={derivedData}
-                        globalConfig={demoConfig}
+                        globalConfig={{
+                            skewt: {
+                                displayMode,
+                                percentiles,
+                                showTemperature,
+                                showDewPoint,
+                                showWetBulb,
+                                ...(useCustomTooltips
+                                    ? { renderTooltip: skewTTooltipOverride }
+                                    : {}),
+                            },
+                            hodo: {
+                                ...(useCustomTooltips
+                                    ? { renderTooltip: hodoTooltipOverride }
+                                    : {}),
+                            },
+                        }}
                     />
                 </section>
             </main>
