@@ -4,10 +4,12 @@ import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import prettierConfig from 'eslint-plugin-prettier/recommended';
-import { defineConfig, globalIgnores } from 'eslint/config';
+import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
-    globalIgnores(['dist']),
+    {
+        ignores: ['**/dist', '**/node_modules'],
+    },
     {
         files: ['**/*.{js,jsx,ts,tsx}'],
         extends: [

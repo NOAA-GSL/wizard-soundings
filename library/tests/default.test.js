@@ -86,10 +86,10 @@ const stats = sharpStats(profile);
 // Tolerance for comparisons (allows minor floating-point differences between implementations)
 // SHARPpy and wizard-soundings use slightly different interpolation/integration methods,
 // so we allow reasonable tolerances for each category.
-const SCALAR_DIGITS = 0;   // ±0.5 for thermodynamic scalars that match closely
+const SCALAR_DIGITS = 0; // ±0.5 for thermodynamic scalars that match closely
 const KINEMATIC_DIGITS = -1; // ±5 for kinematic values (SRH, winds) with interpolation diffs
-const PRECISE_DIGITS = 2;  // ±0.005 for precise comparisons (e.g. pw in inches)
-const LOOSE_DIGITS = -2;   // ±50 for values with known algorithm differences (DCAPE, BRN)
+const PRECISE_DIGITS = 2; // ±0.005 for precise comparisons (e.g. pw in inches)
+const LOOSE_DIGITS = -2; // ±50 for values with known algorithm differences (DCAPE, BRN)
 
 // ====================================================================================
 // Unit conversion tests
@@ -227,7 +227,10 @@ describe('Thermodynamic Indices', () => {
         expect(stats.maxT).toBeCloseTo(ref.maxT, SCALAR_DIGITS);
     });
     test('Mean Theta-E', () => {
-        expect(sharp.meanThetae(profile, 1000, 500) + 273.15).toBeCloseTo(ref.meanThetaE, KINEMATIC_DIGITS);
+        expect(sharp.meanThetae(profile, 1000, 500) + 273.15).toBeCloseTo(
+            ref.meanThetaE,
+            KINEMATIC_DIGITS,
+        );
     });
     test('lowRH (sfc to sfc-100 mean RH)', () => {
         expect(stats.lowRH).toBeCloseTo(ref.lowRH, SCALAR_DIGITS);
