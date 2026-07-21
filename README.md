@@ -49,4 +49,17 @@ To run tests in watch mode (re-runs on file changes):
 npm run test:watch --workspace=library
 ```
 
+### To run linter checks:
+
+```bash
+# from the root directory
+npm run lint --workspace=library
+```
+
+This uses ESLint to check code quality and style. Fixes can be auto-corrected with:
+
+```bash
+npm run lint --workspace=library -- --fix
+```
+
 ## Library

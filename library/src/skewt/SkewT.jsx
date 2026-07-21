@@ -177,14 +177,26 @@ export default function SkewT({
     const [hoverInfo, setHoverInfo] = useState(null);
 
     // Resolve displayMode and percentiles from props or config
-    const resolvedDisplayMode = displayMode || config.displayMode || 'plumes';
-    const resolvedPercentiles = percentiles || config.percentiles || [5, 25, 75, 95];
-    const traceVisibility = {
-        temp: config.showTemperature ?? config.traceVisibility?.temp ?? true,
-        dwpt: config.showDewPoint ?? config.traceVisibility?.dwpt ?? true,
-        wetb: config.showWetBulb ?? config.traceVisibility?.wetb ?? false,
-    };
-    const activeTraceKeys = TRACE_RENDER_ORDER.filter((key) => traceVisibility[key]);
+    const resolvedDisplayMode = useMemo(
+        () => displayMode || config.displayMode || 'plumes',
+        [displayMode, config.displayMode],
+    );
+    const resolvedPercentiles = useMemo(
+        () => percentiles || config.percentiles || [5, 25, 75, 95],
+        [percentiles, config.percentiles],
+    );
+    const traceVisibility = useMemo(
+        () => ({
+            temp: config.showTemperature ?? config.traceVisibility?.temp ?? true,
+            dwpt: config.showDewPoint ?? config.traceVisibility?.dwpt ?? true,
+            wetb: config.showWetBulb ?? config.traceVisibility?.wetb ?? false,
+        }),
+        [config.showTemperature, config.traceVisibility, config.showDewPoint, config.showWetBulb],
+    );
+    const activeTraceKeys = useMemo(
+        () => TRACE_RENDER_ORDER.filter((key) => traceVisibility[key]),
+        [traceVisibility],
+    );
 
     const settings = useMemo(
         () => ({
@@ -252,7 +264,7 @@ export default function SkewT({
                 parcel: makeLine('temp', 'press'),
             },
         };
-    }, [dimensions, settings]);
+    }, [dimensions.width, dimensions.height, settings]);
 
     // Zoom Logic
     const [zoomRefCallback, transformState] = useZoomHandler(dimensions, settings.zoom);
@@ -270,7 +282,7 @@ export default function SkewT({
             memberProfiles: members,
             memberBarbs: members.map((m) => filterWindBarbs(m, settings.topP, settings.baseP)),
         };
-    }, [soundingParam, settings.topP, settings.baseP]);
+    }, [soundingParam, settings]);
 
     // Compute mean profile from member profiles (used by 'mean' display mode)
     const { computedMeanProfile, computedMeanBarbs } = useMemo(() => {
@@ -280,9 +292,8 @@ export default function SkewT({
         const barbs = filterWindBarbs(profile, settings.topP, settings.baseP);
 
         return { computedMeanProfile: profile, computedMeanBarbs: barbs };
-    }, [memberProfiles, settings.topP, settings.baseP]);
+    }, [memberProfiles, settings]);
 
-    // Tooltip Logic
     const handleMouseMove = useCallback(
         (e) => {
             const tooltipProfile = computedMeanProfile;
@@ -356,7 +367,7 @@ export default function SkewT({
                 setHoverInfo(null);
             }
         },
-        [computedMeanProfile, resolvedDisplayMode, scales, transformState, traceVisibility],
+        [computedMeanProfile, traceVisibility, scales, transformState],
     );
 
     const transformString = `translate(${transformState.x || 0},${transformState.y || 0}) scale(${transformState.k || 1})`;
