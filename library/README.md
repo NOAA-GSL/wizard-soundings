@@ -13,3 +13,17 @@ npm install @noaa-gsl/wizard-soundings d3
 ```
 
 ## Library
+
+### Mean profile behavior
+
+Skew-T and hodograph mean traces are always computed from ensemble member profiles.
+
+### Skew-T trace visibility
+
+Skew-T traces can be toggled per variable in `globalConfig.skewt`:
+
+- `showTemperature` (default: `true`)
+- `showDewPoint` (default: `true`)
+- `showWetBulb` (default: `false`)
+
+These toggles apply consistently across `plumes`, `boxwhisker`, and `mean` display modes.
