@@ -1,5 +1,7 @@
 # Wizard Soundings
 
+📊 **[View Live Demo](https://noaa-gsl.github.io/wizard-soundings/)**
+
 A javascript sounding library
 
 ## Getting Started
