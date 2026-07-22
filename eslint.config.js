@@ -4,12 +4,11 @@ import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import prettierConfig from 'eslint-plugin-prettier/recommended';
-import { defineConfig } from 'eslint/config';
+import { defineConfig, globalIgnores } from 'eslint/config';
+import importPlugin from 'eslint-plugin-import';
 
 export default defineConfig([
-    {
-        ignores: ['**/dist', '**/node_modules'],
-    },
+    globalIgnores(['**/dist', '**/node_modules', '**/vite.config*.js']),
     {
         files: ['**/*.{js,jsx,ts,tsx}'],
         extends: [
@@ -38,10 +37,18 @@ export default defineConfig([
             'no-console': ['warn', { allow: ['debug', 'error'] }],
             'no-unused-expressions': ['error', { allowTernary: true }],
             camelcase: 'off',
+            'import/no-unresolved': ['error', { caseSensitive: true }],
+        },
+        plugins: {
+            import: importPlugin,
         },
         settings: {
             react: {
                 version: 'detect',
+            },
+            'import/extensions': ['.js', '.jsx'],
+            'import/resolver': {
+                node: { extensions: ['.js', '.jsx'] },
             },
         },
     },

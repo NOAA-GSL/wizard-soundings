@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { math } from '../Utilities';
-import BoxWhisker from './boxWhisker';
+import BoxWhisker from './BoxWhisker';
 import useContainerDimensions from '../utilities/useContainerDimensions';
 
 const DEFAULT_CONFIG = {

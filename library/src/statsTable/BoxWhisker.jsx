@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import * as d3 from 'd3';
-import './boxwhisker.css';
+import './BoxWhisker.css';
 
 function BoxWhisker({
     data = [],
