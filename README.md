@@ -55,13 +55,13 @@ npm run test:watch --workspace=library
 
 ```bash
 # from the root directory
-npm run lint --workspace=library
+npm run lint
 ```
 
 This uses ESLint to check code quality and style. Fixes can be auto-corrected with:
 
 ```bash
-npm run lint --workspace=library -- --fix
+npm run lint -- --fix
 ```
 
 ## Library

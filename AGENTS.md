@@ -7,7 +7,12 @@
 ## Required engineering rules
 
 - Every new feature must include tests (unit or integration).
+
+## Required documentation rules
+
 - Always update README.md when behavior changes.
+- Always create or update docs in ./docs for any feature change, list every option of every feature in the documents
+
 
 ## demo rule
 
