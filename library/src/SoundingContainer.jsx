@@ -2,7 +2,7 @@ import { useState } from 'react';
 import SkewT from './skewt/SkewT';
 import Hodograph from './hodograph/Hodograph';
 import StatsTable from './statsTable/StatsTable';
-import BoxPlot from './statsTable/BoxPlot';
+import BoxPlot from './statsTable/boxplot';
 import './soundingContainer.css';
 
 /**
