@@ -614,7 +614,7 @@ const calculateStats = (components, key, stat) => {
     } else {
         // This must be a profile, nothing to do here
         // console.error('Error: Data array must contain either numbers or Vector objects.');
-        console.log(key, isVector(key, validComponents[0]), validComponents[0]);
+        // console.log(key, isVector(key, validComponents[0]), validComponents[0]);
         return null;
     }
     return returnStat;
@@ -642,7 +642,7 @@ export default function createSounding() {
         },
 
         calcStats(memberList, stat) {
-            console.log('calculating stats for:', memberList, 'with stat:', stat);
+            // console.log('calculating stats for:', memberList, 'with stat:', stat);
 
             const statsDict = {};
 

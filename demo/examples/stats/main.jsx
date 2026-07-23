@@ -1,6 +1,7 @@
 import { StrictMode, useState, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createSounding, SoundingContainer } from '@noaa-gsl/wizard-soundings';
+import { createSounding } from '@noaa-gsl/wizard-soundings';
+import { SkewT, Hodograph, StatsTable, BoxPlot } from '@noaa-gsl/wizard-soundings';
 import data from './soundingData.json';
 import '@noaa-gsl/wizard-soundings/styles.css';
 import './style.css';
@@ -241,6 +242,7 @@ function App() {
     const [showTemperature, setShowTemperature] = useState(true);
     const [showDewPoint, setShowDewPoint] = useState(true);
     const [showWetBulb, setShowWetBulb] = useState(false);
+    const [selectedStat, setSelectedStat] = useState('sfcCAPE');
 
     // Parse percentile input into array of numbers
     const percentiles = percentileInput
@@ -358,28 +360,50 @@ function App() {
                 </aside>
 
                 <section className="display-area">
-                    <SoundingContainer
-                        soundingData={soundingData}
-                        stats={stats}
-                        derivedData={derivedData}
-                        globalConfig={{
-                            skewt: {
-                                displayMode,
-                                percentiles,
-                                showTemperature,
-                                showDewPoint,
-                                showWetBulb,
-                                ...(useCustomTooltips
-                                    ? { renderTooltip: skewTTooltipOverride }
-                                    : {}),
-                            },
-                            hodo: {
-                                ...(useCustomTooltips
-                                    ? { renderTooltip: hodoTooltipOverride }
-                                    : {}),
-                            },
-                        }}
-                    />
+                    <div className="sounding-dashboard">
+                        {/* Top Section: Visualization Grid */}
+                        <div className="viz-grid">
+                            <div className="viz-item skewt-wrapper">
+                                <SkewT
+                                    soundingParam={soundingData}
+                                    statsDictParam={stats}
+                                    config={{
+                                        displayMode,
+                                        percentiles,
+                                        showTemperature,
+                                        showDewPoint,
+                                        showWetBulb,
+                                        ...(useCustomTooltips
+                                            ? { renderTooltip: skewTTooltipOverride }
+                                            : {}),
+                                    }}
+                                />
+                            </div>
+                            <div className="viz-item hodo-wrapper">
+                                <Hodograph
+                                    soundingParam={soundingData}
+                                    statsDictParam={stats}
+                                    config={{
+                                        ...(useCustomTooltips
+                                            ? { renderTooltip: hodoTooltipOverride }
+                                            : {}),
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Bottom Section: Data Table */}
+                        <div className="table-wrapper">
+                            <StatsTable
+                                statsDictParam={stats}
+                                selectedStat={selectedStat}
+                                onStatSelect={setSelectedStat}
+                            />
+                        </div>
+                        <div>
+                            <BoxPlot statsDictParam={derivedData} curStat={selectedStat} />
+                        </div>
+                    </div>
                 </section>
             </main>
         </div>
