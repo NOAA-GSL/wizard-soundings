@@ -9,16 +9,7 @@ import './style.css';
 // Data contains the sample data.
 // Use createSounding to create the Sounding object for handling / manipulating sounding data
 
-const DATES = [
-    1753707600000, 1753711200000, 1753714800000, 1753718400000, 1753722000000, 1753725600000,
-    1753729200000, 1753732800000, 1753736400000, 1753740000000, 1753743600000, 1753747200000,
-    1753750800000, 1753754400000, 1753758000000, 1753761600000, 1753765200000, 1753768800000,
-    1753772400000, 1753776000000, 1753779600000, 1753783200000, 1753786800000, 1753790400000,
-    1753794000000, 1753797600000, 1753801200000, 1753804800000, 1753808400000, 1753812000000,
-    1753815600000, 1753819200000, 1753822800000, 1753826400000, 1753830000000, 1753833600000,
-    1753837200000, 1753840800000, 1753844400000, 1753848000000, 1753851600000, 1753855200000,
-    1753858800000, 1753862400000, 1753866000000, 1753869600000, 1753873200000, 1753876800000,
-];
+const DATES = data.metadata?.gh_isobaric?.availableDates ?? [];
 
 function formatTime(timestamp) {
     const d = new Date(timestamp);
@@ -253,7 +244,10 @@ function App() {
     // Data Fetching - recompute when time changes
     const { soundingData, stats, derivedData } = useMemo(() => {
         const sounding = createSounding();
-        sounding.updateData(data, String(DATES[timeIndex]));
+        const selectedDate = String(DATES[timeIndex]);
+        const recordsForDate = data.data?.[selectedDate] ?? [];
+
+        sounding.updateData(recordsForDate);
 
         return {
             soundingData: sounding.getLevelData(),

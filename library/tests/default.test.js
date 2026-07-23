@@ -1,5 +1,5 @@
 import sharp from '../src/Sharp';
-import { sharpStats } from '../src/soundingModel';
+import createSounding from '../src/createSounding';
 import { vec2comp } from '../src/vector';
 import { expect, test, describe } from 'vitest';
 import { readFileSync } from 'fs';
@@ -15,18 +15,16 @@ const d = readFileSync(filePath, 'utf-8');
 const refPath = join(__dirname, './data/sharppy_reference.json');
 const ref = JSON.parse(readFileSync(refPath, 'utf-8'));
 
-const profile = {
+const parsed = {
     pres: [],
-    hght: [],
     hghtmsl: [],
     tmpc: [],
     dwpc: [],
-    vtmp: [],
     uwnd: [],
     vwnd: [],
 };
 
-// Load sounding, derive vtmp and u,v
+// Load sounding and build createSounding records from SPC text rows.
 let skip = true;
 let orog;
 for (const l of d.split('\n')) {
@@ -35,53 +33,46 @@ for (const l of d.split('\n')) {
         const arr = l.trim().split(',').map(Number);
         const line = arr.map((v) => (v === -9999 ? NaN : v));
         const [pres, hght, tmpc, dwpc, wdir, wspd] = line;
-        if (!(Number.isNaN(tmpc) && profile.pres.length === 0)) {
+        if (!(Number.isNaN(tmpc) && parsed.pres.length === 0)) {
             if (!orog) orog = hght;
-            const [uwnd, vwnd] = vec2comp(wspd, wdir);
-            profile.pres.push(pres);
-            profile.hght.push(hght - orog);
-            profile.hghtmsl.push(hght);
-            profile.tmpc.push(tmpc);
-            profile.dwpc.push(dwpc);
-            profile.uwnd.push(uwnd);
-            profile.vwnd.push(vwnd);
-            profile.vtmp.push(sharp.vtmp([tmpc], [dwpc], [pres])[0]);
+            let uwnd = NaN;
+            let vwnd = NaN;
+            if (!Number.isNaN(wspd) && !Number.isNaN(wdir)) {
+                [uwnd, vwnd] = vec2comp(wspd, wdir);
+            }
+            parsed.pres.push(pres);
+            parsed.hghtmsl.push(hght);
+            parsed.tmpc.push(tmpc);
+            parsed.dwpc.push(dwpc);
+            parsed.uwnd.push(uwnd);
+            parsed.vwnd.push(vwnd);
         }
     }
     if (l?.trim() === '%RAW%') skip = false;
 }
 
-// Interpolate any missing data
-for (const i in profile.pres) {
-    for (const f of ['tmpc', 'dwpc', 'uwnd', 'vwnd']) {
-        const field = profile[f][i];
-        if (!field && i > 0) {
-            let found = false;
-            let j;
-            for (j = Number(i) + 1; j < profile.hght.length; j += 1) {
-                if (profile[f][j]) {
-                    found = true;
-                    break;
-                }
-            }
-            // Interpolate between previous valid field and next valid field
-            if (found) {
-                const prevPres = profile.hght[i - 1];
-                const fromField = profile[f][i - 1];
-                const toPres = profile.hght[i];
-                const nextPres = profile.hght[j];
-                const nextField = profile[f][j];
-                [profile[f][i]] = sharp.interp(
-                    [toPres],
-                    [prevPres, nextPres],
-                    [fromField, nextField],
-                );
-            }
-        }
-    }
-}
+const model = 'OAX';
+const records = [
+    { field: 'pressure', model, units: 'hPa', value: parsed.pres },
+    { field: 'gh_isobaric', model, units: 'm', value: parsed.hghtmsl },
+    { field: 't_isobaric', model, units: 'C', value: parsed.tmpc },
+    { field: 'dpt_isobaric', model, units: 'C', value: parsed.dwpc },
+    { field: 'u_isobaric', model, units: 'kts', value: parsed.uwnd },
+    { field: 'v_isobaric', model, units: 'kts', value: parsed.vwnd },
+    { field: 'orog', model, units: 'm', value: orog },
+    { field: 'sp', model, units: 'hPa', value: parsed.pres[0] },
+    { field: 'mslp', model, units: 'hPa', value: parsed.pres[0] },
+    { field: 't2', model, units: 'C', value: parsed.tmpc[0] },
+    { field: 'd2', model, units: 'C', value: parsed.dwpc[0] },
+    { field: 'u10', model, units: 'kts', value: parsed.uwnd[0] },
+    { field: 'v10', model, units: 'kts', value: parsed.vwnd[0] },
+    { field: 'rh2', model, units: '%', value: 70 },
+];
 
-const stats = sharpStats(profile);
+const sounding = createSounding();
+sounding.updateData(records);
+const [profile] = sounding.getProfileData();
+const [stats] = sounding.getDerivedData();
 
 // Tolerance for comparisons (allows minor floating-point differences between implementations)
 // SHARPpy and wizard-soundings use slightly different interpolation/integration methods,
