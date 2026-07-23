@@ -90,7 +90,7 @@ function BoxWhisker({
                 </g>
 
                 {/* --- Data Marks --- */}
-                {data.map((d, i) => {
+                {data.map((d) => {
                     // Map data to pixels based on scale
                     const w1 = linearScale(d.whisker1);
                     const b1 = linearScale(d.box1);

@@ -581,7 +581,7 @@ const calculateStatsVector = (components, stat) => {
 
     // so now <xValue,yValue> has the direction we want
     // and mag has the value we want
-    const [sp, drx] = comp2vec(xValue, yValue);
+    const [, drx] = comp2vec(xValue, yValue);
     const [u, v] = vec2comp(mag, drx);
     const newVector = createVector(u, v);
 
@@ -612,8 +612,9 @@ const calculateStats = (components, key, stat) => {
     } else if (typeof validComponents[0] === 'number') {
         returnStat = calculateStatsScalar(validComponents, stat);
     } else {
-        console.error('Error: Data array must contain either numbers or Vector objects.');
-        console.log(components, key, stat);
+        // This must be a profile, nothing to do here
+        // console.error('Error: Data array must contain either numbers or Vector objects.');
+        console.log(key, isVector(key, validComponents[0]), validComponents[0]);
         return null;
     }
     return returnStat;
