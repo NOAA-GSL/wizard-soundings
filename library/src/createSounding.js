@@ -2,139 +2,305 @@ import sharp from './Sharp';
 import { createVector, isVector, vec2comp, comp2vec } from './vector';
 import { math } from './Utilities';
 
+const WIND_MPS_TO_KTS = 1.9438444924406;
+const FT_TO_M = 0.3048;
+
+const PRESSURE_FIELDS = new Set(['pressure', 'sp', 'mslp']);
+const TEMP_FIELDS = new Set(['t2', 'd2', 't_isobaric', 'dpt_isobaric']);
+const WIND_FIELDS = new Set(['u10', 'v10', 'u_isobaric', 'v_isobaric']);
+const PERCENT_FIELDS = new Set(['rh2', 'r_isobaric']);
+
+const normalizeUnit = (unit, field, model) => {
+    if (typeof unit !== 'string' || unit.trim() === '') {
+        throw new Error(
+            `Missing units for field "${field}" (model "${model}"). Every record requires a units value.`,
+        );
+    }
+    return unit.trim().toLowerCase();
+};
+
+const convertValueByUnit = (value, field, unit, model, allowMissing = false) => {
+    if (value == null) return value;
+    if (Number.isNaN(value)) {
+        if (allowMissing) return value;
+        throw new Error(
+            `Invalid numeric value for field "${field}" (model "${model}"). Received: ${value}`,
+        );
+    }
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+        throw new Error(
+            `Invalid numeric value for field "${field}" (model "${model}"). Received: ${value}`,
+        );
+    }
+
+    if (PRESSURE_FIELDS.has(field)) {
+        if (unit === 'hpa') return value;
+        if (unit === 'pa') return value / 100;
+        throw new Error(
+            `Unsupported units "${unit}" for field "${field}" (model "${model}"). Allowed: hPa, Pa.`,
+        );
+    }
+
+    if (field === 'gh_isobaric') {
+        if (unit === 'dam') return value * 10;
+        if (unit === 'm') return value;
+        throw new Error(
+            `Unsupported units "${unit}" for field "${field}" (model "${model}"). Allowed: dam, m.`,
+        );
+    }
+
+    if (TEMP_FIELDS.has(field)) {
+        if (unit === 'f' || unit === 'degf') return sharp.f2c(value);
+        if (unit === 'c' || unit === 'degc') return value;
+        if (unit === 'k') return value - 273.15;
+        throw new Error(
+            `Unsupported units "${unit}" for field "${field}" (model "${model}"). Allowed: F, C, K.`,
+        );
+    }
+
+    if (WIND_FIELDS.has(field)) {
+        if (unit === 'mph') return sharp.mph2kts(value);
+        if (unit === 'kts' || unit === 'kt') return value;
+        if (unit === 'm/s' || unit === 'mps') return value * WIND_MPS_TO_KTS;
+        throw new Error(
+            `Unsupported units "${unit}" for field "${field}" (model "${model}"). Allowed: mph, kts, m/s.`,
+        );
+    }
+
+    if (field === 'orog') {
+        if (unit === 'm') return value;
+        if (unit === 'ft') return value * FT_TO_M;
+        throw new Error(
+            `Unsupported units "${unit}" for field "${field}" (model "${model}"). Allowed: m, ft.`,
+        );
+    }
+
+    if (PERCENT_FIELDS.has(field)) {
+        if (unit === '%') return value;
+        throw new Error(
+            `Unsupported units "${unit}" for field "${field}" (model "${model}"). Allowed: % only.`,
+        );
+    }
+
+    return value;
+};
+
+const convertRecordValue = (record) => {
+    const { field, model } = record;
+    const unit = normalizeUnit(record.units, field, model);
+    const { value } = record;
+
+    if (Array.isArray(value)) {
+        return value.map((entry) => convertValueByUnit(entry, field, unit, model, true));
+    }
+
+    return convertValueByUnit(value, field, unit, model);
+};
+
+const isMissingValue = (value) => value == null || Number.isNaN(value);
+
+const interpolateMemberLevels = (levels) => {
+    if (!Array.isArray(levels) || levels.length === 0) return;
+
+    if (levels.length >= 3) {
+        for (const fieldName of ['temp', 'dwpt', 'uwnd', 'vwnd']) {
+            for (let i = 1; i < levels.length; i += 1) {
+                if (!isMissingValue(levels[i][fieldName])) continue;
+                if (isMissingValue(levels[i - 1][fieldName])) continue;
+
+                let nextIndex = -1;
+                for (let j = i + 1; j < levels.length; j += 1) {
+                    if (!isMissingValue(levels[j][fieldName])) {
+                        nextIndex = j;
+                        break;
+                    }
+                }
+
+                if (nextIndex === -1) continue;
+
+                levels[i][fieldName] = sharp.interp(
+                    [levels[i].hght],
+                    [levels[i - 1].hght, levels[nextIndex].hght],
+                    [levels[i - 1][fieldName], levels[nextIndex][fieldName]],
+                )[0];
+            }
+        }
+    }
+};
+
+const addDerivedProfileFields = (levels) => {
+    if (!Array.isArray(levels) || levels.length === 0) return;
+
+    for (const level of levels) {
+        // Derive twnd and wdir
+        if (isMissingValue(level.uwnd) || isMissingValue(level.vwnd)) {
+            level.twnd = NaN;
+            level.wdir = NaN;
+            continue;
+        }
+        const [twnd, wdir] = comp2vec(level.uwnd, level.vwnd);
+        level.twnd = twnd;
+        level.wdir = wdir;
+    }
+};
+
+const createSurfaceData = (memberData, mem) => {
+    const { orog } = memberData;
+    const { u10 } = memberData;
+    const { v10 } = memberData;
+    const [twind10, wdir10] = comp2vec(u10, v10);
+
+    return {
+        mem,
+        orog,
+        sp: memberData.sp,
+        mslp: memberData.mslp,
+        t2: memberData.t2,
+        d2: memberData.d2,
+        rh2: memberData.rh2,
+        u10,
+        v10,
+        twind10,
+        wdir10,
+    };
+};
+
+const createMemberLevels = (memberData, surface) => {
+    const levels = [];
+    const ps = memberData.pressure;
+
+    if (!Array.isArray(ps)) return levels;
+
+    for (let level = 0; level < ps.length; level += 1) {
+        const hght = memberData.gh_isobaric[level];
+        levels.push({
+            press: ps[level],
+            hght,
+            temp: memberData.t_isobaric[level],
+            dwpt: memberData.dpt_isobaric[level],
+            uwnd: memberData.u_isobaric[level],
+            vwnd: memberData.v_isobaric[level],
+            twnd: NaN,
+            wdir: NaN,
+            hghtagl: hght - surface.orog,
+            orog: surface.orog,
+            sp: surface.sp,
+            mem: surface.mem,
+            member: surface.mem,
+        });
+    }
+
+    return levels;
+};
+
+const isValidLevel = (level) => {
+    const hasValidThermo =
+        level.temp < 200 &&
+        level.temp > -200 &&
+        level.dwpt < 200 &&
+        level.dwpt > -200 &&
+        !Number.isNaN(level.temp) &&
+        !Number.isNaN(level.dwpt);
+
+    return hasValidThermo;
+};
+
+const insertSurfaceLevel = (levels, surface, averageSurfaceValues) => {
+    // First, filter out any levels that are above the surface
+    for (let i = levels.length - 1; i >= 0; i -= 1) {
+        if (levels[i].press >= averageSurfaceValues.press) {
+            levels.splice(i, 1);
+        }
+    }
+
+    levels.unshift({
+        press: averageSurfaceValues.press,
+        hght: averageSurfaceValues.hght,
+        temp: surface.t2,
+        dwpt: surface.d2,
+        t2: surface.t2,
+        d2: surface.d2,
+        sp: surface.sp,
+        hghtagl: 0,
+        sfcflag: true,
+        orog: surface.orog,
+        mslp: surface.mslp,
+        rh2: surface.rh2,
+        uwnd: surface.u10,
+        vwnd: surface.v10,
+        twind10: surface.twind10,
+        twnd: surface.twind10,
+        wdir: surface.wdir10,
+        wdir10: surface.wdir10,
+        mem: surface.mem,
+    });
+};
+
 /**
  * Formats raw data into a structured sounding profile.
- * @param {object} d - The raw data object.
- * @param {number} time - The forecast hour/time index.
+ * @param {Array} records - Flat list of field/model/value records for a single valid time.
  * @returns {Array} - An array containing [levelData, profileData, members].
  */
-const soundingFormat = (d, time) => {
-    // Get data for current forecast hour
-    const mydata = d.data[time];
+const soundingFormat = (records) => {
+    const mydata = Array.isArray(records) ? records : [];
 
     const obj = {};
     for (const i in mydata) {
         const { field } = mydata[i];
         const mem = mydata[i].model;
 
-        if (!obj[mem]) obj[mem] = {};
-        let { value } = mydata[i];
+        if (!field || !mem) {
+            throw new Error('Each record must include both field and model values.');
+        }
 
-        if (['t2', 'd2'].includes(field)) {
-            value = sharp.f2c(value);
-            // value = value
-        }
-        if (['t_isobaric', 'dpt_isobaric'].includes(field)) {
-            value = value.map((x) => sharp.f2c(x));
-            // value = value.map(x => x)
-        }
-        if (field === 'gh_isobaric') value = value.map((x) => x * 10);
+        if (!obj[mem]) obj[mem] = {};
+        const value = convertRecordValue(mydata[i]);
         obj[mem][field] = value;
     }
 
-    // Sounding data for drawing
-    const soundingdata = [];
-    // Get pressure levels for dataset
+    const memberKeys = Object.keys(obj);
 
-    const ps = d.metadata.gh_isobaric.z;
-    for (const mem in obj) {
-        const memberdata = [];
-        // console.log(obj['GEFS']['orog'])
-        const orogs = obj[mem].orog;
-        // Temporary values for testing LREF
-        // let orogs = obj[mem]['orog']
-        // let orogs = dataset != "LREF" ? obj[mem]['orog'] : 137
+    // Calculate surface baseline values for pressure and height
+    const sfcPres = [];
+    const sfcHgt = [];
+    for (const mem of memberKeys) {
+        const press = obj[mem].sp;
+        const hght = obj[mem].orog;
 
-        const { mslp } = obj[mem];
-        for (const level in ps) {
-            // console.log("level",level,obj[mem]['gh_isobaric'])
-            const leveldata = {
-                press: ps[level],
-                hght: obj[mem].gh_isobaric[level],
-                temp: obj[mem].t_isobaric[level],
-                dwpt: obj[mem].dpt_isobaric[level],
-                uwnd: sharp.mph2kts(obj[mem].u_isobaric[level]),
-                vwnd: sharp.mph2kts(obj[mem].v_isobaric[level]),
-                twnd: obj[mem].totalwind[level],
-                wdir: obj[mem].winddir[level],
-                hghtagl: obj[mem].gh_isobaric[level] - orogs,
-                orog: orogs,
-                twind10: obj[mem].totalwind10,
-                wdir10: obj[mem].winddir10,
-                t2: obj[mem].t2,
-                d2: obj[mem].d2,
-                mslp,
-                member: mem,
-                rh2: obj[mem].rh2,
-                u10: sharp.mph2kts(obj[mem].u10),
-                v10: sharp.mph2kts(obj[mem].v10),
-                sp: obj[mem].sp,
-                mem,
-            };
-            memberdata.push(leveldata);
+        if (Number.isFinite(press)) {
+            sfcPres.push(press);
         }
-        soundingdata.push(memberdata);
+
+        if (Number.isFinite(hght)) {
+            sfcHgt.push(hght);
+        }
     }
-    // Filter sounding data for points that are defined and above ground
-    const filteredArrayTmp = soundingdata.map((innerArray) => {
-        const filteredInnerArray = innerArray.filter(
-            (obj) =>
-                obj.press < obj.sp &&
-                obj.hght !== -9990 &&
-                obj.temp < 200 &&
-                obj.temp > -200 &&
-                obj.dwpt < 200 &&
-                obj.dwpt > -200 &&
-                !Number.isNaN(obj.temp) &&
-                !Number.isNaN(obj.dwpt),
-        );
-        return filteredInnerArray;
-    });
-    // Remove arrays that are of length zero
-    const filteredArray = filteredArrayTmp.filter((array) => array.length > 0);
-    // Now grab the members now that the filtering is done
-    const members = filteredArray.map((x) => x[0].member);
 
-    // This inserts surface variables into bottom of sounding array
-    filteredArray.map((innerArray) => {
-        const temp = innerArray[0].t2 + 273.15;
-        const dwpt = innerArray[0].d2 + 273.15;
-        const twnd = innerArray[0].twind10;
-        const wdir = innerArray[0].wdir10;
-        const { rh2 } = innerArray[0];
-        const { u10 } = innerArray[0];
-        const { v10 } = innerArray[0];
-        const { mslp } = innerArray[0];
-        const { orog } = innerArray[0];
-        const pres = innerArray[0].sp;
-        const { mem } = innerArray[0];
+    const averageSurfaceValues = {
+        press: sfcPres.length > 0 ? sfcPres.reduce((a, b) => a + b, 0) / sfcPres.length : undefined,
+        hght: sfcHgt.length > 0 ? sfcHgt.reduce((a, b) => a + b, 0) / sfcHgt.length : undefined,
+    };
 
-        const insert = {
-            press: pres,
-            hght: orog,
-            temp: temp - 273.15,
-            dwpt: dwpt - 273.15,
-            t2: temp - 273.15,
-            d2: dwpt - 273.15,
-            hghtagl: 0,
-            orog,
-            mslp,
-            rh2,
-            uwnd: u10,
-            vwnd: v10,
-            twind10: twnd,
-            twnd,
-            wdir,
-            wdir10: wdir,
-            mem,
-        };
-        innerArray.unshift(insert);
-    });
-    const levelData = filteredArray;
+    const levelData = [];
+    for (const mem in obj) {
+        const surface = createSurfaceData(obj[mem], mem);
+        const memberLevels = createMemberLevels(obj[mem], surface);
+        insertSurfaceLevel(memberLevels, surface, averageSurfaceValues);
+        interpolateMemberLevels(memberLevels);
+        addDerivedProfileFields(memberLevels);
+
+        // Filtering must come after interpolation, otherwise the layer will be filetered out
+        const validLevels = memberLevels.filter(isValidLevel);
+        if (validLevels.length === 0) continue;
+
+        levelData.push(validLevels);
+    }
+
+    const members = levelData.map((levels) => levels[0].mem);
 
     // Create profile data for calculating stats
     const profiledata = [];
-    for (let i = 0; i < filteredArray.length; i++) {
+    for (let i = 0; i < levelData.length; i++) {
         const memdata = {
             pres: [],
             hght: [],
@@ -146,42 +312,26 @@ const soundingFormat = (d, time) => {
             twnd: [],
             wdir: [],
             hghtmsl: [],
+            mem: levelData[i][0].mem,
         };
-        for (let j = 0; j < filteredArray[i].length; j++) {
-            memdata.mem = filteredArray[i][j].mem;
-            memdata.pres.push(filteredArray[i][j].press);
-            memdata.hght.push(filteredArray[i][j].hght - filteredArray[i][j].orog);
-            memdata.hghtmsl.push(filteredArray[i][j].hght);
-            memdata.tmpc.push(filteredArray[i][j].temp);
-            memdata.dwpc.push(filteredArray[i][j].dwpt);
-            memdata.uwnd.push(filteredArray[i][j].uwnd);
-            memdata.vwnd.push(filteredArray[i][j].vwnd);
-            memdata.twnd.push(filteredArray[i][j].twnd);
-            memdata.wdir.push(filteredArray[i][j].wdir);
-            memdata.vtmp.push(
-                sharp.vtmp(
-                    [filteredArray[i][j].temp],
-                    [filteredArray[i][j].dwpt],
-                    [filteredArray[i][j].press],
-                )[0],
-            );
+        for (let j = 0; j < levelData[i].length; j++) {
+            memdata.pres.push(levelData[i][j].press);
+            memdata.hght.push(levelData[i][j].hght - levelData[i][j].orog);
+            memdata.hghtmsl.push(levelData[i][j].hght);
+            memdata.tmpc.push(levelData[i][j].temp);
+            memdata.dwpc.push(levelData[i][j].dwpt);
+            memdata.uwnd.push(levelData[i][j].uwnd);
+            memdata.vwnd.push(levelData[i][j].vwnd);
+            memdata.twnd.push(levelData[i][j].twnd);
+            memdata.wdir.push(levelData[i][j].wdir);
         }
-        profiledata.push(memdata);
-        if (memdata.hght.length === 0) {
-            memdata.mem.push(-999);
-            memdata.pres.push(-999);
-            memdata.hght.push(-999);
-            memdata.tmpc.push(-999);
-            memdata.dwpc.push(-999);
-            memdata.uwnd.push(-999);
-            memdata.vwnd.push(-999);
-            memdata.twnd.push(-999);
-            memdata.wdir.push(-999);
-            memdata.vtmp.push(-999);
-            memdata.hghtmsl.push(-999);
-        }
-    }
 
+        memdata.vtmp = memdata.tmpc.map(
+            (tmpc, index) => sharp.vtmp([tmpc], [memdata.dwpc[index]], [memdata.pres[index]])[0],
+        );
+
+        profiledata.push(memdata);
+    }
     return [levelData, profiledata, members];
 };
 
@@ -204,6 +354,7 @@ export const sharpStats = (profile) => {
     const mupcldwpc = sharp.interp([mupclpres], profile.pres, profile.dwpc)[0];
 
     // Most unstable thermo stuff
+    console.log('yo', profile);
     const [muCAPE, muCINH, muLCL, muLI, muLFC, muEL, mucape3, muptrace, muttrace] = sharp.CAPE(
         profile,
         mupcltmpc,
@@ -614,7 +765,7 @@ const calculateStats = (components, key, stat) => {
     } else {
         // This must be a profile, nothing to do here
         // console.error('Error: Data array must contain either numbers or Vector objects.');
-        console.log(key, isVector(key, validComponents[0]), validComponents[0]);
+        // console.log(key, isVector(key, validComponents[0]), validComponents[0]);
         return null;
     }
     return returnStat;
@@ -630,19 +781,21 @@ const calculateStats = (components, key, stat) => {
  */
 
 export default function createSounding() {
+    // Used for drawing skew-T diagrams
     let levelData = null;
+    // Used for calculating statistics
     let profileData = null;
     let members = null;
     let profileDerivedData = null;
 
     return {
-        updateData(d, time) {
-            [levelData, profileData, members] = soundingFormat(d, time);
+        updateData(records) {
+            [levelData, profileData, members] = soundingFormat(records);
             profileDerivedData = calcDerivedParameters(profileData);
         },
 
         calcStats(memberList, stat) {
-            console.log('calculating stats for:', memberList, 'with stat:', stat);
+            // console.log('calculating stats for:', memberList, 'with stat:', stat);
 
             const statsDict = {};
 
