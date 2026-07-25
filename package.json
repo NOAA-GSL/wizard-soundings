@@ -12,6 +12,7 @@
         "build": "npm run build --workspace=library",
         "build:dev": "npm run build:dev --workspace=library",
         "lint": "npm run lint --workspace=library",
+        "lint:fix": "npm run lint --workspace=library -- --fix",
         "test": "npm run test --workspace=library"
     },
     "workspaces": [

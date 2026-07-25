@@ -61,7 +61,15 @@ npm run lint
 This uses ESLint to check code quality and style. Fixes can be auto-corrected with:
 
 ```bash
-npm run lint -- --fix
+npm run lint:fix
 ```
 
 ## Library
+
+Library usage documentation is available in [docs/](docs/):
+
+- [createSounding input and usage](docs/create-sounding.md)
+- [SkewT component usage](docs/skewt.md)
+- [Hodograph component usage](docs/hodograph.md)
+- [StatsTable component usage](docs/stats-table.md)
+- [BoxPlot component usage](docs/boxplot.md)
