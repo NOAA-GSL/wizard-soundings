@@ -138,7 +138,11 @@ describe('createSounding unit handling', () => {
         const levels = sounding.getLevelData();
         const firstMember = levels[0];
         const surfaceLevel = firstMember[0];
-        const expectedRh2 = sharp.rh([surfaceLevel.press], [surfaceLevel.temp], [surfaceLevel.dwpt])[0];
+        const expectedRh2 = sharp.rh(
+            [surfaceLevel.press],
+            [surfaceLevel.temp],
+            [surfaceLevel.dwpt],
+        )[0];
 
         expect(surfaceLevel.rh2).toBeCloseTo(expectedRh2, 6);
     });
@@ -161,9 +165,7 @@ describe('createSounding unit handling', () => {
         const sounding = createSounding();
         sounding.updateData(records);
 
-        const profile = sounding
-            .getLevelData()
-            .find((levels) => levels[0].mem === targetModel);
+        const profile = sounding.getLevelData().find((levels) => levels[0].mem === targetModel);
         const targetPressure = pressureRecord.value[missingIndex];
         const targetLevel = profile.find((level) => level.press === targetPressure);
 
