@@ -1,5 +1,7 @@
 # Wizard Soundings
 
+📊 **[View Live Demo](https://noaa-gsl.github.io/wizard-soundings/)**
+
 A javascript sounding library
 
 ## Getting Started
@@ -47,6 +49,19 @@ To run tests in watch mode (re-runs on file changes):
 
 ```bash
 npm run test:watch --workspace=library
+```
+
+### To run linter checks:
+
+```bash
+# from the root directory
+npm run lint
+```
+
+This uses ESLint to check code quality and style. Fixes can be auto-corrected with:
+
+```bash
+npm run lint -- --fix
 ```
 
 ## Library

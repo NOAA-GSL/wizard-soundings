@@ -1,3 +1,5 @@
+// Allowing redeclaring since this matches the sharp code
+/* eslint-disable no-redeclare */
 import { math } from './Utilities';
 
 export default class sharp {
@@ -74,7 +76,7 @@ export default class sharp {
         const c4 = 38.9114;
         const c5 = 0.0915;
         const c6 = 1.2035;
-        const x = p.map((element, idx) => {
+        const x = p.map((element) => {
             var x = Math.log10((w * element) / (622 + w));
             var x = 10 ** (c1 * x + c2) - c3 + c4 * (10 ** (c5 * x) - c6) ** 2 - 273.15;
             return x;
@@ -93,8 +95,8 @@ export default class sharp {
 
     // Interpolate a field to given pressure level
     static interp(p, pres, field) {
-        const logp = p.map((element, idx) => Math.log10(element));
-        const logpres = pres.map((element, idx) => Math.log10(element));
+        const logp = p.map((element) => Math.log10(element));
+        const logpres = pres.map((element) => Math.log10(element));
         const interped = this.linear(logp, logpres.slice().reverse(), field.slice().reverse());
         return interped;
     }
@@ -178,7 +180,7 @@ export default class sharp {
         const ptrace = [pbot];
         var [pe2, tp2] = this.dryLift([pcltmpc], [pcldwpc], [pclpres])[0];
         const blupper = Math.floor(pe2);
-        var pe2ind = this.myFindIndex(pres, pe2);
+        // var pe2ind = this.myFindIndex(pres, pe2);
         var h2 = this.interp([pe2], pres, hght)[0];
         var te2 = this.interp([pe2], pres, vtmps)[0];
         const lclpres = Math.min(pe2, pres[0]);
@@ -188,14 +190,14 @@ export default class sharp {
 
         // Calculate CINH in the boundary layer
         var pe1 = pbot;
-        var pe1ind = this.myFindIndex(pres, pe1);
+        // var pe1ind = this.myFindIndex(pres, pe1);
         var h2 = this.interp([pe2], pres, hght)[0];
         var te2 = this.interp([pe2], pres, vtmps)[0];
         var tp1 = this.wetLift([pe2], [tp2], [pe1])[0];
         const theta_parcel = this.theta([pe2], [tp2], [1000])[0];
-        const pclpresidx = this.myFindIndex(pres, pclpres);
-        const bltmpc = this.interp([pclpres], pres, tmpc)[0];
-        const bltheta = this.theta([pclpres], [bltmpc], [1000])[0];
+        // const pclpresidx = this.myFindIndex(pres, pclpres);
+        // const bltmpc = this.interp([pclpres], pres, tmpc)[0];
+        // const bltheta = this.theta([pclpres], [bltmpc], [1000])[0];
         const blmr = this.mixRatio([pclpres], [pcldwpc])[0];
         const pp = this.range(blupper, pbot + 10, 10).slice();
         const hh = this.interp(pp, pres, hght);
@@ -229,10 +231,10 @@ export default class sharp {
         const pm10c = this.temp_lvl(tmpc, pres, -10);
         const pm20c = this.temp_lvl(tmpc, pres, -20);
         const pm30c = this.temp_lvl(tmpc, pres, -30);
-        const p0cind = this.myFindIndex(pres, p0c);
-        const pm10cind = this.myFindIndex(pres, pm10c);
-        const pm20cind = this.myFindIndex(pres, pm20c);
-        const pm30cind = this.myFindIndex(pres, pm30c);
+        // const p0cind = this.myFindIndex(pres, p0c);
+        // const pm10cind = this.myFindIndex(pres, pm10c);
+        // const pm20cind = this.myFindIndex(pres, pm20c);
+        // const pm30cind = this.myFindIndex(pres, pm30c);
         const hgt0c = this.interp([p0c], pres, hght)[0];
         const hgtm10c = this.interp([pm10c], pres, hght)[0];
         const hgtm20c = this.interp([pm20c], pres, hght)[0];
@@ -240,7 +242,7 @@ export default class sharp {
 
         // Moist ascent (not sure why we wetlift from pe2 to pe1; think tp1=tp2)
         var pe1 = pbot;
-        var pe1ind = this.myFindIndex(pres, pe1);
+        // var pe1ind = this.myFindIndex(pres, pe1);
         var h1 = this.interp([pe1], pres, hght)[0];
         var te1 = this.interp([pe1], pres, vtmps)[0];
         var tp1 = this.wetLift([pe2], [tp2], [pe1])[0];
@@ -252,10 +254,10 @@ export default class sharp {
         var lyrlast = 0;
         var tote = 0;
         let totp = 0;
-        var li_max = -9999;
-        const li_maxpres = -9999;
+        // var li_max = -9999;
+        // const li_maxpres = -9999;
         var cap_strength = -9999;
-        const cap_strengthpres = -9999;
+        // const cap_strengthpres = -9999;
         var frzbreaker = 0;
         var n10breaker = 0;
         var n20breaker = 0;
@@ -264,7 +266,7 @@ export default class sharp {
         let cape3breaker = 0;
         let cape3 = 0;
         let cape6breaker = 0;
-        let cape6 = 0;
+        // let cape6 = 0;
 
         // Index of LCL to index of top of layer
         const lptr = this.myFindIndex(pres, pbot);
@@ -320,12 +322,12 @@ export default class sharp {
             // Check for freezing level
             if (te2 < 0 && frzbreaker == 0) {
                 var pe3 = pelast;
-                var pe3ind = this.myFindIndex(pres, pe3);
+                // var pe3ind = this.myFindIndex(pres, pe3);
                 var h3 = this.interp([pe3], pres, hght)[0];
                 var te3 = this.interp([pe3], pres, vtmps)[0];
                 var tp3 = this.wetLift([pe1], [tp1], [pe3])[0];
                 var lyrf = lyre;
-                var pe2ind = this.myFindIndex(pres, pe2);
+                // var pe2ind = this.myFindIndex(pres, pe2);
                 var te2 = this.interp([pe2], pres, vtmps)[0];
                 var tp2 = this.wetLift([pe3], [tp3], [pe2])[0];
                 var tdef3 = (this.vtmp([tp3], [tp3], [pe3])[0] - te3) / (te3 + 273.15);
@@ -337,12 +339,12 @@ export default class sharp {
             // Check for -10C level
             if (te2 < -10 && n10breaker == 0) {
                 var pe3 = pelast;
-                var pe3ind = this.myFindIndex(pres, pe3);
+                // var pe3ind = this.myFindIndex(pres, pe3);
                 var h3 = this.interp([pe3], pres, hght)[0];
                 var te3 = this.interp([pe3], pres, vtmps)[0];
                 var tp3 = this.wetLift([pe1], [tp1], [pe3])[0];
                 var lyrf = lyre;
-                var pe2ind = this.myFindIndex(pres, pe2);
+                // var pe2ind = this.myFindIndex(pres, pe2);
                 var te2 = this.interp([pe2], pres, vtmps)[0];
                 var tp2 = this.wetLift([pe3], [tp3], [pe2])[0];
                 var tdef3 = (this.vtmp([tp3], [tp3], [pe3])[0] - te3) / (te3 + 273.15);
@@ -354,12 +356,12 @@ export default class sharp {
             // Check for -20C level
             if (te2 < -20 && n20breaker == 0) {
                 var pe3 = pelast;
-                var pe3ind = this.myFindIndex(pres, pe3);
+                // var pe3ind = this.myFindIndex(pres, pe3);
                 var h3 = this.interp([pe3], pres, hght)[0];
                 var te3 = this.interp([pe3], pres, vtmps)[0];
                 var tp3 = this.wetLift([pe1], [tp1], [pe3])[0];
                 var lyrf = lyre;
-                var pe2ind = this.myFindIndex(pres, pe2);
+                // var pe2ind = this.myFindIndex(pres, pe2);
                 var te2 = this.interp([pe2], pres, vtmps)[0];
                 var tp2 = this.wetLift([pe3], [tp3], [pe2])[0];
                 var tdef3 = (this.vtmp([tp3], [tp3], [pe3])[0] - te3) / (te3 + 273.15);
@@ -371,12 +373,12 @@ export default class sharp {
             // Check for -30C level
             if (te2 < -30 && n30breaker == 0) {
                 var pe3 = pelast;
-                var pe3ind = this.myFindIndex(pres, pe3);
+                // var pe3ind = this.myFindIndex(pres, pe3);
                 var h3 = this.interp([pe3], pres, hght)[0];
                 var te3 = this.interp([pe3], pres, vtmps)[0];
                 var tp3 = this.wetLift([pe1], [tp1], [pe3])[0];
                 var lyrf = lyre;
-                var pe2ind = this.myFindIndex(pres, pe2);
+                // var pe2ind = this.myFindIndex(pres, pe2);
                 var te2 = this.interp([pe2], pres, vtmps)[0];
                 var tp2 = this.wetLift([pe3], [tp3], [pe2])[0];
                 var tdef3 = (this.vtmp([tp3], [tp3], [pe3])[0] - te3) / (te3 + 273.15);
@@ -389,7 +391,7 @@ export default class sharp {
             if (lclhght < 3000) {
                 if (h1 - hght[0] <= 3000 && h2 - hght[0] >= 3000) {
                     var pe3 = pelast;
-                    var pe3ind = this.myFindIndex(pres, pe3);
+                    // var pe3ind = this.myFindIndex(pres, pe3);
                     var h3 = this.interp([pe3], pres, hght)[0];
                     var te3 = this.interp([pe3], pres, vtmps)[0];
                     var tp3 = this.wetLift([pe1], [tp1], [pe3])[0];
@@ -397,7 +399,7 @@ export default class sharp {
                     var h4 = hght[0] + 3000;
                     // Check here
                     var pe4 = this.interpHght([h4], hght, pres);
-                    var pe4ind = this.myFindIndex(pres, pe4);
+                    // var pe4ind = this.myFindIndex(pres, pe4);
                     var te2 = this.interp([pe4], pres, vtmps)[0];
                     var tp2 = this.wetLift([pe3], [tp3], [pe4])[0];
                     var tdef3 = (this.vtmp([tp3], [tp3], [pe3])[0] - te3) / (te3 + 273.15);
@@ -416,7 +418,7 @@ export default class sharp {
             if (lclhght < 6000) {
                 if (h1 - hght[0] <= 6000 && h2 - hght[0] >= 6000) {
                     var pe3 = pelast;
-                    var pe3ind = this.myFindIndex(pres, pe3);
+                    // var pe3ind = this.myFindIndex(pres, pe3);
                     var h3 = this.interp([pe3], pres, hght)[0];
                     var te3 = this.interp([pe3], pres, vtmps)[0];
                     var tp3 = this.wetLift([pe1], [tp1], [pe3])[0];
@@ -424,20 +426,21 @@ export default class sharp {
                     var h4 = hght[0] + 6000;
                     // Check here
                     var pe4 = this.interpHght([h4], hght, pres);
-                    var pe4ind = this.myFindIndex(pres, pe4);
+                    // var pe4ind = this.myFindIndex(pres, pe4);
                     var te2 = this.interp([pe4], pres, vtmps)[0];
                     var tp2 = this.wetLift([pe3], [tp3], [pe4])[0];
                     var tdef3 = (this.vtmp([tp3], [tp3], [pe3])[0] - te3) / (te3 + 273.15);
                     var tdef2 = (this.vtmp([tp2], [tp2], [pe4])[0] - te2) / (te2 + 273.15);
                     var lyrf = ((9.80665 * (tdef3 + tdef2)) / 2) * (h4 - h3);
                     if (lyrf > 0 && cape6breaker == 0) {
-                        cape6 += lyrf;
+                        // cape6 += lyrf;
                         cape6breaker = 1;
                     }
                 }
-            } else {
-                cape6 = 0;
             }
+            // else {
+            //     cape6 = 0;
+            // }
 
             var h1 = h2;
 
@@ -446,7 +449,7 @@ export default class sharp {
                 var tp3 = tp1;
                 var pe2 = pe1;
                 var pe3 = pelast;
-                var pe3ind = this.myFindIndex(pres, pe3);
+                // var pe3ind = this.myFindIndex(pres, pe3);
                 if (
                     this.interp([pe3], pres, vtmps)[0] <
                     this.vtmp(
@@ -473,9 +476,9 @@ export default class sharp {
                     }
                     if (pe3 > 0) {
                         var lfcpres = pe3;
-                        const cinh_old = totn;
+                        // const cinh_old = totn;
                         var tote = 0;
-                        var li_max = -9999;
+                        // var li_max = -9999;
                         if (cap_strength < 0) {
                             var cap_strength = 0;
                         }
@@ -484,7 +487,7 @@ export default class sharp {
                         var mplpres = null;
                     }
                 }
-                const lfcpresind = this.myFindIndex(pres, lfcpres);
+                // const lfcpresind = this.myFindIndex(pres, lfcpres);
                 var lfchght = this.interp([lfcpres], pres, hght)[0] - hght[0];
                 if (lfcpres >= lclpres) {
                     var lfcpres = lclpres;
@@ -497,7 +500,7 @@ export default class sharp {
                 var tp3 = tp1;
                 var pe2 = pe1;
                 var pe3 = pelast;
-                var pe3ind = this.myFindIndex(pres, pe3);
+                // var pe3ind = this.myFindIndex(pres, pe3);
                 while (
                     this.interp([pe3], pres, vtmps)[0] <
                     this.vtmp(
@@ -509,7 +512,7 @@ export default class sharp {
                     pe3 -= 5;
                 }
                 var elpres = pe3;
-                const elpresind = this.myFindIndex(pres, elpres);
+                // const elpresind = this.myFindIndex(pres, elpres);
                 var elhght = this.interp([elpres], pres, hght)[0] - hght[0];
                 var mplpres = null;
             }
@@ -517,7 +520,7 @@ export default class sharp {
             // Check if this is MPL
             if (tote < 0 && !mplpres && elpres) {
                 var pe3 = pelast;
-                var pe3ind = this.myFindIndex(pres, pe3);
+                // var pe3ind = this.myFindIndex(pres, pe3);
                 var h3 = this.interp([pe3], pres, hght)[0];
                 var te3 = this.interp([pe3], pres, vtmps)[0];
                 var tp3 = this.wetLift([pe1], [tp1], [pe3])[0];
@@ -525,7 +528,7 @@ export default class sharp {
                 var pe2 = pelast;
                 while (totx > 0) {
                     pe2 -= 1;
-                    var pe2ind = this.myFindIndex(pres, pe2);
+                    // var pe2ind = this.myFindIndex(pres, pe2);
                     var te2 = this.interp([pe2], pres, vtmps)[0];
                     var tp2 = this.wetLift([pe3], [tp3], [pe2])[0];
                     var h2 = this.interp([pe2], pres, hght)[0];
@@ -538,8 +541,8 @@ export default class sharp {
                     var pe3 = pe2;
                 }
                 var mplpres = pe2;
-                const mplpresind = this.myFindIndex(pres, mplpres);
-                const mplhght = this.interp([mplpres], pres, hght)[0] - hght[0];
+                // const mplpresind = this.myFindIndex(pres, mplpres);
+                // const mplhght = this.interp([mplpres], pres, hght)[0] - hght[0];
             }
 
             // 500 hPa Lifted Index
@@ -668,7 +671,7 @@ export default class sharp {
 
     // Calculate virtual temperature
     static vtmp(t, dwpc, pres) {
-        const tmpk = t.map((element, idx) => element + 273.15);
+        const tmpk = t.map((element) => element + 273.15);
         const vt = this.mixRatio(pres, dwpc).map((element, idx) => {
             const w = element * 0.001;
             return (tmpk[idx] * (1 + w / 0.62197)) / (1 + w) - 273.15;
@@ -679,10 +682,10 @@ export default class sharp {
     // Calculate level of first occurrence of given temperature
     static temp_lvl(t, p, tref) {
         // Work in log coordinates
-        const logpres = p.map((element, idx) => Math.log10(element));
+        const logpres = p.map((element) => Math.log10(element));
 
         // Difference between temps for subsequent layers
-        const difft = t.map((element, idx) => element - tref);
+        const difft = t.map((element) => element - tref);
 
         // If minimum difference positive, temp is never reached
         if (Math.min.apply(Math, difft) > 0) {
@@ -714,12 +717,12 @@ export default class sharp {
 
     // Interpolate field to given height
     static interpHght(h, hght, field) {
-        const logfield = field.map((element, idx) => Math.log10(element));
+        const logfield = field.map((element) => Math.log10(element));
         const interped = this.linear(h, hght, logfield);
         if (interped.length == 1) {
             return 10 ** interped;
         }
-        const out = interped.map((element, idx) => 10 ** element);
+        const out = interped.map((element) => 10 ** element);
         return out;
     }
 
@@ -743,8 +746,8 @@ export default class sharp {
         var d = [d1].concat(d).concat([d2]);
         var p = [pbot].concat(p).concat([ptop]);
         const p2t2 = this.dryLift(t, d, p);
-        const p2 = p2t2.map((element, index) => element[0]);
-        var t2 = p2t2.map((element, index) => element[1]);
+        const p2 = p2t2.map((element) => element[0]);
+        var t2 = p2t2.map((element) => element[1]);
 
         const mt = this.wetLift(p2, t2, 1000);
         const muindcheck = (element) => Math.abs(element - Math.max.apply(Math, mt)) < 1e-10;
@@ -799,43 +802,6 @@ export default class sharp {
         return [rstu, rstv, lstu, lstv];
     }
 
-    // Top and bottom pressure of effective inflow layer
-    static effectiveInflowLayer(profile, muCAPE, muCINH) {
-        const { pres } = profile;
-        if (muCAPE != 0) {
-            if (muCAPE >= 100 && muCINH > -250) {
-                for (i = 0; i < profile.pres.length; i++) {
-                    var tmpci = profile.tmpc[i];
-                    var dwpci = profile.dwpc[i];
-                    var presi = profile.pres[i];
-                    var [pclCAPE, pclCINH] = this.shortcape(profile, tmpci, dwpci, presi, false);
-                    if (pclCAPE >= 100 && pclCINH > -250) {
-                        var pbot = pres[i];
-                        break;
-                    }
-                }
-                bptr = i;
-                for (i = bptr; i < profile.pres.length; i++) {
-                    var tmpci = profile.tmpc[i];
-                    var dwpci = profile.dwpc[i];
-                    var presi = profile.pres[i];
-                    var [pclCAPE, pclCINH] = this.shortcape(profile, tmpci, dwpci, presi, false);
-                    if (pclCAPE < 100 || pclCINH <= -250) {
-                        var ptop = pres[i - 1];
-                        break;
-                    }
-                    if (ptop > pbot) {
-                        var ptop = pbot;
-                    }
-                }
-            }
-        } else {
-            pbot = null;
-            ptop = null;
-        }
-        return [pbot, ptop];
-    }
-
     // CAPE function without frills
     static shortcape(profile, pcltmpc, pcldwpc, pclpres, trunc) {
         const { tmpc } = profile;
@@ -854,7 +820,7 @@ export default class sharp {
         }
         var pe1 = pbot;
         // CINH in the boundary layer
-        var pe1ind = this.myFindIndex(pres, pe1, 'u');
+        // var pe1ind = this.myFindIndex(pres, pe1, 'u');
         var h1 = this.interp([pe1], pres, hght)[0];
         var tp1 = this.vtmp([pcltmpc], [pcldwpc], [pclpres])[0];
 
@@ -890,7 +856,7 @@ export default class sharp {
         const uptr = this.myFindIndex(pres, ptop, 'u');
 
         var pe1 = pbot;
-        var pe1ind = this.myFindIndex(pres, pe1);
+        // var pe1ind = this.myFindIndex(pres, pe1);
         var h1 = this.interp([pe1], pres, hght)[0];
         var te1 = this.interp([pe1], pres, vtmps)[0];
         var tp1 = this.wetLift([pe2], [tp2], [pe1])[0];
@@ -962,7 +928,7 @@ export default class sharp {
     // Virtual temperature special case
     static vtmpSpecial(tmpc, dwpc, pres) {
         const tmpk = tmpc + 273.15;
-        const vt = this.mixRatio(pres, dwpc).map((element, idx) => {
+        const vt = this.mixRatio(pres, dwpc).map((element) => {
             const w = element * 0.001;
             return (tmpk * (1 + w / 0.62197)) / (1 + w) - 273.15;
         });
@@ -992,10 +958,10 @@ export default class sharp {
         const { vwnd } = profile;
         const [u, v] = this.componentsArr(pres, ps, uwnd, vwnd);
         let pssum = 0;
-        ps.map((element, idx) => {
+        ps.map((element) => {
             pssum += element;
         });
-        const pswts = ps.map((element, idx) => element / pssum);
+        const pswts = ps.map((element) => element / pssum);
         let uavg = 0;
         let vavg = 0;
         u.map((element, idx) => {
@@ -1062,8 +1028,8 @@ export default class sharp {
         const u = [u1].concat(uwnd.slice(ind1, ind2)).concat([u2]);
         const v = [v1].concat(vwnd.slice(ind1, ind2)).concat([v2]);
 
-        const sru = u.map((element, idx) => 0.514444 * (element - stu));
-        const srv = v.map((element, idx) => 0.514444 * (element - stv));
+        const sru = u.map((element) => 0.514444 * (element - stu));
+        const srv = v.map((element) => 0.514444 * (element - stv));
 
         const sru1 = sru.slice(0, sru.length - 1);
         const sru2 = sru.slice(1, sru.length);
@@ -1073,7 +1039,7 @@ export default class sharp {
         const layers = sru2.map((element, idx) => element * srv1[idx] - sru1[idx] * srv2[idx]);
         let phel = 0;
         let nhel = 0;
-        layers.map((element, idx) => {
+        layers.map((element) => {
             if (element > 0) {
                 phel += element;
             } else {
@@ -1145,11 +1111,11 @@ export default class sharp {
 
     // Theta-e index
     static tei(profile) {
-        const { hght } = profile;
+        // const { hght } = profile;
         const { pres } = profile;
         const { tmpc } = profile;
         const { dwpc } = profile;
-        const vtmps = profile.vtmp;
+        // const vtmps = profile.vtmp;
         const sfcpres = pres[0];
         const toppres = sfcpres - 400;
 
@@ -1174,7 +1140,7 @@ export default class sharp {
         const p2t2 = this.dryLift(temp, dwpt, pres);
         const p2 = [];
         const t2 = [];
-        p2t2.map((element, idx) => {
+        p2t2.map((element) => {
             p2.push(element[0]);
             t2.push(element[1]);
         });
@@ -1189,8 +1155,8 @@ export default class sharp {
         const { dwpc } = profile;
         var { tmpc } = profile;
         const { hght } = profile;
-        const the = this.thetae(pres, tmpc, dwpc);
-        const wetbulb = this.wetBulb(pres, tmpc, dwpc);
+        // const the = this.thetae(pres, tmpc, dwpc);
+        // const wetbulb = this.wetBulb(pres, tmpc, dwpc);
         const idx = this.myFindIndex(pres, profile.pres[0] - 400);
         var mine = 1000.0;
         var minp = -999.0;
@@ -1219,7 +1185,7 @@ export default class sharp {
         var lyre = 0;
 
         const ttrace = [tp1];
-        const ptrace = [upper];
+        // const ptrace = [upper];
 
         const ttraces = Array(uptr).fill(0);
         const ptraces = Array(uptr).fill(0);
@@ -1230,7 +1196,7 @@ export default class sharp {
             var tp2 = this.wetLift([pe1], [tp1], [pe2])[0];
             const tdef1 = (tp1 - te1) / (te1 + 273.15);
             const tdef2 = (tp2 - te2) / (te2 + 273.15);
-            const lyrlast = lyre;
+            // const lyrlast = lyre;
             var lyre = ((9.8 * (tdef1 + tdef2)) / 2.0) * (h2 - h1);
             tote += lyre;
 
@@ -1242,7 +1208,7 @@ export default class sharp {
             var h1 = h2;
             var tp1 = tp2;
         }
-        const drtemp = tp2;
+        // const drtemp = tp2;
         const ttraceout = ttrace.concat(ttraces.slice().reverse());
         const downT = ttraceout[ttraceout.length - 1];
         return [tote, downT];
@@ -1280,7 +1246,7 @@ export default class sharp {
         const p2t2 = this.dryLift(temp, dwpt, pres);
         const p2 = [];
         const t2 = [];
-        p2t2.map((element, idx) => {
+        p2t2.map((element) => {
             p2.push(element[0]);
             t2.push(element[1]);
         });
@@ -1328,7 +1294,7 @@ export default class sharp {
 
     // v-totals
     static vTotals(profile) {
-        const { dwpc } = profile;
+        // const { dwpc } = profile;
         const { tmpc } = profile;
         const { pres } = profile;
         profile.vtotals = this.interp([850], pres, tmpc)[0] - this.interp([500], pres, tmpc)[0];
@@ -1383,7 +1349,7 @@ export default class sharp {
     // Convective temperature
     static convectiveTemp(profile) {
         const mincinh = 0;
-        const { dwpc } = profile;
+        // const { dwpc } = profile;
         const { tmpc } = profile;
         const { pres } = profile;
         const mmr = this.meanMR(profile)[0];
@@ -1573,7 +1539,8 @@ export default class sharp {
     }
 
     // Wind shear between two levels
-    static shear(profile, pbot, ptop, stu, stv) {
+    // static shear(profile, pbot, ptop, stu, stv) {
+    static shear(profile, pbot, ptop) {
         const { pres } = profile;
         const { uwnd } = profile;
         const { vwnd } = profile;
@@ -1584,25 +1551,25 @@ export default class sharp {
         const [ubot, vbot] = this.components(pres, pbot, indbottom, uwnd, vwnd);
         const [utop, vtop] = this.components(pres, ptop, indtop, uwnd, vwnd);
 
-        const u = [ubot].concat(uwnd.slice(indbottom, indtop)).concat([utop]);
-        const v = [vbot].concat(vwnd.slice(indbottom, indtop)).concat([vtop]);
-        const sru = u.map((element, idx) => (element - 14.84) * 0.514444);
-        const srv = v.map((element, idx) => (element - 22.05) * 0.514444);
-        const sru1 = sru.slice(1, sru.length);
-        const sru2 = sru.slice(0, sru.length - 1);
-        const srv1 = srv.slice(0, srv.length - 1);
-        const srv2 = srv.slice(1, srv.length);
+        // const u = [ubot].concat(uwnd.slice(indbottom, indtop)).concat([utop]);
+        // const v = [vbot].concat(vwnd.slice(indbottom, indtop)).concat([vtop]);
+        // const sru = u.map((element) => (element - 14.84) * 0.514444);
+        // const srv = v.map((element) => (element - 22.05) * 0.514444);
+        // const sru1 = sru.slice(1, sru.length);
+        // const sru2 = sru.slice(0, sru.length - 1);
+        // const srv1 = srv.slice(0, srv.length - 1);
+        // const srv2 = srv.slice(1, srv.length);
 
-        const layers = sru1.map((element, idx) => element * srv1[idx] - sru2[idx] * srv2[idx]);
-        let phel = 0;
-        let nhel = 0;
-        for (let i = 0; i < layers.length; i++) {
-            if (layers[i] > 0) {
-                phel += layers[i];
-            } else {
-                nhel += layers[i];
-            }
-        }
+        // const layers = sru1.map((element, idx) => element * srv1[idx] - sru2[idx] * srv2[idx]);
+        // let phel = 0;
+        // let nhel = 0;
+        // for (let i = 0; i < layers.length; i++) {
+        //     if (layers[i] > 0) {
+        //         phel += layers[i];
+        //     } else {
+        //         nhel += layers[i];
+        //     }
+        // }
 
         const shu = utop - ubot;
         const shv = vtop - vbot;
@@ -1617,10 +1584,10 @@ export default class sharp {
         const { vwnd } = profile;
         const [u, v] = this.componentsArr(pres, ps, uwnd, vwnd);
         let pssum = 0;
-        ps.map((element, idx) => {
+        ps.map((element) => {
             pssum += element;
         });
-        const pswts = ps.map((element, idx) => element / pssum);
+        const pswts = ps.map((element) => element / pssum);
         let uavg = 0;
         let vavg = 0;
         u.map((element, idx) => {
@@ -1690,10 +1657,10 @@ export default class sharp {
         const dwptinterp = this.interp(p, pres, dwpc);
         const rh = this.rh(p, tmpinterp, dwptinterp);
         let pssum = 0;
-        p.map((element, idx) => {
+        p.map((element) => {
             pssum += element;
         });
-        const pswts = p.map((element, idx) => element / pssum);
+        const pswts = p.map((element) => element / pssum);
         let rhavg = 0;
         rh.map((element, idx) => {
             rhavg += element * pswts[idx];
@@ -1721,7 +1688,7 @@ export default class sharp {
     static mmp(profile, muCAPE) {
         const { hght } = profile;
         const { pres } = profile;
-        const agl_hght = hght.map((element, idx) => element - hght[0]);
+        const agl_hght = hght.map((element) => element - hght[0]);
         const lidx = agl_hght.findIndex((val) => val > 1000);
         const hidx1 = agl_hght.findIndex((val) => val >= 6000);
         const hidx2 = agl_hght.findIndex((val) => val >= 10000);

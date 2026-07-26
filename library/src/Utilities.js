@@ -1,38 +1,6 @@
 import * as d3 from 'd3';
 
-// Where we store the lonlatGrids of different projections
-const lonlatGrid = {};
-
-const weekdaynames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 export const weekdaynamesshort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const monthnames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-];
-const monthnamesshort = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-];
 
 export class math {
     //
@@ -92,31 +60,6 @@ export class math {
     // sort array in ascending order
     static asc(arr) {
         return arr.sort((a, b) => a - b);
-    }
-
-    static rankValue(arr, rank, side = 'start', filterNaN = true) {
-        if (filterNaN) arr = this.filterNaN(arr);
-        const len = filtered.length;
-        if (len == 0) {
-            return NaN;
-        }
-        filtered = filtered.sort((a, b) => a - b);
-        let index;
-        if (side == 'start') {
-            index = rank;
-        }
-        if (side == 'end') {
-            index = len - rank - 1;
-        }
-        // Make sure the index is in the array
-        if (index > len - 1) {
-            index = len - 1;
-        }
-        if (index < 0) {
-            index = 0;
-        }
-
-        return filtered[index];
     }
 
     // Takes a 1D array and turns it into a 2D array
