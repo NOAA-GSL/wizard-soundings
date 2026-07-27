@@ -10,8 +10,8 @@
 
 ## Required documentation rules
 
-- Always update README.md when behavior changes.
-- Always create or update docs in ./docs for any feature change, list every option of every feature in the documents
+- Update README.md only when major changes happen (new docs to link to, etc.)
+- Create or update docs in ./docs for any feature change, list every option of every feature in the documents
 
 
 ## demo rule

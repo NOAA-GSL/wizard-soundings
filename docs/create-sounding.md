@@ -1,5 +1,13 @@
 # createSounding.js Input and Usage
 
+Documentation index:
+
+- [Main README](../README.md)
+- [SkewT usage](./skewt.md)
+- [Hodograph usage](./hodograph.md)
+- [StatsTable usage](./stats-table.md)
+- [BoxPlot usage](./boxplot.md)
+
 This document explains how to format data for `library/src/createSounding.js` (exported as `createSounding`) and how to use it in code.
 
 ## Quick usage
@@ -46,7 +54,7 @@ You can use whatever pressure levels you want.
 
 ## Required fields and units
 
-For every `model` member, provide the following fields.
+For every `model` member, provide the following fields. Required values are marked `yes`; fields marked `no` may be omitted.
 
 | field | required | type | allowed input units | internal normalized units |
 | --- | --- | --- | --- | --- |
@@ -63,18 +71,8 @@ For every `model` member, provide the following fields.
 | `d2` | yes | number | `F`, `C`, `K` | C |
 | `u10` | yes | number | `mph`, `kts`, `m/s` | kts |
 | `v10` | yes | number | `mph`, `kts`, `m/s` | kts |
-| `rh2` | yes | number | `%` only | % |
+| `w_isobaric` | no | array<number> | coming soon | coming soon |
 
-## Optional fields
-
-These fields can be present and are preserved in your input bundle, but are not required by `updateData` formatting:
-
-| field | type | units |
-| --- | --- | --- |
-| `r_isobaric` | array<number\|null> | `%` only |
-| `w_isobaric` | array<number> | source-dependent |
-
-If a record is missing the `units` field or provides an unsupported unit for that variable, `createSounding().updateData(...)` throws an error.
 
 ## Missing profile values
 
@@ -84,6 +82,7 @@ During profile formatting, `createSounding` linearly interpolates interior missi
 - `dpt_isobaric`
 - `u_isobaric`
 - `v_isobaric`
+- `w_isobaric`
 
 Interpolation is done along the vertical height coordinate and only when both bounding values exist.
 Leading and trailing missing segments are not extrapolated.

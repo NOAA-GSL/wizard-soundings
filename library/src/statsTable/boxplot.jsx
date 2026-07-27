@@ -15,21 +15,6 @@ const DEFAULT_CONFIG = {
     height: null, // Default height for horizontal. You might want this taller for vertical!
 };
 
-function ordinalSuffixOf(i) {
-    const j = i % 10;
-    const k = i % 100;
-    if (j === 1 && k !== 11) {
-        return `${i}st`;
-    }
-    if (j === 2 && k !== 12) {
-        return `${i}nd`;
-    }
-    if (j === 3 && k !== 13) {
-        return `${i}rd`;
-    }
-    return `${i}th`;
-}
-
 export default function BoxPlot({ statsDictParam, curStat, config }) {
     const [containerRef, dimensions] = useContainerDimensions();
 
@@ -69,28 +54,6 @@ export default function BoxPlot({ statsDictParam, curStat, config }) {
             id="boxWhiskerContainer"
             style={{ width: '100%', display: 'flex', flexDirection: 'column' }}
         >
-            <div id="boxwhiskertitle">
-                <div
-                    className="linkColor"
-                    // onClick={() => {
-                    //     dispatch(
-                    //         setSettings({
-                    //             settingsOpen: true,
-                    //         }),
-                    //     );
-                    // }}
-                >
-                    Box Whiskers:
-                </div>
-
-                <p>
-                    {`${ordinalSuffixOf(settings.percentiles.whiskers[0])}, ${ordinalSuffixOf(
-                        settings.percentiles.boxes[0],
-                    )}, ${ordinalSuffixOf(settings.percentiles.boxes[1])}, & ${ordinalSuffixOf(
-                        settings.percentiles.whiskers[1],
-                    )}`}
-                </p>
-            </div>
             <div
                 id="boxplot"
                 ref={containerRef}
