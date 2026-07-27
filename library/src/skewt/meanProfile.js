@@ -11,9 +11,15 @@ const MEAN_SKIP_FIELDS = new Set(['press', 'mem', 'member']);
 export function computeMeanProfile(memberProfiles, minPresencePercent = 70) {
     if (!memberProfiles || memberProfiles.length === 0) return null;
 
-    const totalMembers = memberProfiles.length;
+    const validProfiles = memberProfiles.filter(
+        (profile) => Array.isArray(profile) && profile.length > 0,
+    );
+
+    if (validProfiles.length === 0) return null;
+
+    const totalMembers = validProfiles.length;
     const pressMap = new Map();
-    for (const profile of memberProfiles) {
+    for (const profile of validProfiles) {
         for (const level of profile) {
             const p = level.press;
             if (!pressMap.has(p)) pressMap.set(p, {});
