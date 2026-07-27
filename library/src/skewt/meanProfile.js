@@ -8,9 +8,10 @@
  */
 const MEAN_SKIP_FIELDS = new Set(['press', 'mem', 'member']);
 
-export function computeMeanProfile(memberProfiles) {
+export function computeMeanProfile(memberProfiles, minPresencePercent = 70) {
     if (!memberProfiles || memberProfiles.length === 0) return null;
 
+    const totalMembers = memberProfiles.length;
     const pressMap = new Map();
     for (const profile of memberProfiles) {
         for (const level of profile) {
@@ -30,6 +31,15 @@ export function computeMeanProfile(memberProfiles) {
 
     return Array.from(pressMap.entries())
         .sort(([a], [b]) => b - a)
+        .filter(([, acc]) => {
+            // Check if this pressure level has enough representation to be kept
+            if (minPresencePercent > 0) {
+                const maxCount = Math.max(0, ...Object.values(acc).map((v) => v.count));
+                const presence = (maxCount / totalMembers) * 100;
+                if (presence < minPresencePercent) return false;
+            }
+            return true;
+        })
         .map(([press, acc]) => {
             const result = { press };
             for (const [key, { sum, count }] of Object.entries(acc)) {

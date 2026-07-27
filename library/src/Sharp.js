@@ -179,6 +179,23 @@ export default class sharp {
         const ttrace = [this.vtmp([pcltmpc], [pcldwpc], [pclpres])[0]];
         const ptrace = [pbot];
         var [pe2, tp2] = this.dryLift([pcltmpc], [pcldwpc], [pclpres])[0];
+
+        const sfcTv = ttrace[0];
+        const thetaV = (sfcTv + 273.15) * (1000 / pbot) ** 0.28571426;
+
+        // Loop through the environmental pressure grid to fill the gap
+        for (let i = 0; i < pres.length; i++) {
+            const envP = pres[i];
+
+            // If the environmental level is between the surface and the LCL
+            if (envP < pbot && envP > pe2) {
+                ptrace.push(envP);
+                // Calculate and push the parcel's virtual temperature along the dry adiabat
+                const traceTv = thetaV / (1000 / envP) ** 0.28571426 - 273.15;
+                ttrace.push(traceTv);
+            }
+        }
+
         const blupper = Math.floor(pe2);
         // var pe2ind = this.myFindIndex(pres, pe2);
         var h2 = this.interp([pe2], pres, hght)[0];

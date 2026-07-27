@@ -233,6 +233,8 @@ function App() {
     const [showTemperature, setShowTemperature] = useState(true);
     const [showDewPoint, setShowDewPoint] = useState(true);
     const [showWetBulb, setShowWetBulb] = useState(false);
+    const [showVirtualTemp, setVirtualTemp] = useState(false);
+    const [parcelType, setParcelType] = useState('sfc');
     const [selectedStat, setSelectedStat] = useState('sfcCAPE');
 
     // Parse percentile input into array of numbers
@@ -251,7 +253,7 @@ function App() {
 
         return {
             soundingData: sounding.getLevelData(),
-            stats: stats, // stats: sounding.calcStats(sounding.getMembers(), 'mean'),
+            stats: sounding.calcStats(sounding.getMembers(), 'mean'),
             derivedData: sounding.calcStats(sounding.getMembers(), 'list'),
         };
     }, [timeIndex]);
@@ -322,6 +324,23 @@ function App() {
                             onChange={(e) => setShowWetBulb(e.target.checked)}
                         />
                     </label>
+                    <label className="checkbox-row">
+                        <span>Show Virtual Temperature</span>
+                        <input
+                            type="checkbox"
+                            checked={showVirtualTemp}
+                            onChange={(e) => setVirtualTemp(e.target.checked)}
+                        />
+                    </label>
+                    <label>
+                        Parcel Trace
+                        <select value={parcelType} onChange={(e) => setParcelType(e.target.value)}>
+                            <option value="sfc">Surface Based (SFC)</option>
+                            <option value="mu">Most Unstable (MU)</option>
+                            <option value="ml">Mixed Layer (ML)</option>
+                            <option value="none">None</option>
+                        </select>
+                    </label>
                     {percentiles.length >= 2 && (
                         <p className="percentile-info">
                             Whiskers: {percentiles[0]}th &amp; {percentiles[percentiles.length - 1]}
@@ -360,13 +379,15 @@ function App() {
                             <div className="viz-item skewt-wrapper">
                                 <SkewT
                                     soundingParam={soundingData}
-                                    statsDictParam={stats}
+                                    statsDictParam={derivedData}
                                     config={{
                                         displayMode,
                                         percentiles,
                                         showTemperature,
                                         showDewPoint,
                                         showWetBulb,
+                                        showVirtualTemp,
+                                        parcelType,
                                         ...(useCustomTooltips
                                             ? { renderTooltip: skewTTooltipOverride }
                                             : {}),

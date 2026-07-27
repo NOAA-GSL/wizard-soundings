@@ -141,6 +141,18 @@ const addDerivedProfileFields = (levels) => {
         const [twnd, wdir] = comp2vec(level.uwnd, level.vwnd);
         level.twnd = twnd;
         level.wdir = wdir;
+
+        if (
+            !isMissingValue(level.temp) &&
+            !isMissingValue(level.dwpt) &&
+            !isMissingValue(level.press)
+        ) {
+            level.vtmp = sharp.vtmp([level.temp], [level.dwpt], [level.press])[0];
+            level.wetb = sharp.wetBulb([level.press], [level.temp], [level.dwpt])[0];
+        } else {
+            level.vtmp = NaN;
+            level.wetb = NaN;
+        }
     }
 };
 
@@ -195,6 +207,8 @@ const createMemberLevels = (memberData, surface) => {
 
 const isValidLevel = (level) => {
     const hasValidThermo =
+        typeof level.temp === 'number' &&
+        typeof level.dwpt === 'number' &&
         level.temp < 200 &&
         level.temp > -200 &&
         level.dwpt < 200 &&
@@ -556,6 +570,11 @@ export const sharpStats = (profile) => {
 
     const pblDepth = sharp.pbl_lid(profile);
 
+    const zipTrace = (pArray, tArray) => {
+        if (!pArray || !tArray) return null;
+        return pArray.map((p, i) => ({ press: p, temp: tArray[i] }));
+    };
+
     return {
         mem,
         sfcCAPE,
@@ -665,12 +684,9 @@ export const sharpStats = (profile) => {
         lstVector,
         upVector,
         dnVector,
-        muptrace,
-        muttrace,
-        sfcptrace,
-        sfcttrace,
-        mlptrace,
-        mlttrace,
+        mutrace: zipTrace(muptrace, muttrace),
+        sfctrace: zipTrace(sfcptrace, sfcttrace),
+        mltrace: zipTrace(mlptrace, mlttrace),
         momentumTransferVector,
         momentumTransferMag,
         momentumTransferVectorMax,

@@ -43,6 +43,7 @@ const DEFAULT_CONFIG = {
         temp: '#ff0000',
         dwpt: '#00ff00',
         wetb: '#00ffff',
+        vtmp: '#00bbbb',
         parcel: '#0000ff',
     },
     // Zoom settings
@@ -54,7 +55,7 @@ const DEFAULT_CONFIG = {
     renderTooltip: null,
 };
 
-const TRACE_RENDER_ORDER = ['wetb', 'dwpt', 'temp'];
+const TRACE_RENDER_ORDER = ['wetb', 'dwpt', 'vtmp', 'temp'];
 
 /*--------------------------------*/
 /* --- Sub-Components ----------- */
@@ -76,45 +77,21 @@ function filterWindBarbs(profile, topP, baseP) {
     );
 }
 
-function addWetBulbToProfile(profile) {
-    if (!profile) return [];
-    return profile.map((level) => {
-        const hasInputs =
-            typeof level.press === 'number' &&
-            typeof level.temp === 'number' &&
-            typeof level.dwpt === 'number' &&
-            !Number.isNaN(level.press) &&
-            !Number.isNaN(level.temp) &&
-            !Number.isNaN(level.dwpt);
-        return {
-            ...level,
-            wetb: hasInputs ? sharp.wetBulb([level.press], [level.temp], [level.dwpt])[0] : null,
-        };
-    });
-}
-
 /**
  * Extracts and formats parcel trace data from the stats object.
  */
-function useParcelTrace(stats, parcelType) {
+function useParcelTrace(derivedStats, parcelType) {
     return useMemo(() => {
-        // Extract from stats object
-        if (!stats) return null;
+        if (!derivedStats || parcelType === 'none') return null;
 
-        const pKey = `${parcelType}ptrace`; // e.g., 'sfcptrace'
-        const tKey = `${parcelType}ttrace`; // e.g., 'sfcttrace'
+        const traceKey = `${parcelType}trace`;
+        const allTraces = derivedStats[traceKey]; // Array of all individual traces
 
-        const pressures = stats[pKey];
-        const temps = stats[tKey];
+        if (!allTraces || allTraces.length === 0) return null;
 
-        if (!pressures || !temps || pressures.length !== temps.length) return null;
-
-        // Zip arrays into objects
-        return pressures.map((p, i) => ({
-            press: p,
-            temp: temps[i],
-        }));
-    }, [stats, parcelType]);
+        const meanTrace = computeMeanProfile(allTraces);
+        return meanTrace;
+    }, [derivedStats, parcelType]);
 }
 
 // Renders default tooltip content for the SkewT.
@@ -185,13 +162,21 @@ export default function SkewT({
         () => percentiles || config.percentiles || [5, 25, 75, 95],
         [percentiles, config.percentiles],
     );
+    const resolvedParcelType = config.parcelType || 'sfc';
     const traceVisibility = useMemo(
         () => ({
             temp: config.showTemperature ?? config.traceVisibility?.temp ?? true,
             dwpt: config.showDewPoint ?? config.traceVisibility?.dwpt ?? true,
             wetb: config.showWetBulb ?? config.traceVisibility?.wetb ?? false,
+            vtmp: config.showVirtualTemp ?? config.traceVisibility?.vtmp ?? false,
         }),
-        [config.showTemperature, config.traceVisibility, config.showDewPoint, config.showWetBulb],
+        [
+            config.showTemperature,
+            config.traceVisibility,
+            config.showDewPoint,
+            config.showWetBulb,
+            config.showVirtualTemp,
+        ],
     );
     const activeTraceKeys = useMemo(
         () => TRACE_RENDER_ORDER.filter((key) => traceVisibility[key]),
@@ -208,7 +193,7 @@ export default function SkewT({
     );
 
     const parcelType = 'sfc'; // Could be a prop to select 'sfc', 'ml', or 'mu'
-    const parcelTraceData = useParcelTrace(statsDictParam, parcelType);
+    const parcelTraceData = useParcelTrace(statsDictParam, resolvedParcelType);
 
     // --- D3 Scales & Generators ---
     const { scales, lineGens } = useMemo(() => {
@@ -261,6 +246,7 @@ export default function SkewT({
                 temp: makeLine('temp'),
                 dwpt: makeLine('dwpt'),
                 wetb: makeLine('wetb'),
+                vtmp: makeLine('vtmp'),
                 parcel: makeLine('temp', 'press'),
             },
         };
@@ -276,7 +262,7 @@ export default function SkewT({
         }
 
         // 1. Map member profiles and always compute mean from these members
-        const members = soundingParam.map(addWetBulbToProfile);
+        const members = soundingParam; //.map(addWetBulbToProfile);
 
         return {
             memberProfiles: members,
