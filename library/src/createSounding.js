@@ -103,7 +103,7 @@ const interpolateMemberLevels = (levels) => {
     if (!Array.isArray(levels) || levels.length === 0) return;
 
     if (levels.length >= 3) {
-        for (const fieldName of ['temp', 'dwpt', 'uwnd', 'vwnd']) {
+        for (const fieldName of ['temp', 'dwpt', 'uwnd', 'vwnd', 'wwnd']) {
             for (let i = 1; i < levels.length; i += 1) {
                 if (!isMissingValue(levels[i][fieldName])) continue;
                 if (isMissingValue(levels[i - 1][fieldName])) continue;
@@ -161,6 +161,9 @@ const createSurfaceData = (memberData, mem) => {
     const { u10 } = memberData;
     const { v10 } = memberData;
     const [twind10, wdir10] = comp2vec(u10, v10);
+    const rh2 = isMissingValue(memberData.rh2)
+        ? sharp.rh([memberData.sp], [memberData.t2], [memberData.d2])[0]
+        : memberData.rh2;
 
     return {
         mem,
@@ -169,7 +172,7 @@ const createSurfaceData = (memberData, mem) => {
         mslp: memberData.mslp,
         t2: memberData.t2,
         d2: memberData.d2,
-        rh2: memberData.rh2,
+        rh2,
         u10,
         v10,
         twind10,
@@ -192,6 +195,7 @@ const createMemberLevels = (memberData, surface) => {
             dwpt: memberData.dpt_isobaric[level],
             uwnd: memberData.u_isobaric[level],
             vwnd: memberData.v_isobaric[level],
+            wwnd: memberData.w_isobaric?.[level] ?? NaN,
             twnd: NaN,
             wdir: NaN,
             hghtagl: hght - surface.orog,
@@ -234,6 +238,7 @@ const insertSurfaceLevel = (levels, surface, averageSurfaceValues) => {
         dwpt: surface.d2,
         t2: surface.t2,
         d2: surface.d2,
+        wwnd: 0,
         sp: surface.sp,
         hghtagl: 0,
         sfcflag: true,

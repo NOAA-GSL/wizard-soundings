@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import createSounding from '../src/createSounding';
+import sharp from '../src/Sharp';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -126,6 +127,56 @@ describe('createSounding unit handling', () => {
         rhRecord.units = 'fraction';
 
         expect(() => sounding.updateData(records)).toThrow(/unsupported units/i);
+    });
+
+    test('derives rh2 when it is omitted', () => {
+        const records = getRecordsForDate().filter((record) => record.field !== 'rh2');
+
+        const sounding = createSounding();
+        sounding.updateData(records);
+
+        const levels = sounding.getLevelData();
+        const firstMember = levels[0];
+        const surfaceLevel = firstMember[0];
+        const expectedRh2 = sharp.rh(
+            [surfaceLevel.press],
+            [surfaceLevel.temp],
+            [surfaceLevel.dwpt],
+        )[0];
+
+        expect(surfaceLevel.rh2).toBeCloseTo(expectedRh2, 6);
+    });
+
+    test('interpolates interior wwnd values', () => {
+        const records = getRecordsForDate().map((record) => ({
+            ...record,
+            value: Array.isArray(record.value) ? [...record.value] : record.value,
+        }));
+
+        const pressureRecord = records.find((record) => record.field === 'pressure');
+        const heightRecord = records.find((record) => record.field === 'gh_isobaric');
+        const wRecord = records.find((record) => record.field === 'w_isobaric');
+
+        const missingIndex = 4;
+        const targetModel = wRecord.model;
+
+        wRecord.value[missingIndex] = NaN;
+
+        const sounding = createSounding();
+        sounding.updateData(records);
+
+        const profile = sounding.getLevelData().find((levels) => levels[0].mem === targetModel);
+        const targetPressure = pressureRecord.value[missingIndex];
+        const targetLevel = profile.find((level) => level.press === targetPressure);
+
+        const expectedW = sharp.interp(
+            [heightRecord.value[missingIndex]],
+            [heightRecord.value[missingIndex - 1], heightRecord.value[missingIndex + 1]],
+            [wRecord.value[missingIndex - 1], wRecord.value[missingIndex + 1]],
+        )[0];
+
+        expect(Number.isFinite(targetLevel.wwnd)).toBe(true);
+        expect(targetLevel.wwnd).toBeCloseTo(expectedW, 6);
     });
 
     test('interpolates interior missing tmpc and wind components', () => {

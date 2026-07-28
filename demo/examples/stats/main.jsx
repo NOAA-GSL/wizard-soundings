@@ -22,6 +22,21 @@ function formatTime(timestamp) {
     });
 }
 
+function ordinalSuffixOf(i) {
+    const j = i % 10;
+    const k = i % 100;
+    if (j === 1 && k !== 11) {
+        return `${i}st`;
+    }
+    if (j === 2 && k !== 12) {
+        return `${i}nd`;
+    }
+    if (j === 3 && k !== 13) {
+        return `${i}rd`;
+    }
+    return `${i}th`;
+}
+
 // --- Tooltip Override Configurations ---
 // Defining these outside the component prevents them from being recreated on every render.
 
@@ -243,6 +258,18 @@ function App() {
         .map((s) => Number(s.trim()))
         .filter((n) => !Number.isNaN(n) && n >= 0 && n <= 100);
 
+    const sortedPercentiles = [...percentiles].sort((a, b) => a - b);
+    const boxPlotPercentiles = {
+        whiskers:
+            sortedPercentiles.length >= 2
+                ? [sortedPercentiles[0], sortedPercentiles[sortedPercentiles.length - 1]]
+                : [5, 95],
+        boxes:
+            sortedPercentiles.length >= 4
+                ? [sortedPercentiles[1], sortedPercentiles[sortedPercentiles.length - 2]]
+                : [25, 75],
+    };
+
     // Data Fetching - recompute when time changes
     const { soundingData, stats, derivedData } = useMemo(() => {
         const sounding = createSounding();
@@ -416,7 +443,24 @@ function App() {
                             />
                         </div>
                         <div>
-                            <BoxPlot statsDictParam={derivedData} curStat={selectedStat} />
+                            <div id="boxwhiskertitle">
+                                <div className="linkColor">Box Whiskers:</div>
+
+                                <p>
+                                    {`${ordinalSuffixOf(boxPlotPercentiles.whiskers[0])}, ${ordinalSuffixOf(
+                                        boxPlotPercentiles.boxes[0],
+                                    )}, ${ordinalSuffixOf(boxPlotPercentiles.boxes[1])}, & ${ordinalSuffixOf(
+                                        boxPlotPercentiles.whiskers[1],
+                                    )}`}
+                                </p>
+                            </div>
+                            <BoxPlot
+                                statsDictParam={derivedData}
+                                curStat={selectedStat}
+                                config={{
+                                    percentiles: boxPlotPercentiles,
+                                }}
+                            />
                         </div>
                     </div>
                 </section>
