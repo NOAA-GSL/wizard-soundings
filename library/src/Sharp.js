@@ -178,6 +178,7 @@ export default class sharp {
         // Lift parcel dry adiabatically to LCL and get hght/temp at new pressure level
         const ttrace = [this.vtmp([pcltmpc], [pcldwpc], [pclpres])[0]];
         const ptrace = [pbot];
+        const dwptrace = [pcldwpc]; // Track parcel dew point along the trace
         var [pe2, tp2] = this.dryLift([pcltmpc], [pcldwpc], [pclpres])[0];
 
         const sfcTv = ttrace[0];
@@ -193,6 +194,11 @@ export default class sharp {
                 // Calculate and push the parcel's virtual temperature along the dry adiabat
                 const traceTv = thetaV / (1000 / envP) ** 0.28571426 - 273.15;
                 ttrace.push(traceTv);
+                // During dry ascent, the parcel's dew point increases at the dry adiabatic rate
+                // Calculate it using the parcel's mixing ratio
+                const parcelMR = this.mixRatio([pclpres], [pcldwpc])[0];
+                const dwptAtLevel = this.tempAtMR(parcelMR, [envP])[0];
+                dwptrace.push(dwptAtLevel);
             }
         }
 
@@ -203,6 +209,7 @@ export default class sharp {
         const lclpres = Math.min(pe2, pres[0]);
         const lclhght = h2 - hght[0];
         ttrace.push(this.vtmp([tp2], [tp2], [pe2])[0]);
+        dwptrace.push(tp2); // At LCL, parcel is saturated so dew point equals temperature
         ptrace.push(pe2);
 
         // Calculate CINH in the boundary layer
@@ -303,6 +310,7 @@ export default class sharp {
 
             ptrace.push(pe2);
             ttrace.push(this.vtmp([tp2], [tp2], [pe2])[0]);
+            dwptrace.push(tp2); // During moist ascent, parcel is saturated
 
             // Calculate average layer energy
             var lyrlast = lyre;
@@ -573,7 +581,9 @@ export default class sharp {
         if (totp == 0) {
             totn = 0;
         }
-        return [totp, totn, lclhght, li5, lfchght, elhght, cape3, ptrace, ttrace];
+        // Convert virtual temperature trace to regular temperature trace
+        const ttrace_regular = this.vtmpToTemp(ttrace, dwptrace, ptrace);
+        return [totp, totn, lclhght, li5, lfchght, elhght, cape3, ptrace, ttrace, ttrace_regular];
     }
 
     // Lift parcel to LCL
@@ -694,6 +704,17 @@ export default class sharp {
             return (tmpk[idx] * (1 + w / 0.62197)) / (1 + w) - 273.15;
         });
         return vt;
+    }
+
+    // Convert virtual temperature back to regular temperature
+    // Given virtual temperature and dew point at a pressure level
+    static vtmpToTemp(vt, dwpc, pres) {
+        const vtkl = vt.map((element) => element + 273.15);
+        const t = this.mixRatio(pres, dwpc).map((element, idx) => {
+            const w = element * 0.001;
+            return (vtkl[idx] * (1 + w)) / (1 + w / 0.62197) - 273.15;
+        });
+        return t;
     }
 
     // Calculate level of first occurrence of given temperature

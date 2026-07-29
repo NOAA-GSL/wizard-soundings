@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import createSounding from '../src/createSounding';
+import createSounding, { filterNearSurfaceLevels } from '../src/createSounding';
 import sharp from '../src/Sharp';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
@@ -209,5 +209,85 @@ describe('createSounding unit handling', () => {
         expect(profileIndex).toBeGreaterThan(0);
         expect(Number.isFinite(profile.tmpc[profileIndex])).toBe(true);
         expect(Number.isFinite(profile.uwnd[profileIndex])).toBe(true);
+    });
+
+    test('aligns member profiles to a shared pressure grid', () => {
+        const records = [
+            { field: 'pressure', model: 'A', units: 'hPa', value: [960, 900, 850, 700, 500, 300] },
+            {
+                field: 'gh_isobaric',
+                model: 'A',
+                units: 'm',
+                value: [100, 800, 1200, 3000, 5500, 9000],
+            },
+            { field: 't_isobaric', model: 'A', units: 'C', value: [20, 15, 10, 0, -12, -32] },
+            { field: 'dpt_isobaric', model: 'A', units: 'C', value: [15, 10, 5, -5, -22, -40] },
+            { field: 'u_isobaric', model: 'A', units: 'kts', value: [10, 15, 20, 25, 30, 35] },
+            { field: 'v_isobaric', model: 'A', units: 'kts', value: [5, 8, 10, 12, 15, 18] },
+            { field: 'orog', model: 'A', units: 'm', value: 100 },
+            { field: 'sp', model: 'A', units: 'hPa', value: 960 },
+            { field: 'mslp', model: 'A', units: 'hPa', value: 1010 },
+            { field: 't2', model: 'A', units: 'C', value: 20 },
+            { field: 'd2', model: 'A', units: 'C', value: 15 },
+            { field: 'u10', model: 'A', units: 'kts', value: 10 },
+            { field: 'v10', model: 'A', units: 'kts', value: 5 },
+            { field: 'rh2', model: 'A', units: '%', value: 70 },
+            { field: 'pressure', model: 'B', units: 'hPa', value: [940, 925, 850, 700, 500, 300] },
+            {
+                field: 'gh_isobaric',
+                model: 'B',
+                units: 'm',
+                value: [120, 350, 1210, 3050, 5550, 9050],
+            },
+            { field: 't_isobaric', model: 'B', units: 'C', value: [19, 17, 11, 1, -11, -31] },
+            { field: 'dpt_isobaric', model: 'B', units: 'C', value: [14, 12, 6, -4, -21, -39] },
+            { field: 'u_isobaric', model: 'B', units: 'kts', value: [12, 16, 21, 26, 31, 36] },
+            { field: 'v_isobaric', model: 'B', units: 'kts', value: [6, 9, 11, 13, 16, 19] },
+            { field: 'orog', model: 'B', units: 'm', value: 120 },
+            { field: 'sp', model: 'B', units: 'hPa', value: 940 },
+            { field: 'mslp', model: 'B', units: 'hPa', value: 1008 },
+            { field: 't2', model: 'B', units: 'C', value: 19 },
+            { field: 'd2', model: 'B', units: 'C', value: 14 },
+            { field: 'u10', model: 'B', units: 'kts', value: 12 },
+            { field: 'v10', model: 'B', units: 'kts', value: 6 },
+            { field: 'rh2', model: 'B', units: '%', value: 72 },
+        ];
+
+        const sounding = createSounding();
+        sounding.updateData(records);
+
+        const levels = sounding.getLevelData();
+        const firstPressures = levels[0].map((level) => level.press);
+        const secondPressures = levels[1].map((level) => level.press);
+
+        expect(firstPressures).toEqual(secondPressures);
+        expect(firstPressures[0]).toBeCloseTo(950);
+        expect(firstPressures).toContain(940);
+        expect(firstPressures).toContain(925);
+        expect(firstPressures).toContain(900);
+    });
+
+    test('removes pressure levels that are within 0.5 hPa of the aligned surface', () => {
+        const levels = [
+            [
+                { press: 980.1000000000001, mem: 'A' },
+                { press: 980.1, mem: 'A' },
+                { press: 975, mem: 'A' },
+            ],
+            [
+                { press: 980.1, mem: 'B' },
+                { press: 980.0999999999999, mem: 'B' },
+                { press: 950, mem: 'B' },
+            ],
+        ];
+
+        const filteredLevels = filterNearSurfaceLevels(levels[0]);
+        const filteredAlignedLevels = levels.map(filterNearSurfaceLevels);
+
+        expect(filteredLevels.map((level) => level.press)).toEqual([980.1000000000001, 975]);
+        expect(filteredAlignedLevels[0].map((level) => level.press)).toEqual([
+            980.1000000000001, 975,
+        ]);
+        expect(filteredAlignedLevels[1].map((level) => level.press)).toEqual([980.1, 950]);
     });
 });

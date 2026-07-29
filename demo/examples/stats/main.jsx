@@ -11,6 +11,38 @@ import './style.css';
 
 const DATES = data.metadata?.gh_isobaric?.availableDates ?? [];
 
+const DISPLAY_MODE_OPTIONS = [
+    { value: 'plumes', label: 'Plumes' },
+    { value: 'boxwhisker', label: 'Box' },
+    { value: 'mean', label: 'Mean' },
+];
+
+const LINE_STYLE_OPTIONS = [
+    { value: 'solid', label: 'Solid' },
+    { value: 'dash', label: 'Dash' },
+    { value: 'dot', label: 'Dot' },
+    { value: 'dashDot', label: 'Dash-dot' },
+];
+
+const PARCEL_TYPE_OPTIONS = [
+    { value: 'none', label: 'None' },
+    { value: 'sfc', label: 'SFC' },
+    { value: 'mu', label: 'MU' },
+    { value: 'ml', label: 'ML' },
+];
+
+const THERMO_TRACE_ROWS = [
+    { key: 'temp', label: 'Temperature' },
+    { key: 'dwpt', label: 'Dew Point' },
+    { key: 'wetb', label: 'Wet Bulb' },
+    { key: 'vtmp', label: 'Virtual Temp' },
+];
+
+const PARCEL_TRACE_ROWS = [
+    { key: 'parcel', label: 'Parcel Trace' },
+    { key: 'parcelVirtual', label: 'Virtual Parcel' },
+];
+
 function formatTime(timestamp) {
     const d = new Date(timestamp);
     return d.toLocaleString(undefined, {
@@ -241,16 +273,19 @@ const hodoTooltipOverride = (data, type) => {
 };
 
 function App() {
-    // Display mode state
-    const [displayMode, setDisplayMode] = useState('boxwhisker');
     const [percentileInput, setPercentileInput] = useState('5, 25, 75, 95');
     const [timeIndex, setTimeIndex] = useState(0);
-    const [showTemperature, setShowTemperature] = useState(true);
-    const [showDewPoint, setShowDewPoint] = useState(true);
-    const [showWetBulb, setShowWetBulb] = useState(false);
-    const [showVirtualTemp, setVirtualTemp] = useState(false);
-    const [parcelType, setParcelType] = useState('sfc');
     const [selectedStat, setSelectedStat] = useState('sfcCAPE');
+    const [traceControls, setTraceControls] = useState({
+        temp: { enabled: true, mode: 'boxwhisker', lineStyle: 'solid' },
+        dwpt: { enabled: true, mode: 'boxwhisker', lineStyle: 'solid' },
+        wetb: { enabled: false, mode: 'boxwhisker', lineStyle: 'dash' },
+        vtmp: { enabled: false, mode: 'boxwhisker', lineStyle: 'dashDot' },
+    });
+    const [parcelControls, setParcelControls] = useState({
+        parcel: { type: 'none', mode: 'mean', lineStyle: 'dot' },
+        parcelVirtual: { type: 'sfc', mode: 'mean', lineStyle: 'dash' },
+    });
 
     // Parse percentile input into array of numbers
     const percentiles = percentileInput
@@ -285,6 +320,56 @@ function App() {
         };
     }, [timeIndex]);
 
+    const traceVisibility = useMemo(
+        () =>
+            Object.fromEntries(
+                Object.entries(traceControls).map(([key, value]) => [key, value.enabled]),
+            ),
+        [traceControls],
+    );
+
+    const displayModes = useMemo(
+        () => ({
+            ...Object.fromEntries(
+                Object.entries(traceControls).map(([key, value]) => [key, value.mode]),
+            ),
+            parcel: parcelControls.parcel.mode,
+            parcelVirtual: parcelControls.parcelVirtual.mode,
+        }),
+        [parcelControls, traceControls],
+    );
+
+    const traceLineStyles = useMemo(
+        () => ({
+            ...Object.fromEntries(
+                Object.entries(traceControls).map(([key, value]) => [key, value.lineStyle]),
+            ),
+            parcel: parcelControls.parcel.lineStyle,
+            parcelVirtual: parcelControls.parcelVirtual.lineStyle,
+        }),
+        [parcelControls, traceControls],
+    );
+
+    const updateTraceControl = (key, field, value) => {
+        setTraceControls((current) => ({
+            ...current,
+            [key]: {
+                ...current[key],
+                [field]: value,
+            },
+        }));
+    };
+
+    const updateParcelControl = (key, field, value) => {
+        setParcelControls((current) => ({
+            ...current,
+            [key]: {
+                ...current[key],
+                [field]: value,
+            },
+        }));
+    };
+
     // --- Tooltip Override Demo ---
     // Toggle this state to see the tooltips change!
     const [useCustomTooltips, setUseCustomTooltips] = useState(false);
@@ -308,17 +393,6 @@ function App() {
                         <span className="time-label">{formatTime(DATES[timeIndex])}</span>
                     </label>
                     <label>
-                        Display Mode
-                        <select
-                            value={displayMode}
-                            onChange={(e) => setDisplayMode(e.target.value)}
-                        >
-                            <option value="plumes">Plumes</option>
-                            <option value="boxwhisker">Box Whisker</option>
-                            <option value="mean">Mean</option>
-                        </select>
-                    </label>
-                    <label>
                         Percentiles (comma-separated)
                         <input
                             type="text"
@@ -327,47 +401,134 @@ function App() {
                             placeholder="5, 25, 75, 95"
                         />
                     </label>
-                    <label className="checkbox-row">
-                        <span>Show Temperature</span>
-                        <input
-                            type="checkbox"
-                            checked={showTemperature}
-                            onChange={(e) => setShowTemperature(e.target.checked)}
-                        />
-                    </label>
-                    <label className="checkbox-row">
-                        <span>Show Dew Point</span>
-                        <input
-                            type="checkbox"
-                            checked={showDewPoint}
-                            onChange={(e) => setShowDewPoint(e.target.checked)}
-                        />
-                    </label>
-                    <label className="checkbox-row">
-                        <span>Show Wet Bulb</span>
-                        <input
-                            type="checkbox"
-                            checked={showWetBulb}
-                            onChange={(e) => setShowWetBulb(e.target.checked)}
-                        />
-                    </label>
-                    <label className="checkbox-row">
-                        <span>Show Virtual Temperature</span>
-                        <input
-                            type="checkbox"
-                            checked={showVirtualTemp}
-                            onChange={(e) => setVirtualTemp(e.target.checked)}
-                        />
-                    </label>
-                    <label>
-                        Parcel Trace
-                        <select value={parcelType} onChange={(e) => setParcelType(e.target.value)}>
-                            <option value="sfc">Surface Based (SFC)</option>
-                            <option value="mu">Most Unstable (MU)</option>
-                            <option value="ml">Mixed Layer (ML)</option>
-                            <option value="none">None</option>
-                        </select>
-                    </label>
+                    <div className="trace-controls">
+                        <div className="trace-controls-title">Skew-T Controls</div>
+                        <table className="trace-controls-table">
+                            <thead>
+                                <tr>
+                                    <th>Trace</th>
+                                    <th>On / Type</th>
+                                    <th>Mode</th>
+                                    <th>Line</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {THERMO_TRACE_ROWS.map((row) => (
+                                    <tr key={row.key}>
+                                        <td>{row.label}</td>
+                                        <td>
+                                            <input
+                                                type="checkbox"
+                                                checked={traceControls[row.key].enabled}
+                                                onChange={(e) =>
+                                                    updateTraceControl(
+                                                        row.key,
+                                                        'enabled',
+                                                        e.target.checked,
+                                                    )
+                                                }
+                                            />
+                                        </td>
+                                        <td>
+                                            <select
+                                                value={traceControls[row.key].mode}
+                                                onChange={(e) =>
+                                                    updateTraceControl(
+                                                        row.key,
+                                                        'mode',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            >
+                                                {DISPLAY_MODE_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select
+                                                value={traceControls[row.key].lineStyle}
+                                                onChange={(e) =>
+                                                    updateTraceControl(
+                                                        row.key,
+                                                        'lineStyle',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            >
+                                                {LINE_STYLE_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {PARCEL_TRACE_ROWS.map((row) => (
+                                    <tr key={row.key}>
+                                        <td>{row.label}</td>
+                                        <td>
+                                            <select
+                                                value={parcelControls[row.key].type}
+                                                onChange={(e) =>
+                                                    updateParcelControl(
+                                                        row.key,
+                                                        'type',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            >
+                                                {PARCEL_TYPE_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select
+                                                value={parcelControls[row.key].mode}
+                                                onChange={(e) =>
+                                                    updateParcelControl(
+                                                        row.key,
+                                                        'mode',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            >
+                                                {DISPLAY_MODE_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select
+                                                value={parcelControls[row.key].lineStyle}
+                                                onChange={(e) =>
+                                                    updateParcelControl(
+                                                        row.key,
+                                                        'lineStyle',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            >
+                                                {LINE_STYLE_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                     {percentiles.length >= 2 && (
                         <p className="percentile-info">
                             Whiskers: {percentiles[0]}th &amp; {percentiles[percentiles.length - 1]}
@@ -408,13 +569,12 @@ function App() {
                                     soundingParam={soundingData}
                                     statsDictParam={derivedData}
                                     config={{
-                                        displayMode,
                                         percentiles,
-                                        showTemperature,
-                                        showDewPoint,
-                                        showWetBulb,
-                                        showVirtualTemp,
-                                        parcelType,
+                                        traceVisibility,
+                                        displayModes,
+                                        traceLineStyles,
+                                        parcelTrace: parcelControls.parcel.type,
+                                        virtualParcelTrace: parcelControls.parcelVirtual.type,
                                         ...(useCustomTooltips
                                             ? { renderTooltip: skewTTooltipOverride }
                                             : {}),

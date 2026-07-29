@@ -4,11 +4,12 @@
  * treated as identifiers and excluded from averaging.
  *
  * @param {Array} memberProfiles - Array of member profiles (each is an array of level objects).
+ * @param {number} minPresencePercent - Optional minimum percent of members that must contain a pressure level.
  * @returns {Array|null} Sorted mean profile (highest pressure first), or null if input is empty.
  */
 const MEAN_SKIP_FIELDS = new Set(['press', 'mem', 'member']);
 
-export function computeMeanProfile(memberProfiles, minPresencePercent = 70) {
+export function computeMeanProfile(memberProfiles, minPresencePercent = 0) {
     if (!memberProfiles || memberProfiles.length === 0) return null;
 
     const validProfiles = memberProfiles.filter(

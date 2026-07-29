@@ -115,4 +115,19 @@ describe('computeMeanProfile', () => {
         // 850 hPa in both
         expect(result.find((l) => l.press === 850).temp).toBeCloseTo(11); // (10 + 12) / 2
     });
+
+    test('filters sparse levels when minPresencePercent is provided', () => {
+        const memberA = [
+            { press: 1000, temp: 20, dwpt: 10, uwnd: 5, vwnd: 3 },
+            { press: 850, temp: 10, dwpt: 2, uwnd: 10, vwnd: 6 },
+        ];
+        const memberB = [
+            { press: 850, temp: 12, dwpt: 4, uwnd: 8, vwnd: 4 },
+            { press: 500, temp: -14, dwpt: -24, uwnd: 20, vwnd: 12 },
+        ];
+
+        const result = computeMeanProfile([memberA, memberB], 60);
+        const pressures = result.map((l) => l.press);
+        expect(pressures).toEqual([850]);
+    });
 });

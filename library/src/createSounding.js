@@ -1,6 +1,7 @@
 import sharp from './Sharp';
 import { createVector, isVector, vec2comp, comp2vec } from './vector';
 import { math } from './Utilities';
+import { alignProfilesToPressureGrid } from './skewt/pressureAlignment.js';
 
 const WIND_MPS_TO_KTS = 1.9438444924406;
 const FT_TO_M = 0.3048;
@@ -255,6 +256,67 @@ const insertSurfaceLevel = (levels, surface, averageSurfaceValues) => {
     });
 };
 
+const alignMemberProfiles = (levelData) =>
+    alignProfilesToPressureGrid(
+        levelData,
+        ['hght', 'temp', 'dwpt', 'uwnd', 'vwnd', 'wwnd'],
+        ({ surfaceLevel, pressure, exactLevel, interpolatedValues, isSurface }) => {
+            if (exactLevel) {
+                const level = { ...exactLevel };
+                level.sfcflag = isSurface ? true : level.sfcflag;
+                return level;
+            }
+
+            const level = {
+                press: pressure,
+                hght: interpolatedValues.hght,
+                temp: interpolatedValues.temp,
+                dwpt: interpolatedValues.dwpt,
+                uwnd: interpolatedValues.uwnd,
+                vwnd: interpolatedValues.vwnd,
+                wwnd: interpolatedValues.wwnd,
+                twnd: NaN,
+                wdir: NaN,
+                hghtagl:
+                    Number.isFinite(interpolatedValues.hght) && Number.isFinite(surfaceLevel.orog)
+                        ? interpolatedValues.hght - surfaceLevel.orog
+                        : NaN,
+                orog: surfaceLevel.orog,
+                sp: surfaceLevel.sp,
+                mslp: surfaceLevel.mslp,
+                mem: surfaceLevel.mem,
+                member: surfaceLevel.member,
+                sfcflag: isSurface,
+            };
+
+            if (isSurface) {
+                level.t2 = surfaceLevel.t2;
+                level.d2 = surfaceLevel.d2;
+                level.rh2 = surfaceLevel.rh2;
+                level.u10 = surfaceLevel.u10;
+                level.v10 = surfaceLevel.v10;
+                level.twind10 = surfaceLevel.twind10;
+                level.wdir10 = surfaceLevel.wdir10;
+            }
+
+            return level;
+        },
+    )?.map(filterNearSurfaceLevels);
+
+// Stability improvements since levels that are too close can crash the parcel trace calulations.
+// Filters out levels that are within 0.5 hPa of the surface pressure, except for the surface level itself.
+export const filterNearSurfaceLevels = (levels) => {
+    if (!Array.isArray(levels) || levels.length === 0) return levels;
+
+    const surfacePressure = levels[0]?.press;
+    if (!Number.isFinite(surfacePressure)) return levels;
+
+    return levels.filter((level, index) => {
+        if (index === 0) return true;
+        return Math.abs(level.press - surfacePressure) >= 0.5;
+    });
+};
+
 /**
  * Formats raw data into a structured sounding profile.
  * @param {Array} records - Flat list of field/model/value records for a single valid time.
@@ -315,11 +377,18 @@ const soundingFormat = (records) => {
         levelData.push(validLevels);
     }
 
-    const members = levelData.map((levels) => levels[0].mem);
+    const alignedLevelData = alignMemberProfiles(levelData);
+    if (!alignedLevelData) return [[], [], []];
+
+    for (const levels of alignedLevelData) {
+        addDerivedProfileFields(levels);
+    }
+
+    const members = alignedLevelData.map((levels) => levels[0].mem);
 
     // Create profile data for calculating stats
     const profiledata = [];
-    for (let i = 0; i < levelData.length; i++) {
+    for (let i = 0; i < alignedLevelData.length; i++) {
         const memdata = {
             pres: [],
             hght: [],
@@ -331,18 +400,18 @@ const soundingFormat = (records) => {
             twnd: [],
             wdir: [],
             hghtmsl: [],
-            mem: levelData[i][0].mem,
+            mem: alignedLevelData[i][0].mem,
         };
-        for (let j = 0; j < levelData[i].length; j++) {
-            memdata.pres.push(levelData[i][j].press);
-            memdata.hght.push(levelData[i][j].hght - levelData[i][j].orog);
-            memdata.hghtmsl.push(levelData[i][j].hght);
-            memdata.tmpc.push(levelData[i][j].temp);
-            memdata.dwpc.push(levelData[i][j].dwpt);
-            memdata.uwnd.push(levelData[i][j].uwnd);
-            memdata.vwnd.push(levelData[i][j].vwnd);
-            memdata.twnd.push(levelData[i][j].twnd);
-            memdata.wdir.push(levelData[i][j].wdir);
+        for (let j = 0; j < alignedLevelData[i].length; j++) {
+            memdata.pres.push(alignedLevelData[i][j].press);
+            memdata.hght.push(alignedLevelData[i][j].hght - alignedLevelData[i][j].orog);
+            memdata.hghtmsl.push(alignedLevelData[i][j].hght);
+            memdata.tmpc.push(alignedLevelData[i][j].temp);
+            memdata.dwpc.push(alignedLevelData[i][j].dwpt);
+            memdata.uwnd.push(alignedLevelData[i][j].uwnd);
+            memdata.vwnd.push(alignedLevelData[i][j].vwnd);
+            memdata.twnd.push(alignedLevelData[i][j].twnd);
+            memdata.wdir.push(alignedLevelData[i][j].wdir);
         }
 
         memdata.vtmp = memdata.tmpc.map(
@@ -351,7 +420,8 @@ const soundingFormat = (records) => {
 
         profiledata.push(memdata);
     }
-    return [levelData, profiledata, members];
+
+    return [alignedLevelData, profiledata, members];
 };
 
 /**
@@ -373,16 +443,31 @@ export const sharpStats = (profile) => {
     const mupcldwpc = sharp.interp([mupclpres], profile.pres, profile.dwpc)[0];
 
     // Most unstable thermo stuff
-    console.log('yo', profile);
-    const [muCAPE, muCINH, muLCL, muLI, muLFC, muEL, mucape3, muptrace, muttrace] = sharp.CAPE(
-        profile,
-        mupcltmpc,
-        mupcldwpc,
-        mupclpres,
-    );
+    const [
+        muCAPE,
+        muCINH,
+        muLCL,
+        muLI,
+        muLFC,
+        muEL,
+        mucape3,
+        muptrace,
+        muttrace,
+        muttrace_regular,
+    ] = sharp.CAPE(profile, mupcltmpc, mupcldwpc, mupclpres);
     // Surface thermo stuff
-    const [sfcCAPE, sfcCINH, sfcLCL, sfcLI, sfcLFC, sfcEL, sfccape3, sfcptrace, sfcttrace] =
-        sharp.CAPE(profile, profile.tmpc[0], profile.dwpc[0], profile.pres[0]);
+    const [
+        sfcCAPE,
+        sfcCINH,
+        sfcLCL,
+        sfcLI,
+        sfcLFC,
+        sfcEL,
+        sfccape3,
+        sfcptrace,
+        sfcttrace,
+        sfcttrace_regular,
+    ] = sharp.CAPE(profile, profile.tmpc[0], profile.dwpc[0], profile.pres[0]);
     // Mixed layer temperature
     const mltmpc = sharp.meanTheta(profile);
 
@@ -390,12 +475,18 @@ export const sharpStats = (profile) => {
     const mldwpc = sharp.meanMR(profile)[1];
 
     // Mixed layer thermo stuff
-    const [mlCAPE, mlCINH, mlLCL, mlLI, mlLFC, mlEL, mlcape3, mlptrace, mlttrace] = sharp.CAPE(
-        profile,
-        mltmpc,
-        mldwpc,
-        profile.pres[0],
-    );
+    const [
+        mlCAPE,
+        mlCINH,
+        mlLCL,
+        mlLI,
+        mlLFC,
+        mlEL,
+        mlcape3,
+        mlptrace,
+        mlttrace,
+        mlttrace_regular,
+    ] = sharp.CAPE(profile, mltmpc, mldwpc, profile.pres[0]);
 
     // Precipitable water
     const pw = sharp.precipWater(profile);
@@ -689,9 +780,14 @@ export const sharpStats = (profile) => {
         lstVector,
         upVector,
         dnVector,
+        // Virtual temperature parcel traces
         mutrace: zipTrace(muptrace, muttrace),
         sfctrace: zipTrace(sfcptrace, sfcttrace),
         mltrace: zipTrace(mlptrace, mlttrace),
+        // Regular temperature parcel traces
+        mutrace_regular: zipTrace(muptrace, muttrace_regular),
+        sfctrace_regular: zipTrace(sfcptrace, sfcttrace_regular),
+        mltrace_regular: zipTrace(mlptrace, mlttrace_regular),
         momentumTransferVector,
         momentumTransferMag,
         momentumTransferVectorMax,
@@ -792,7 +888,7 @@ const calculateStats = (components, key, stat) => {
             returnStat = validComponents[0];
         } else {
             // DANGER: Cannot mathematically average traces across different pressure levels!
-            console.warn(
+            console.debug(
                 `Warning: Cannot calculate '${stat}' for array-based stat '${key}' across multiple members. Returning null.`,
             );
             returnStat = null;
