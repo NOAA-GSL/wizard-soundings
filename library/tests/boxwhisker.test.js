@@ -104,4 +104,14 @@ describe('SkewT Box Whisker - Percentile Computation', () => {
         expect(result.temp).toBeUndefined();
         expect(result.dwpt).toBeUndefined();
     });
+
+    test('supports alternate source keys for a rendered variable', () => {
+        const result = computePercentileProfiles(memberProfiles, [25, 75], ['parcel'], {
+            parcel: 'temp',
+        });
+
+        expect(result).not.toBeNull();
+        expect(result.parcel.p50[0]).toBeCloseTo(19.5, 0);
+        expect(result.temp).toBeUndefined();
+    });
 });

@@ -9,6 +9,13 @@ import SkewTBackground from './skewtBackground';
 import SkewTBoxWhisker from './skewtBoxWhisker';
 import WindBarb from './windBarb';
 import { computeMeanProfile } from './meanProfile';
+import { getPrimaryParcelMeanProfile, getSelectedParcelTraceSets } from './parcelTrace';
+import {
+    buildTraceConfigs,
+    getStrokeDasharray,
+    resolveTraceDisplayModes,
+    resolveTraceLineStyles,
+} from './traceConfig';
 import './skewt.css';
 
 /*-------------------------*/
@@ -43,7 +50,9 @@ const DEFAULT_CONFIG = {
         temp: '#ff0000',
         dwpt: '#00ff00',
         wetb: '#00ffff',
-        parcel: '#ffffff',
+        vtmp: '#ff8181',
+        parcel: '#eaff00',
+        parcelVirtual: '#eaff00',
     },
     // Zoom settings
     zoom: {
@@ -53,8 +62,6 @@ const DEFAULT_CONFIG = {
     },
     renderTooltip: null,
 };
-
-const TRACE_RENDER_ORDER = ['wetb', 'dwpt', 'temp'];
 
 /*--------------------------------*/
 /* --- Sub-Components ----------- */
@@ -74,47 +81,6 @@ function filterWindBarbs(profile, topP, baseP) {
             d.press >= topP &&
             d.press <= baseP,
     );
-}
-
-function addWetBulbToProfile(profile) {
-    if (!profile) return [];
-    return profile.map((level) => {
-        const hasInputs =
-            typeof level.press === 'number' &&
-            typeof level.temp === 'number' &&
-            typeof level.dwpt === 'number' &&
-            !Number.isNaN(level.press) &&
-            !Number.isNaN(level.temp) &&
-            !Number.isNaN(level.dwpt);
-        return {
-            ...level,
-            wetb: hasInputs ? sharp.wetBulb([level.press], [level.temp], [level.dwpt])[0] : null,
-        };
-    });
-}
-
-/**
- * Extracts and formats parcel trace data from the stats object.
- */
-function useParcelTrace(stats, parcelType) {
-    return useMemo(() => {
-        // Extract from stats object
-        if (!stats) return null;
-
-        const pKey = `${parcelType}ptrace`; // e.g., 'sfcptrace'
-        const tKey = `${parcelType}ttrace`; // e.g., 'sfcttrace'
-
-        const pressures = stats[pKey];
-        const temps = stats[tKey];
-
-        if (!pressures || !temps || pressures.length !== temps.length) return null;
-
-        // Zip arrays into objects
-        return pressures.map((p, i) => ({
-            press: p,
-            temp: temps[i],
-        }));
-    }, [stats, parcelType]);
 }
 
 // Renders default tooltip content for the SkewT.
@@ -169,18 +135,14 @@ export default function SkewT({
     config = {},
     className = 'skewt-container',
     sx = {},
-    displayMode,
     percentiles,
 }) {
     // --- Dimensions and Setup ---
     const [containerRef, dimensions] = useContainerDimensions();
     const [hoverInfo, setHoverInfo] = useState(null);
 
-    // Resolve displayMode and percentiles from props or config
-    const resolvedDisplayMode = useMemo(
-        () => displayMode || config.displayMode || 'plumes',
-        [displayMode, config.displayMode],
-    );
+    // Resolve displayMode and percentiles from config
+    const resolvedDisplayModes = useMemo(() => resolveTraceDisplayModes(config), [config]);
     const resolvedPercentiles = useMemo(
         () => percentiles || config.percentiles || [5, 25, 75, 95],
         [percentiles, config.percentiles],
@@ -190,14 +152,27 @@ export default function SkewT({
             temp: config.showTemperature ?? config.traceVisibility?.temp ?? true,
             dwpt: config.showDewPoint ?? config.traceVisibility?.dwpt ?? true,
             wetb: config.showWetBulb ?? config.traceVisibility?.wetb ?? false,
+            vtmp: config.showVirtualTemp ?? config.traceVisibility?.vtmp ?? false,
         }),
-        [config.showTemperature, config.traceVisibility, config.showDewPoint, config.showWetBulb],
+        [
+            config.showTemperature,
+            config.traceVisibility,
+            config.showDewPoint,
+            config.showWetBulb,
+            config.showVirtualTemp,
+        ],
     );
-    const activeTraceKeys = useMemo(
-        () => TRACE_RENDER_ORDER.filter((key) => traceVisibility[key]),
-        [traceVisibility],
+    const traceLineStyles = useMemo(() => resolveTraceLineStyles(config), [config]);
+    const traceDasharrays = useMemo(
+        () =>
+            Object.fromEntries(
+                Object.entries(traceLineStyles).map(([key, lineStyle]) => [
+                    key,
+                    getStrokeDasharray(lineStyle),
+                ]),
+            ),
+        [traceLineStyles],
     );
-
     const settings = useMemo(
         () => ({
             ...DEFAULT_CONFIG,
@@ -207,8 +182,14 @@ export default function SkewT({
         [config],
     );
 
-    const parcelType = 'sfc'; // Could be a prop to select 'sfc', 'ml', or 'mu'
-    const parcelTraceData = useParcelTrace(statsDictParam, parcelType);
+    const parcelTraceSets = useMemo(
+        () => getSelectedParcelTraceSets(statsDictParam, config),
+        [statsDictParam, config],
+    );
+    const primaryParcelTraceData = useMemo(
+        () => getPrimaryParcelMeanProfile(parcelTraceSets),
+        [parcelTraceSets],
+    );
 
     // --- D3 Scales & Generators ---
     const { scales, lineGens } = useMemo(() => {
@@ -261,6 +242,7 @@ export default function SkewT({
                 temp: makeLine('temp'),
                 dwpt: makeLine('dwpt'),
                 wetb: makeLine('wetb'),
+                vtmp: makeLine('vtmp'),
                 parcel: makeLine('temp', 'press'),
             },
         };
@@ -276,7 +258,7 @@ export default function SkewT({
         }
 
         // 1. Map member profiles and always compute mean from these members
-        const members = soundingParam.map(addWetBulbToProfile);
+        const members = soundingParam; //.map(addWetBulbToProfile);
 
         return {
             memberProfiles: members,
@@ -293,6 +275,42 @@ export default function SkewT({
 
         return { computedMeanProfile: profile, computedMeanBarbs: barbs };
     }, [memberProfiles, settings]);
+
+    const traceConfigs = useMemo(
+        () =>
+            buildTraceConfigs({
+                traceVisibility,
+                resolvedDisplayModes,
+                colors: settings.colors,
+                memberProfiles,
+                meanProfile: computedMeanProfile,
+                parcelTraceSets,
+            }),
+        [
+            computedMeanProfile,
+            memberProfiles,
+            parcelTraceSets,
+            resolvedDisplayModes,
+            settings.colors,
+            traceVisibility,
+        ],
+    );
+    const showMemberBarbs = useMemo(
+        () => traceConfigs.some((config) => config.displayMode !== 'mean'),
+        [traceConfigs],
+    );
+    const plumeTraceConfigs = useMemo(
+        () => traceConfigs.filter((config) => config.displayMode === 'plumes'),
+        [traceConfigs],
+    );
+    const boxWhiskerTraceConfigs = useMemo(
+        () => traceConfigs.filter((config) => config.displayMode === 'boxwhisker'),
+        [traceConfigs],
+    );
+    const meanTraceConfigs = useMemo(
+        () => traceConfigs.filter((config) => config.displayMode === 'mean' && config.meanProfile),
+        [traceConfigs],
+    );
 
     const handleMouseMove = useCallback(
         (e) => {
@@ -321,8 +339,29 @@ export default function SkewT({
             }
 
             if (closest && minDiff < 50) {
+                // Clone the closest object so we don't mutate the raw data
+                const hoveredData = { ...closest };
+
+                // Find the closest parcel temperature from our trace
+                if (primaryParcelTraceData && primaryParcelTraceData.length > 0) {
+                    let closestParcelTemp = null;
+                    let minParcelDiff = Infinity;
+
+                    for (const pt of primaryParcelTraceData) {
+                        const pDiff = Math.abs(pt.press - closest.press);
+                        if (pDiff < minParcelDiff) {
+                            minParcelDiff = pDiff;
+                            closestParcelTemp = pt.temp;
+                        }
+                    }
+
+                    // Only attach it if the parcel actually exists near this pressure level
+                    if (minParcelDiff < 50) {
+                        hoveredData.parcelTemp = closestParcelTemp;
+                    }
+                }
                 const xTemp =
-                    traceVisibility.temp && typeof closest.temp === 'number'
+                    traceVisibility.temp && typeof hoveredData.temp === 'number'
                         ? getSkewX(
                               closest.temp,
                               closest.press,
@@ -367,10 +406,41 @@ export default function SkewT({
                 setHoverInfo(null);
             }
         },
-        [computedMeanProfile, traceVisibility, scales, transformState],
+        [computedMeanProfile, primaryParcelTraceData, traceVisibility, scales, transformState],
     );
 
     const transformString = `translate(${transformState.x || 0},${transformState.y || 0}) scale(${transformState.k || 1})`;
+
+    const renderTracePath = ({
+        reactKey,
+        traceKey,
+        lineGenKey = traceKey,
+        profile,
+        color,
+        strokeWidth,
+        opacity,
+    }) => (
+        <path
+            key={reactKey}
+            d={lineGens[lineGenKey](profile)}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeDasharray={traceDasharrays[traceKey] || undefined}
+            opacity={opacity}
+        />
+    );
+
+    const renderConfiguredTracePath = ({ config, profile, keySuffix, strokeWidth, opacity }) =>
+        renderTracePath({
+            reactKey: `${config.key}-${keySuffix}`,
+            traceKey: config.key,
+            lineGenKey: config.lineGenKey,
+            profile,
+            color: config.color,
+            strokeWidth,
+            opacity,
+        });
 
     return (
         <div ref={containerRef} className={className} style={sx}>
@@ -414,63 +484,45 @@ export default function SkewT({
                             />
                             <g clipPath="url(#skewt-chart-area)" pointerEvents="none">
                                 <g transform={transformString}>
-                                    {/* Parcel Trace */}
-                                    {parcelTraceData && (
-                                        <path
-                                            d={lineGens.parcel(parcelTraceData)}
-                                            fill="none"
-                                            stroke={settings.colors.parcel}
-                                            strokeWidth={2}
-                                            strokeDasharray="6,4"
-                                            opacity={0.8}
-                                        />
+                                    {plumeTraceConfigs.flatMap((config) =>
+                                        config.memberProfiles.map((profile, index) =>
+                                            renderConfiguredTracePath({
+                                                config,
+                                                profile,
+                                                keySuffix: profile[0]?.mem || index,
+                                                ...config.styleByMode.plumes,
+                                            }),
+                                        ),
                                     )}
-                                    {/* Background Ensemble Member Profiles */}
-                                    {resolvedDisplayMode === 'plumes' &&
-                                        memberProfiles.map((member, i) => (
-                                            <React.Fragment key={`member-${member[0]?.mem || i}`}>
-                                                {activeTraceKeys.map((key) => (
-                                                    <path
-                                                        key={`member-${member[0]?.mem || i}-${key}`}
-                                                        d={lineGens[key](member)}
-                                                        fill="none"
-                                                        stroke={settings.colors[key]}
-                                                        strokeWidth={1}
-                                                        opacity={0.35}
-                                                    />
-                                                ))}
-                                            </React.Fragment>
-                                        ))}
-
-                                    {/* Box-Whisker Mode */}
-                                    {resolvedDisplayMode === 'boxwhisker' &&
-                                        memberProfiles.length > 0 && (
-                                            <SkewTBoxWhisker
-                                                memberProfiles={memberProfiles}
-                                                scales={scales}
-                                                percentiles={resolvedPercentiles}
-                                                variableKeys={activeTraceKeys}
-                                                visibleVariables={traceVisibility}
-                                                colors={settings.colors}
-                                            />
-                                        )}
+                                    {boxWhiskerTraceConfigs.map((config) => (
+                                        <SkewTBoxWhisker
+                                            key={`${config.key}-boxwhisker`}
+                                            memberProfiles={config.memberProfiles}
+                                            scales={scales}
+                                            percentiles={resolvedPercentiles}
+                                            variableKeys={[config.key]}
+                                            visibleVariables={{ [config.key]: true }}
+                                            colors={{ [config.key]: config.color }}
+                                            lineDasharrays={{
+                                                [config.key]: traceDasharrays[config.key],
+                                            }}
+                                            valueKeysByVariable={config.valueKeysByVariable}
+                                        />
+                                    ))}
 
                                     {/* Mean Profile */}
-                                    {computedMeanProfile &&
-                                        resolvedDisplayMode !== 'boxwhisker' && (
-                                            <g className="mean-profile-group">
-                                                {activeTraceKeys.map((key) => (
-                                                    <path
-                                                        key={`mean-${key}`}
-                                                        d={lineGens[key](computedMeanProfile)}
-                                                        fill="none"
-                                                        stroke={settings.colors[key]}
-                                                        strokeWidth={3}
-                                                        opacity={1}
-                                                    />
-                                                ))}
-                                            </g>
-                                        )}
+                                    {meanTraceConfigs.length > 0 ? (
+                                        <g className="mean-profile-group">
+                                            {meanTraceConfigs.map((config) =>
+                                                renderConfiguredTracePath({
+                                                    config,
+                                                    profile: config.meanProfile,
+                                                    keySuffix: 'mean',
+                                                    ...config.styleByMode.mean,
+                                                }),
+                                            )}
+                                        </g>
+                                    ) : null}
                                     {/* Tooltip Highlight Circles */}
                                     {hoverInfo && (
                                         <g pointerEvents="none">
@@ -523,7 +575,7 @@ export default function SkewT({
                                     clipPath="url(#skewt-barb-area)"
                                 >
                                     {/* 1. Ensemble Member Barbs (Background) - hidden in mean mode */}
-                                    {resolvedDisplayMode !== 'mean' &&
+                                    {showMemberBarbs &&
                                         memberBarbs.map((barbSet, i) => (
                                             <g
                                                 key={`member-barbs-${i}`}

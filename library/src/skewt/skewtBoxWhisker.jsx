@@ -15,6 +15,7 @@ export function computePercentileProfiles(
     memberProfiles,
     percentiles,
     variableKeys = ['temp', 'dwpt'],
+    valueKeysByVariable = {},
 ) {
     if (!memberProfiles || memberProfiles.length === 0) return null;
     const keys = [...new Set(variableKeys)].filter(Boolean);
@@ -49,8 +50,9 @@ export function computePercentileProfiles(
             const level = member.find((d) => d.press === press);
             if (level) {
                 for (const key of keys) {
-                    if (level[key] != null && !Number.isNaN(level[key])) {
-                        valuesByKey[key].push(level[key]);
+                    const valueKey = valueKeysByVariable[key] || key;
+                    if (level[valueKey] != null && !Number.isNaN(level[valueKey])) {
+                        valuesByKey[key].push(level[valueKey]);
                     }
                 }
             }
@@ -138,6 +140,8 @@ export default function SkewTBoxWhisker({
     variableKeys = ['temp', 'dwpt'],
     visibleVariables = {},
     colors,
+    lineDasharrays = {},
+    valueKeysByVariable = {},
 }) {
     const { xScale, yScale, tanAlpha, baseY } = scales;
     const activeVariableKeys = useMemo(
@@ -146,8 +150,14 @@ export default function SkewTBoxWhisker({
     );
 
     const percentileData = useMemo(
-        () => computePercentileProfiles(memberProfiles, percentiles, activeVariableKeys),
-        [memberProfiles, percentiles, activeVariableKeys],
+        () =>
+            computePercentileProfiles(
+                memberProfiles,
+                percentiles,
+                activeVariableKeys,
+                valueKeysByVariable,
+            ),
+        [memberProfiles, percentiles, activeVariableKeys, valueKeysByVariable],
     );
 
     const paths = useMemo(() => {
@@ -207,7 +217,7 @@ export default function SkewTBoxWhisker({
 
     if (!paths) return null;
 
-    const renderVariable = (varPaths) => {
+    const renderVariable = (key, varPaths) => {
         if (!varPaths) return null;
         const { whiskerPath, boxPath, medianPath, color } = varPaths;
         return (
@@ -242,6 +252,7 @@ export default function SkewTBoxWhisker({
                         stroke={color}
                         strokeWidth={2.5}
                         strokeOpacity={1}
+                        strokeDasharray={lineDasharrays[key] || undefined}
                     />
                 )}
             </g>
@@ -251,7 +262,7 @@ export default function SkewTBoxWhisker({
     return (
         <g className="skewt-box-whisker">
             {activeVariableKeys.map((key) => (
-                <g key={`boxwhisker-${key}`}>{renderVariable(paths[key])}</g>
+                <g key={`boxwhisker-${key}`}>{renderVariable(key, paths[key])}</g>
             ))}
         </g>
     );
