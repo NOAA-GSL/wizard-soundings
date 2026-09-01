@@ -16,7 +16,11 @@ export default function SoundingContainer({ soundingData, stats, derivedData, gl
     const [selectedStat, setSelectedStat] = useState('sfcCAPE');
 
     if (!soundingData || !stats) {
-        return <div className={[styles.loading, 'ws-sounding-loading'].join(' ')}>Loading sounding data...</div>;
+        return (
+            <div className={[styles.loading, 'ws-sounding-loading'].join(' ')}>
+                Loading sounding data...
+            </div>
+        );
     }
 
     return (

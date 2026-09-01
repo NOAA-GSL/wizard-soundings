@@ -449,7 +449,9 @@ export default function StatsTable({
                                             label={row.label}
                                             statKey={row.isInteractive ? row.id : undefined}
                                             value={row.formatter(rawVal)}
-                                            className={!row.isInteractive ? styles.noClick : undefined}
+                                            className={
+                                                !row.isInteractive ? styles.noClick : undefined
+                                            }
                                             isSelected={activeStat === row.id}
                                             handlers={handlers}
                                         />

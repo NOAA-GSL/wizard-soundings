@@ -95,13 +95,7 @@ function SkewTBackground({ dimensions, scales, config, transformString, transfor
                     <rect width={width} height={height} />
                 </clipPath>
             </defs>
-            <rect
-                width={width}
-                height={height}
-                fill="none"
-                stroke="black"
-                strokeWidth={2}
-            />
+            <rect width={width} height={height} fill="none" stroke="black" strokeWidth={2} />
 
             <g clipPath="url(#skewt-clip-bg)">
                 <g transform={transformString}>

@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import * as d3 from 'd3';
-import styles from './skewt.module.css';
 
 /**
  * Computes percentile profiles from ensemble member data at each pressure level.
