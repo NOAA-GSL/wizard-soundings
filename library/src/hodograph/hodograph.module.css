@@ -1,0 +1,107 @@
+.root {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: var(--ws-hodograph-bg, transparent);
+}
+
+.grid {
+    pointer-events: none;
+}
+
+.rings {
+    stroke: var(--ws-hodograph-ring-color, lightgray);
+    stroke-width: 1px;
+    fill: none;
+    pointer-events: none;
+    vector-effect: non-scaling-stroke;
+}
+
+.labels {
+    font-size: 14px;
+    text-anchor: middle;
+    fill: var(--ws-hodograph-text, #333);
+    opacity: 0.7;
+    stroke: none;
+}
+
+.lineMean {
+    opacity: 1;
+    stroke-width: 4px;
+    fill: none;
+    vector-effect: non-scaling-stroke;
+}
+
+.lineMember {
+    opacity: 0.5;
+    stroke-width: 2px;
+    stroke: var(--ws-hodograph-member-stroke, gray);
+    fill: none;
+    pointer-events: stroke;
+    vector-effect: non-scaling-stroke;
+    transition:
+        stroke 0.1s ease,
+        stroke-width 0.1s ease;
+}
+
+.lineMember:hover {
+    stroke: var(--ws-hodograph-hover-stroke, yellow);
+    stroke-width: 2px;
+    opacity: 1;
+}
+
+.dataPoint {
+    stroke: var(--ws-hodograph-datapoint-color, black);
+    fill: var(--ws-hodograph-datapoint-color, black);
+    stroke-width: 2px;
+    opacity: 1;
+    pointer-events: stroke;
+}
+
+.dataPoint:hover {
+    stroke: var(--ws-hodograph-hover-stroke, yellow);
+    fill: var(--ws-hodograph-hover-stroke, yellow);
+    stroke-width: 4px;
+    opacity: 1;
+}
+
+.bunkers {
+    stroke: var(--ws-hodograph-bunkers-color, red);
+    fill: var(--ws-hodograph-bunkers-color, red);
+    stroke-width: 1px;
+    opacity: 1;
+    pointer-events: fill;
+}
+
+.bunkers:hover {
+    stroke: var(--ws-hodograph-hover-stroke, yellow);
+    fill: var(--ws-hodograph-hover-stroke, yellow);
+}
+
+.legend {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid var(--ws-hodograph-legend-border, #000);
+    font-size: 12px;
+    color: var(--ws-hodograph-legend-text, black);
+    background-color: var(--ws-hodograph-legend-bg, transparent);
+    pointer-events: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.legendItem {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.legendColorBox {
+    width: 16px;
+    height: 12px;
+    display: inline-block;
+    margin-right: 6px;
+    border: 1px solid var(--ws-hodograph-legend-border, #000);
+}

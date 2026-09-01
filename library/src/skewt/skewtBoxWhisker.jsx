@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import * as d3 from 'd3';
+import styles from './skewt.module.css';
 
 /**
  * Computes percentile profiles from ensemble member data at each pressure level.
@@ -260,7 +261,7 @@ export default function SkewTBoxWhisker({
     };
 
     return (
-        <g className="skewt-box-whisker">
+        <g>
             {activeVariableKeys.map((key) => (
                 <g key={`boxwhisker-${key}`}>{renderVariable(key, paths[key])}</g>
             ))}

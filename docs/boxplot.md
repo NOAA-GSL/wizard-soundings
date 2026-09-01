@@ -91,6 +91,19 @@ const [selectedStat, setSelectedStat] = useState('sfcCAPE');
 - box 2: `percentiles.boxes[1]`
 - whisker 2: `percentiles.whiskers[1]`
 
+## Styling overrides
+
+`BoxPlot` uses CSS Modules for internal selectors and exposes `.ws-box-plot` as the stable public styling hook. Override these CSS variables on `.ws-box-plot`, a parent element, or the `sx` prop on a wrapper:
+
+| variable | default | description |
+| --- | --- | --- |
+| `--ws-box-plot-font-family` | `sans-serif` | SVG font family. |
+| `--ws-box-plot-bg` | `transparent` | Optional SVG background color. |
+| `--ws-box-plot-fill` | `rgba(31, 119, 180, 0.5)` | Box fill color. |
+| `--ws-box-plot-stroke` | `rgb(31, 119, 180)` | Box, whisker, median, and focus marker color. |
+| `--ws-box-plot-axis` | `#ccc` | Axis/grid line color. |
+| `--ws-box-plot-axis-text` | `#333` | Axis tick label color. |
+
 ## Demo reference
 
 See practical usage in:

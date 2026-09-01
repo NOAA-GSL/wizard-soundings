@@ -1,0 +1,56 @@
+.root {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.svg {
+    display: block;
+    stroke: var(--ws-skewt-text, #333);
+    stroke-width: 2px;
+    background-color: var(--ws-skewt-bg, transparent);
+}
+
+.grid {
+    pointer-events: none;
+}
+
+.grid line {
+    stroke-width: 1px;
+}
+
+.grid text {
+    font-size: 14px;
+    dominant-baseline: hanging;
+    pointer-events: none;
+    fill: var(--ws-skewt-text, #333);
+    stroke: none;
+}
+
+.grid path {
+    fill: none;
+}
+
+.mixingRatio {
+    stroke-dasharray: 4 4;
+}
+
+.windBarbs {
+    pointer-events: none;
+}
+
+.windBarbs path {
+    stroke: var(--ws-skewt-text, #333);
+    stroke-width: 1.5;
+    fill: none;
+}
+
+.windBarbs circle {
+    stroke: var(--ws-skewt-text, #333);
+    stroke-width: 1;
+    fill: none;
+}
+
+.hidden {
+    display: none !important;
+}

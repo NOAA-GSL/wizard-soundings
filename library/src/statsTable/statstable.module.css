@@ -1,0 +1,98 @@
+.root {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    padding: 10px;
+}
+
+.table {
+    font-size: 0.7rem;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    text-align: center;
+    color: var(--ws-stats-text, #333);
+    background-color: var(--ws-stats-bg, transparent);
+    border: 1px solid var(--ws-stats-border, #333);
+}
+
+.cell {
+    cursor: pointer;
+    padding: 2px 4px;
+}
+
+.noClick {
+    cursor: default;
+}
+
+.innerTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.column {
+    height: 100%;
+    border-right: 1px solid var(--ws-stats-border, #333);
+    overflow-x: auto;
+    min-width: 0;
+}
+
+.column:first-child {
+    flex: 1 0.5 360px;
+}
+
+.column:nth-child(2) {
+    flex: 1 1 280px;
+}
+
+.column:last-child {
+    flex: 1 2 140px;
+    border-right: none;
+}
+
+.parcelStats {
+    height: 50%;
+    border-bottom: 1px solid var(--ws-stats-border, #333);
+}
+
+.thermoStats {
+    height: 50%;
+}
+
+.windStats,
+.moreWindStats {
+    height: 100%;
+}
+
+.selectedStat {
+    font-weight: bold;
+    outline: 2px solid var(--ws-stats-selected-outline, rgb(31, 119, 180));
+    outline-offset: -2px;
+    border-radius: 2px;
+    background-color: var(--ws-stats-selected-bg, transparent);
+    color: var(--ws-stats-selected-text, currentColor);
+}
+
+@media (max-width: 795px) {
+    .column,
+    .column:first-child,
+    .column:nth-child(2),
+    .column:last-child {
+        flex: 1 1 100%;
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--ws-stats-border, #333);
+    }
+
+    .column:last-child {
+        border-bottom: none;
+    }
+
+    .table {
+        flex-direction: column;
+    }
+}

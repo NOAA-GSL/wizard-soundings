@@ -5,7 +5,7 @@ import useZoomHandler from '../utilities/useZoomHandler';
 import ChartTooltip from '../utilities/tooltip';
 import { computeMeanProfile } from '../skewt/meanProfile';
 import HodographBackground from './hodographBackground';
-import './hodograph.css';
+import styles from './hodograph.module.css';
 
 /*-------------------------------*/
 /* --- Hodograph and Helpers --- */
@@ -198,7 +198,11 @@ export default function Hodograph({
     const transformString = `translate(${transformState.x || 0},${transformState.y || 0}) scale(${transformState.k || 1})`;
 
     return (
-        <div ref={containerRef} className={className} style={sx}>
+        <div
+            ref={containerRef}
+            className={[styles.root, 'ws-hodograph', className].filter(Boolean).join(' ')}
+            style={sx}
+        >
             {dimensions.width > 0 && (
                 <>
                     <svg
@@ -235,12 +239,12 @@ export default function Hodograph({
                                         )}
 
                                         {/* Ensemble Member Lines */}
-                                        <g className="member-lines-group">
+                                        <g>
                                             {allMembers.map((memberData, i) => (
                                                 <path
                                                     key={i}
                                                     d={lineGenerator(memberData)}
-                                                    className="hodoline member"
+                                                    className={styles.lineMember}
                                                     onMouseOver={(e) =>
                                                         handleMouseOver(e, memberData, 'member')
                                                     }
@@ -250,13 +254,13 @@ export default function Hodograph({
                                         </g>
 
                                         {/* Mean Line Segments */}
-                                        <g className="mean-line-group">
+                                        <g>
                                             {segments.map((seg, i) => (
                                                 <path
                                                     key={i}
                                                     d={lineGenerator(seg.points)}
                                                     stroke={seg.color}
-                                                    className="hodoline mean"
+                                                    className={styles.lineMean}
                                                 />
                                             ))}
                                         </g>
@@ -274,7 +278,7 @@ export default function Hodograph({
                                                     cx={x}
                                                     cy={y}
                                                     r={3 / transformState.k} // Adjust radius based on zoom
-                                                    className="hodo-datapoint"
+                                                    className={styles.dataPoint}
                                                     onMouseOver={(e) =>
                                                         handleMouseOver(e, d, 'datapoint')
                                                     }
@@ -301,7 +305,7 @@ export default function Hodograph({
                                                         key={`bunker-${i}`}
                                                         d={symbolGenerator()}
                                                         transform={`translate(${x}, ${y}) scale(${1 / transformState.k})`}
-                                                        className="hodo-bunkers"
+                                                        className={styles.bunkers}
                                                         onMouseOver={(e) =>
                                                             handleMouseOver(
                                                                 e,
@@ -322,13 +326,13 @@ export default function Hodograph({
                     </svg>
 
                     {/* Legend */}
-                    <div className="hodo-legend">
+                    <div className={styles.legend}>
                         <strong style={{ display: 'block', marginBottom: '4px' }}>Mean Wind</strong>
                         {settings.segments.map((item, i) => (
-                            <div className="hodo-legend-item" key={i}>
+                            <div className={styles.legendItem} key={i}>
                                 {/* The Color Box */}
                                 <span
-                                    className="hodo-legend-colorbox"
+                                    className={styles.legendColorBox}
                                     style={{ backgroundColor: item.color }}
                                 />
                                 <span>{item.label}</span>
