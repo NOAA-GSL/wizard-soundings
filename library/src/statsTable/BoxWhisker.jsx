@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import * as d3 from 'd3';
-import './BoxWhisker.css';
+import styles from './BoxWhisker.module.css';
 
 function BoxWhisker({
     data = [],
@@ -54,17 +54,17 @@ function BoxWhisker({
         <svg
             width={width}
             height={height}
-            className="box-whisker-container"
+            className={[styles.root, 'ws-box-plot'].join(' ')}
             aria-label="Box and whisker plot"
         >
             <g transform={`translate(${margin.left},${margin.top})`}>
-                <g className="value-axis" transform="translate(0,0)">
+                <g transform="translate(0,0)">
                     {ticks.map((tickValue, i) => {
                         const pos = linearScale(tickValue);
                         return (
                             <g
                                 key={i}
-                                className="axis-tick"
+                                className={styles.axisTick}
                                 transform={isHoriz ? `translate(${pos},0)` : `translate(0,${pos})`}
                             >
                                 {/* Grid Line */}
@@ -73,7 +73,7 @@ function BoxWhisker({
                                     y1={0}
                                     x2={isHoriz ? 0 : innerWidth}
                                     y2={isHoriz ? innerHeight : 0}
-                                    className="axis-line"
+                                    className={styles.axisLine}
                                     strokeDasharray="4 4"
                                 />
                                 {/* Label */}
@@ -128,14 +128,14 @@ function BoxWhisker({
                     const medHeight = isHoriz ? rectHeight : 4;
 
                     return (
-                        <g key={`mark-${d}`} className="data-row">
+                        <g key={`mark-${d}`}>
                             {/* Whisker 1 (Lower) */}
                             <rect
                                 x={w1X}
                                 y={w1Y}
                                 width={w1Width}
                                 height={w1Height}
-                                className="whisker-rect"
+                                className={styles.whiskerRect}
                             />
                             {/* Whisker 2 (Upper) */}
                             <rect
@@ -143,7 +143,7 @@ function BoxWhisker({
                                 y={w2Y}
                                 width={w2Width}
                                 height={w2Height}
-                                className="whisker-rect"
+                                className={styles.whiskerRect}
                             />
                             {/* Main Box */}
                             <rect
@@ -151,7 +151,7 @@ function BoxWhisker({
                                 y={rectY}
                                 width={rectWidth}
                                 height={rectHeight}
-                                className="box-rect"
+                                className={styles.boxRect}
                             />
                             {/* Median Line */}
                             <rect
@@ -159,7 +159,7 @@ function BoxWhisker({
                                 y={medY}
                                 width={medWidth}
                                 height={medHeight}
-                                className="median-rect"
+                                className={styles.medianRect}
                             />
                             {/* Data points (Foci) */}
                             {[w1, b1, b2, w2].map((val, idx) => {
@@ -168,7 +168,7 @@ function BoxWhisker({
                                 return (
                                     <circle
                                         key={`focus-${idx}`}
-                                        className="focus-circle"
+                                        className={styles.focusCircle}
                                         r={4}
                                         transform={`translate(${cx}, ${cy})`}
                                     />

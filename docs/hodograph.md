@@ -72,6 +72,23 @@ Default `segments` are:
 - 3-6 km (`purple`)
 - >6 km (`blue`)
 
+## Styling overrides
+
+`Hodograph` uses CSS Modules for internal selectors and exposes `.ws-hodograph` as the stable public styling hook. Override these CSS variables on `.ws-hodograph`, a parent element, or the `sx` prop:
+
+| variable | default | description |
+| --- | --- | --- |
+| `--ws-hodograph-bg` | `transparent` | Optional root background color. |
+| `--ws-hodograph-text` | `#333` | Ring label text color. |
+| `--ws-hodograph-ring-color` | `lightgray` | Background ring stroke color. |
+| `--ws-hodograph-member-stroke` | `gray` | Ensemble member line stroke color. |
+| `--ws-hodograph-hover-stroke` | `yellow` | Hover stroke/fill color for member lines and markers. |
+| `--ws-hodograph-datapoint-color` | `black` | Major datapoint marker stroke/fill color. |
+| `--ws-hodograph-bunkers-color` | `red` | Bunkers marker stroke/fill color. |
+| `--ws-hodograph-legend-bg` | `transparent` | Legend background color. |
+| `--ws-hodograph-legend-text` | `black` | Legend text color. |
+| `--ws-hodograph-legend-border` | `#000` | Legend and legend swatch border color. |
+
 ## Tooltip override
 
 If `config.renderTooltip` is provided, `Hodograph` calls it with:

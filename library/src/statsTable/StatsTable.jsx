@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import ChartTooltip from '../utilities/tooltip';
-import './statstable.css';
+import styles from './statstable.module.css';
 
 /*--------------------------------*/
 /* --- StatsTable and Helpers --- */
@@ -227,10 +227,11 @@ function StatCell({
     const { onStatClick, onShowTooltip, onHideTooltip } = handlers;
 
     // Determine if this cell is interactive
-    const isInteractive = !!statKey && !className?.includes('noClick');
+    const isInteractive = !!statKey && !className?.includes(styles.noClick);
 
-    let finalClass = className || '';
-    if (isSelected) finalClass += ' selected-stat';
+    const finalClass = [styles.cell, className, isSelected ? styles.selectedStat : '']
+        .filter(Boolean)
+        .join(' ');
 
     // Handle Tooltip Hover (reusable JSX)
     const handleActive = (e) => {
@@ -262,7 +263,7 @@ function StatCell({
 
     return (
         <td
-            className={finalClass.trim()}
+            className={finalClass}
             onClick={handleClick}
             onMouseOver={tooltip ? handleActive : undefined}
             onMouseOut={onHideTooltip}
@@ -333,12 +334,15 @@ export default function StatsTable({
     if (!stats) return null;
 
     return (
-        <div className={className} style={sx}>
-            <div className="meteostats">
+        <div
+            className={[styles.root, 'ws-stats-table', className].filter(Boolean).join(' ')}
+            style={sx}
+        >
+            <div className={styles.table}>
                 {/* --- Left Column: Parcels & Thermo --- */}
-                <div className="statscolumn">
+                <div className={styles.column}>
                     {/* 1. Parcel Stats */}
-                    <table id="parcelstats">
+                    <table className={[styles.innerTable, styles.parcelStats].join(' ')}>
                         <tbody>
                             <tr>
                                 <th>PCL</th>
@@ -368,7 +372,7 @@ export default function StatsTable({
                     </table>
 
                     {/* 2. Thermo Stats (Refactored to Grid) */}
-                    <table id="thermostats">
+                    <table className={[styles.innerTable, styles.thermoStats].join(' ')}>
                         <tbody>
                             {THERMO_GRID.map((row, rIndex) => (
                                 <tr key={rIndex}>
@@ -397,8 +401,8 @@ export default function StatsTable({
                 </div>
 
                 {/* --- Right Column: Wind Stats --- */}
-                <div className="statscolumn">
-                    <table id="windstats">
+                <div className={styles.column}>
+                    <table className={[styles.innerTable, styles.windStats].join(' ')}>
                         <tbody>
                             <tr>
                                 <th>Layer</th>
@@ -419,7 +423,7 @@ export default function StatsTable({
                                                 statKey={col.isInteractive ? dataKey : undefined}
                                                 value={col.formatter(rawValue)}
                                                 className={
-                                                    !col.isInteractive ? 'noClick' : undefined
+                                                    !col.isInteractive ? styles.noClick : undefined
                                                 }
                                                 isSelected={activeStat === dataKey}
                                                 handlers={handlers}
@@ -433,8 +437,8 @@ export default function StatsTable({
                 </div>
 
                 {/* Extra Wind Vectors */}
-                <div className="statscolumn">
-                    <table id="morewindstats">
+                <div className={styles.column}>
+                    <table className={[styles.innerTable, styles.moreWindStats].join(' ')}>
                         <tbody>
                             {EXTRA_WIND_ROWS.map((row, i) => {
                                 const rawVal = row.getValue ? row.getValue(stats) : stats[row.id];
@@ -445,7 +449,9 @@ export default function StatsTable({
                                             label={row.label}
                                             statKey={row.isInteractive ? row.id : undefined}
                                             value={row.formatter(rawVal)}
-                                            className={!row.isInteractive ? 'noClick' : undefined}
+                                            className={
+                                                !row.isInteractive ? styles.noClick : undefined
+                                            }
                                             isSelected={activeStat === row.id}
                                             handlers={handlers}
                                         />

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import * as d3 from 'd3';
+import styles from './hodograph.module.css';
 
 function HodographBackground({ rScale, maxWind, ringConfig }) {
     const { interval, labelInterval, units } = ringConfig;
@@ -12,9 +13,9 @@ function HodographBackground({ rScale, maxWind, ringConfig }) {
     );
 
     return (
-        <g className="grid">
+        <g className={styles.grid}>
             {ringTicks.map((tick) => (
-                <circle key={tick} cx={0} cy={0} r={rScale(tick)} className="hodorings" />
+                <circle key={tick} cx={0} cy={0} r={rScale(tick)} className={styles.rings} />
             ))}
             {labelTicks.map((tick) => (
                 <text
@@ -22,7 +23,7 @@ function HodographBackground({ rScale, maxWind, ringConfig }) {
                     x={0}
                     y={rScale(tick)}
                     dy="0.9em"
-                    className="hodolabels"
+                    className={styles.labels}
                 >
                     {tick}
                     {units}

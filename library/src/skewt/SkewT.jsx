@@ -16,7 +16,7 @@ import {
     resolveTraceDisplayModes,
     resolveTraceLineStyles,
 } from './traceConfig';
-import './skewt.css';
+import styles from './skewt.module.css';
 
 /*-------------------------*/
 /* --- SkewT & Helpers --- */
@@ -443,10 +443,14 @@ export default function SkewT({
         });
 
     return (
-        <div ref={containerRef} className={className} style={sx}>
+        <div
+            ref={containerRef}
+            className={[styles.root, 'ws-skewt', className].filter(Boolean).join(' ')}
+            style={sx}
+        >
             {dimensions.width > 0 && scales.yScale && (
                 <>
-                    <svg width={dimensions.width} height={dimensions.height}>
+                    <svg width={dimensions.width} height={dimensions.height} className={styles.svg}>
                         {/* Clip Path for the chart area */}
                         <defs>
                             <clipPath id="skewt-chart-area">
@@ -570,7 +574,7 @@ export default function SkewT({
                             {/* Drawn OUTSIDE the zoom group so they stay locked horizontally. */}
                             {
                                 <g
-                                    className="wind-barbs-container"
+                                    className={styles.windBarbs}
                                     pointerEvents="none"
                                     clipPath="url(#skewt-barb-area)"
                                 >

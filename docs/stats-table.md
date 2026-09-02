@@ -111,6 +111,19 @@ const [selectedStat, setSelectedStat] = useState('sfcCAPE');
 
 `StatsTable` includes built-in tooltip text for selected derived rows (for example momentum transfer and PBL top definitions). No prop is required to enable this.
 
+## Styling overrides
+
+`StatsTable` uses CSS Modules for internal selectors and exposes `.ws-stats-table` as the stable public styling hook. Override these CSS variables on `.ws-stats-table`, a parent element, or the `sx` prop:
+
+| variable | default | description |
+| --- | --- | --- |
+| `--ws-stats-text` | `#333` | Table text color. |
+| `--ws-stats-bg` | `transparent` | Optional table background color. |
+| `--ws-stats-border` | `#333` | Table and column border color. |
+| `--ws-stats-selected-bg` | `transparent` | Selected stat cell background color. |
+| `--ws-stats-selected-outline` | `rgb(31, 119, 180)` | Selected stat cell outline color. |
+| `--ws-stats-selected-text` | `currentColor` | Selected stat cell text color. |
+
 ## Data flow recommendation
 
 1. Build sounding records via `createSounding().updateData(...)`.
@@ -122,3 +135,10 @@ const [selectedStat, setSelectedStat] = useState('sfcCAPE');
 See practical usage in:
 
 - `demo/examples/stats/main.jsx`
+
+The stats demo owns presentation backgrounds for the library visualizations through the `--ws-*` CSS variables and offers a color theme control with these options:
+
+| option | behavior |
+| --- | --- |
+| `Light` | Uses a light app shell and white visualization/table backgrounds. |
+| `Dark` | Uses a dark app shell and dark visualization/table backgrounds. |

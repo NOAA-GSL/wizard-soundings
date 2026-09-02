@@ -260,7 +260,7 @@ export default function SkewTBoxWhisker({
     };
 
     return (
-        <g className="skewt-box-whisker">
+        <g>
             {activeVariableKeys.map((key) => (
                 <g key={`boxwhisker-${key}`}>{renderVariable(key, paths[key])}</g>
             ))}

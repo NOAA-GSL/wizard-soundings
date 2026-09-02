@@ -3,7 +3,7 @@ import SkewT from './skewt/SkewT';
 import Hodograph from './hodograph/Hodograph';
 import StatsTable from './statsTable/StatsTable';
 import BoxPlot from './statsTable/boxplot';
-import './soundingContainer.css';
+import styles from './soundingContainer.module.css';
 
 /**
  * SoundingContainer: Orchestrates the meteorological display components.
@@ -16,21 +16,25 @@ export default function SoundingContainer({ soundingData, stats, derivedData, gl
     const [selectedStat, setSelectedStat] = useState('sfcCAPE');
 
     if (!soundingData || !stats) {
-        return <div className="sounding-loading">Loading sounding data...</div>;
+        return (
+            <div className={[styles.loading, 'ws-sounding-loading'].join(' ')}>
+                Loading sounding data...
+            </div>
+        );
     }
 
     return (
-        <div className="sounding-dashboard">
+        <div className={[styles.root, 'ws-sounding-dashboard'].join(' ')}>
             {/* Top Section: Visualization Grid */}
-            <div className="viz-grid">
-                <div className="viz-item skewt-wrapper">
+            <div className={styles.vizGrid}>
+                <div className={[styles.vizItem, styles.skewtWrapper].join(' ')}>
                     <SkewT
                         soundingParam={soundingData}
                         statsDictParam={stats}
                         config={globalConfig.skewt}
                     />
                 </div>
-                <div className="viz-item hodo-wrapper">
+                <div className={[styles.vizItem, styles.hodoWrapper].join(' ')}>
                     <Hodograph
                         soundingParam={soundingData}
                         statsDictParam={stats}
@@ -40,7 +44,7 @@ export default function SoundingContainer({ soundingData, stats, derivedData, gl
             </div>
 
             {/* Bottom Section: Data Table */}
-            <div className="table-wrapper">
+            <div className={styles.tableWrapper}>
                 <StatsTable
                     statsDictParam={stats}
                     selectedStat={selectedStat}

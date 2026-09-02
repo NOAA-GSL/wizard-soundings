@@ -1,0 +1,38 @@
+.root {
+    font-family: var(--ws-box-plot-font-family, sans-serif);
+    background-color: var(--ws-box-plot-bg, transparent);
+}
+
+.boxRect {
+    fill: var(--ws-box-plot-fill, rgba(31, 119, 180, 0.5));
+    stroke: var(--ws-box-plot-stroke, rgb(31, 119, 180));
+    transition:
+        x 0.5s ease,
+        width 0.5s ease,
+        y 0.5s ease,
+        height 0.5s ease;
+}
+
+.whiskerRect,
+.medianRect {
+    fill: var(--ws-box-plot-stroke, rgb(31, 119, 180));
+    transition:
+        x 0.5s ease,
+        width 0.5s ease,
+        y 0.5s ease,
+        height 0.5s ease;
+}
+
+.focusCircle {
+    fill: var(--ws-box-plot-stroke, rgb(31, 119, 180));
+    transition: transform 0.5s ease;
+}
+
+.axisLine {
+    stroke: var(--ws-box-plot-axis, #ccc);
+}
+
+.axisTick text {
+    fill: var(--ws-box-plot-axis-text, #333);
+    font-size: 12px;
+}

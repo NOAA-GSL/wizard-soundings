@@ -273,6 +273,7 @@ const hodoTooltipOverride = (data, type) => {
 };
 
 function App() {
+    const [theme, setTheme] = useState('dark');
     const [percentileInput, setPercentileInput] = useState('5, 25, 75, 95');
     const [timeIndex, setTimeIndex] = useState(0);
     const [selectedStat, setSelectedStat] = useState('sfcCAPE');
@@ -375,9 +376,25 @@ function App() {
     const [useCustomTooltips, setUseCustomTooltips] = useState(false);
 
     return (
-        <div className="app-layout">
+        <div className="app-layout" data-theme={theme}>
             <header>
                 <h1>Welcome to Wizard Soundings!</h1>
+                <div className="theme-toggle" role="group" aria-label="Color theme">
+                    <button
+                        type="button"
+                        className={theme === 'light' ? 'active' : ''}
+                        onClick={() => setTheme('light')}
+                    >
+                        Light
+                    </button>
+                    <button
+                        type="button"
+                        className={theme === 'dark' ? 'active' : ''}
+                        onClick={() => setTheme('dark')}
+                    >
+                        Dark
+                    </button>
+                </div>
             </header>
             <main className="main-content">
                 <aside className="settings-sidebar">
@@ -544,17 +561,8 @@ function App() {
                     )}
                     {/* Button to easily enable/disable custom tooltips in the demo UI */}
                     <button
+                        className="tooltips-toggle"
                         onClick={() => setUseCustomTooltips(!useCustomTooltips)}
-                        style={{
-                            padding: '5px 8px',
-                            cursor: 'pointer',
-                            borderRadius: '4px',
-                            fontWeight: 'bold',
-                            background: '#222',
-                            color: 'white',
-                            border: '1px solid #555',
-                            fontSize: '0.85rem',
-                        }}
                     >
                         {useCustomTooltips ? 'Disable Custom Tooltips' : 'Enable Custom Tooltips'}
                     </button>

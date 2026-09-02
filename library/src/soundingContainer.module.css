@@ -1,0 +1,47 @@
+.root {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+}
+
+.loading {
+    color: var(--ws-sounding-loading-text, currentColor);
+}
+
+.vizGrid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 15px;
+    height: 850px;
+    overflow: hidden;
+}
+
+.vizItem {
+    border: 1px solid var(--ws-sounding-border, #333);
+    background-color: var(--ws-sounding-viz-bg, transparent);
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.tableWrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+@media (max-width: 1000px) {
+    .vizGrid {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .skewtWrapper {
+        height: 600px;
+    }
+
+    .hodoWrapper {
+        height: 400px;
+    }
+}

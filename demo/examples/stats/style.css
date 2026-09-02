@@ -1,27 +1,123 @@
 body {
     margin: 0;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family:
+        Avenir Next,
+        Avenir,
+        Trebuchet MS,
+        sans-serif;
 }
 
 /* main.css update */
 .app-layout {
+    --app-bg: #121212;
+    --app-text: #ffffff;
+    --panel-bg: #1a1a1a;
+    --panel-border: #333333;
+    --control-bg: #222222;
+    --control-text: #ffffff;
+    --muted-text: #aaaaaa;
+    --table-muted-text: #9f9f9f;
+    --viz-bg: #ffffff;
+    --library-bg: #222222;
+    --library-text: #ffffff;
+    --library-border: #ffffff;
+    --ws-skewt-bg: var(--library-bg);
+    --ws-skewt-text: var(--library-text);
+    --ws-hodograph-bg: var(--library-bg);
+    --ws-hodograph-text: var(--library-text);
+    --ws-hodograph-ring-color: lightgray;
+    --ws-hodograph-legend-bg: rgba(255, 255, 255, 0.8);
+    --ws-stats-bg: var(--library-bg);
+    --ws-stats-text: var(--library-text);
+    --ws-stats-border: var(--library-border);
+    --ws-stats-selected-bg: rgba(100, 180, 255, 0.3);
+    --ws-stats-selected-outline: rgb(100, 180, 255);
+    --ws-stats-selected-text: var(--library-text);
+    --ws-box-plot-bg: transparent;
+    --ws-box-plot-axis-text: var(--library-text);
+    --legend-bg: rgba(255, 255, 255, 0.8);
+    --stat-selected-bg: rgba(100, 180, 255, 0.3);
+    --stat-selected-outline: rgb(100, 180, 255);
     display: flex;
     flex-direction: column;
     height: 100vh;
-    background-color: #121212;
-    color: white;
+    background-color: var(--app-bg);
+    color: var(--app-text);
     overflow: hidden;
+}
+
+.app-layout[data-theme='light'] {
+    --app-bg: #f5f7fb;
+    --app-text: #1e293b;
+    --panel-bg: #ffffff;
+    --panel-border: #cbd5e1;
+    --control-bg: #ffffff;
+    --control-text: #1e293b;
+    --muted-text: #52606f;
+    --table-muted-text: #64748b;
+    --viz-bg: #ffffff;
+    --library-bg: #ffffff;
+    --library-text: #333333;
+    --library-border: #333333;
+    --ws-skewt-bg: var(--library-bg);
+    --ws-skewt-text: var(--library-text);
+    --ws-hodograph-bg: var(--library-bg);
+    --ws-hodograph-text: var(--library-text);
+    --ws-hodograph-ring-color: lightgray;
+    --ws-hodograph-legend-bg: rgba(255, 255, 255, 0.8);
+    --ws-stats-bg: var(--library-bg);
+    --ws-stats-text: var(--library-text);
+    --ws-stats-border: var(--library-border);
+    --ws-stats-selected-bg: rgba(31, 119, 180, 0.2);
+    --ws-stats-selected-outline: rgb(31, 119, 180);
+    --ws-stats-selected-text: var(--library-text);
+    --ws-box-plot-bg: transparent;
+    --ws-box-plot-axis-text: var(--library-text);
+    --legend-bg: rgba(255, 255, 255, 0.8);
+    --stat-selected-bg: rgba(31, 119, 180, 0.2);
+    --stat-selected-outline: rgb(31, 119, 180);
 }
 
 header {
     padding: 10px 20px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--panel-border);
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
 }
 
 header h1 {
     margin: 0;
     font-size: 1.2rem;
+}
+
+.theme-toggle {
+    display: inline-flex;
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.theme-toggle button {
+    padding: 5px 10px;
+    border: 0;
+    border-right: 1px solid var(--panel-border);
+    background: var(--control-bg);
+    color: var(--control-text);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.85rem;
+}
+
+.theme-toggle button:last-child {
+    border-right: 0;
+}
+
+.theme-toggle button.active {
+    background: var(--app-text);
+    color: var(--app-bg);
 }
 
 .main-content {
@@ -43,8 +139,8 @@ header h1 {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    border-right: 1px solid #333;
-    background-color: #1a1a1a;
+    border-right: 1px solid var(--panel-border);
+    background-color: var(--panel-bg);
     overflow-y: auto;
 }
 
@@ -71,9 +167,9 @@ header h1 {
 .settings-sidebar input {
     padding: 5px 8px;
     border-radius: 4px;
-    border: 1px solid #555;
-    background: #222;
-    color: white;
+    border: 1px solid var(--panel-border);
+    background: var(--control-bg);
+    color: var(--control-text);
     font-size: 0.85rem;
 }
 
@@ -88,7 +184,7 @@ header h1 {
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #d8d8d8;
+    color: var(--app-text);
 }
 
 .trace-controls-table {
@@ -96,14 +192,14 @@ header h1 {
     border-collapse: collapse;
     font-size: 0.75rem;
     table-layout: fixed;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid #333;
+    background: var(--control-bg);
+    border: 1px solid var(--panel-border);
 }
 
 .trace-controls-table th,
 .trace-controls-table td {
     padding: 6px;
-    border-bottom: 1px solid #2a2a2a;
+    border-bottom: 1px solid var(--panel-border);
     text-align: left;
     vertical-align: middle;
 }
@@ -112,13 +208,13 @@ header h1 {
     font-size: 0.68rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #9f9f9f;
-    background: rgba(255, 255, 255, 0.03);
+    color: var(--table-muted-text);
+    background: var(--panel-bg);
 }
 
 .trace-controls-table td:first-child {
     font-weight: 600;
-    color: #f1f1f1;
+    color: var(--app-text);
 }
 
 .trace-controls-table td input[type='checkbox'] {
@@ -134,15 +230,40 @@ header h1 {
 
 .percentile-info {
     font-size: 0.8rem;
-    color: #aaa;
+    color: var(--muted-text);
     line-height: 1.5;
     margin: 0;
 }
 
 .time-label {
     font-size: 0.8rem;
-    color: #ccc;
+    color: var(--muted-text);
     text-align: center;
+}
+
+.tooltips-toggle {
+    padding: 5px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: 700;
+    background: var(--control-bg);
+    color: var(--control-text);
+    border: 1px solid var(--panel-border);
+    font-size: 0.85rem;
+}
+
+#readoutx2d {
+    background-color: rgba(60, 60, 60, 0.9);
+}
+
+#boxplot svg,
+#ptypediv svg,
+.main-svg {
+    background: transparent !important;
+}
+
+div.rollover.selected {
+    background-color: #efefef;
 }
 
 /* SoundingContainer styles */
@@ -162,8 +283,8 @@ header h1 {
 }
 
 .viz-item {
-    background: #fff;
-    border: 1px solid #333;
+    background: var(--viz-bg);
+    border: 1px solid var(--panel-border);
     position: relative; /* Essential for ResizeObserver accuracy */
     width: 100%;
     height: 100%;

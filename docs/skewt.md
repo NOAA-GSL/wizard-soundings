@@ -182,6 +182,24 @@ const stats = sounding.calcStats(sounding.getMembers(), 'list');
 }
 ```
 
+## Styling overrides
+
+`SkewT` uses CSS Modules for internal selectors and exposes `.ws-skewt` as the stable public styling hook. Override these CSS variables on `.ws-skewt`, a parent element, or the `sx` prop:
+
+| variable          | default       | description                              |
+| ----------------- | ------------- | ---------------------------------------- |
+| `--ws-skewt-text` | `#333`        | Default SVG stroke and grid label color. |
+| `--ws-skewt-bg`   | `transparent` | Optional SVG background color.           |
+
+Example:
+
+```css
+.weather-panel .ws-skewt {
+    --ws-skewt-text: #111827;
+    --ws-skewt-bg: #fff;
+}
+```
+
 ## Tooltip override
 
 If `config.renderTooltip` is provided, `SkewT` calls it with one argument:

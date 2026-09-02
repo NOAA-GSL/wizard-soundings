@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import * as d3 from 'd3';
 import sharp from '../Sharp';
+import styles from './skewt.module.css';
 
 /**
  * Coordinate Transformer: Skew-X
@@ -88,20 +89,13 @@ function SkewTBackground({ dimensions, scales, config, transformString, transfor
         .y((d) => yScale(d.press));
 
     return (
-        <g className="skewt-grid">
+        <g className={styles.grid}>
             <defs>
                 <clipPath id="skewt-clip-bg">
                     <rect width={width} height={height} />
                 </clipPath>
             </defs>
-            <rect
-                className="skewt-background"
-                width={width}
-                height={height}
-                fill="none"
-                stroke="black"
-                strokeWidth={2}
-            />
+            <rect width={width} height={height} fill="none" stroke="black" strokeWidth={2} />
 
             <g clipPath="url(#skewt-clip-bg)">
                 <g transform={transformString}>
@@ -131,6 +125,7 @@ function SkewTBackground({ dimensions, scales, config, transformString, transfor
                             stroke={config.colors.mixingRatio}
                             strokeWidth={1}
                             strokeDasharray="4,4"
+                            className={styles.mixingRatio}
                         />
                     ))}
                     {/* Isotherm Lines */}
