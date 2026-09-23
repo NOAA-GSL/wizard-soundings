@@ -228,6 +228,35 @@ header h1 {
     font-size: 0.75rem;
 }
 
+/* Single-row layout for RH Bar controls */
+.rh-controls-single-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 4px;
+    flex-wrap: wrap; /* Allows graceful wrapping if sidebar is narrow */
+}
+
+.rh-control-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.rh-control-inline input[type='range'] {
+    width: 65px;
+    cursor: pointer;
+}
+
+.rh-control-inline select {
+    padding: 2px 4px;
+    font-size: 0.8rem;
+    max-width: 130px;
+}
+
 .percentile-info {
     font-size: 0.8rem;
     color: var(--muted-text);

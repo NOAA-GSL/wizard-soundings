@@ -54,3 +54,14 @@
 .hidden {
     display: none !important;
 }
+
+/* Relative Humidity Indicator Bars */
+.rhBars {
+    pointer-events: none;
+}
+
+.rhBars rect {
+    stroke: rgba(0, 0, 0, 0.35);
+    stroke-width: 0.5px;
+    opacity: 0.85;
+}

@@ -11,6 +11,43 @@ import './style.css';
 
 const DATES = data.metadata?.gh_isobaric?.availableDates ?? [];
 
+// Pre-defined Colorbar Presets
+const COLORBAR_PRESETS = {
+    standard: {
+        label: 'Green to Purple (Classic)',
+        stops: [
+            { value: 70, color: '#14532d' },
+            { value: 94, color: '#00ff00' },
+            { value: 95, color: '#9333ea' },
+            { value: 100, color: '#9333ea' },
+        ],
+    },
+    cyanBlue: {
+        label: 'Cyan to Deep Blue',
+        stops: [
+            { value: 70, color: '#a5f3fc' },
+            { value: 85, color: '#0284c7' },
+            { value: 100, color: '#1e3a8a' },
+        ],
+    },
+    spectral: {
+        label: 'Spectral (Multi-stop)',
+        stops: [
+            { value: 70, color: '#fef08a' },
+            { value: 80, color: '#22c55e' },
+            { value: 90, color: '#06b6d4' },
+            { value: 100, color: '#7e22ce' },
+        ],
+    },
+    grayscale: {
+        label: 'Grayscale',
+        stops: [
+            { value: 70, color: '#d1d5db' },
+            { value: 100, color: '#111827' },
+        ],
+    },
+};
+
 const DISPLAY_MODE_OPTIONS = [
     { value: 'plumes', label: 'Plumes' },
     { value: 'boxwhisker', label: 'Box' },
@@ -75,17 +112,6 @@ function ordinalSuffixOf(i) {
 // Converts meters to feet
 const mToFt = (meters) => meters * 3.28084;
 
-// Calculates Relative Humidity from T and Td (in Celsius) using the Tetens formula
-const calculateRH = (t, td) => {
-    if (t == null || td == null) return null;
-    // Saturation vapor pressure
-    const es = 6.112 * Math.exp((17.67 * t) / (t + 243.5));
-    // Actual vapor pressure
-    const e = 6.112 * Math.exp((17.67 * td) / (td + 243.5));
-    // Return constrained percentage
-    return Math.max(0, Math.min(100, 100 * (e / es)));
-};
-
 // --- Tooltip Override Configurations ---
 
 // 1. Skew-T Render Prop Demo (Expanded Readout)
@@ -94,7 +120,6 @@ const skewTTooltipOverride = (data) => {
     if (!data) return null;
 
     // Derived Calculations
-    const rh = calculateRH(data.temp, data.dwpt);
     const hghtMslFt = data.hght != null ? mToFt(data.hght) : null;
     const hghtAglFt = data.hghtagl != null ? mToFt(data.hghtagl) : null;
 
@@ -136,10 +161,10 @@ const skewTTooltipOverride = (data) => {
                 <span style={{ color: '#aaa' }}>Dewpt:</span>
                 <strong style={{ color: '#69f0ae' }}>{data.dwpt?.toFixed(1) ?? '--'} &deg;C</strong>
             </div>
-            {rh != null && (
+            {data.rh != null && (
                 <div style={rowStyle}>
                     <span style={{ color: '#aaa' }}>RH:</span>
-                    <strong>{rh.toFixed(0)}%</strong>
+                    <strong>{data.rh.toFixed(0)}%</strong>
                 </div>
             )}
 
@@ -287,6 +312,13 @@ function App() {
         parcel: { type: 'none', mode: 'mean', lineStyle: 'dot' },
         parcelVirtual: { type: 'sfc', mode: 'mean', lineStyle: 'dash' },
     });
+    const [rhBarControls, setRhBarControls] = useState({
+        enabled: true,
+        minRH: 70,
+        colorBarKey: 'standard',
+        minBarWidth: 2,
+        maxBarWidth: 24,
+    });
 
     // Parse percentile input into array of numbers
     const percentiles = percentileInput
@@ -320,6 +352,19 @@ function App() {
             derivedData: sounding.calcStats(sounding.getMembers(), 'list'),
         };
     }, [timeIndex]);
+
+    const rhBarsConfig = useMemo(
+        () => ({
+            enabled: rhBarControls.enabled,
+            minRH: rhBarControls.minRH,
+            colorBar:
+                COLORBAR_PRESETS[rhBarControls.colorBarKey]?.stops ??
+                COLORBAR_PRESETS.standard.stops,
+            minBarWidth: rhBarControls.minBarWidth,
+            maxBarWidth: rhBarControls.maxBarWidth,
+        }),
+        [rhBarControls],
+    );
 
     const traceVisibility = useMemo(
         () =>
@@ -546,6 +591,64 @@ function App() {
                             </tbody>
                         </table>
                     </div>
+                    {/* RH Bar Configuration Section */}
+                    <div className="trace-controls">
+                        <div className="trace-controls-title">RH Bar Controls</div>
+                        <div className="rh-controls-single-row">
+                            {/* Toggle Checkbox */}
+                            <label className="rh-control-inline">
+                                <input
+                                    type="checkbox"
+                                    checked={rhBarControls.enabled}
+                                    onChange={(e) =>
+                                        setRhBarControls((prev) => ({
+                                            ...prev,
+                                            enabled: e.target.checked,
+                                        }))
+                                    }
+                                />
+                                <span>Enable</span>
+                            </label>
+
+                            {/* Min RH Slider */}
+                            <label className="rh-control-inline">
+                                <span>Min: {rhBarControls.minRH}%</span>
+                                <input
+                                    type="range"
+                                    min={50}
+                                    max={90}
+                                    step={5}
+                                    value={rhBarControls.minRH}
+                                    onChange={(e) =>
+                                        setRhBarControls((prev) => ({
+                                            ...prev,
+                                            minRH: Number(e.target.value),
+                                        }))
+                                    }
+                                />
+                            </label>
+
+                            {/* Color Scheme Dropdown */}
+                            <label className="rh-control-inline">
+                                <span>Scheme:</span>
+                                <select
+                                    value={rhBarControls.colorBarKey}
+                                    onChange={(e) =>
+                                        setRhBarControls((prev) => ({
+                                            ...prev,
+                                            colorBarKey: e.target.value,
+                                        }))
+                                    }
+                                >
+                                    {Object.entries(COLORBAR_PRESETS).map(([key, preset]) => (
+                                        <option key={key} value={key}>
+                                            {preset.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
+                    </div>
                     {percentiles.length >= 2 && (
                         <p className="percentile-info">
                             Whiskers: {percentiles[0]}th &amp; {percentiles[percentiles.length - 1]}
@@ -583,6 +686,7 @@ function App() {
                                         traceLineStyles,
                                         parcelTrace: parcelControls.parcel.type,
                                         virtualParcelTrace: parcelControls.parcelVirtual.type,
+                                        rhBars: rhBarsConfig,
                                         ...(useCustomTooltips
                                             ? { renderTooltip: skewTTooltipOverride }
                                             : {}),

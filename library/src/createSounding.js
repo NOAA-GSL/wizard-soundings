@@ -150,9 +150,11 @@ const addDerivedProfileFields = (levels) => {
         ) {
             level.vtmp = sharp.vtmp([level.temp], [level.dwpt], [level.press])[0];
             level.wetb = sharp.wetBulb([level.press], [level.temp], [level.dwpt])[0];
+            level.rh = sharp.rh([level.press], [level.temp], [level.dwpt])[0];
         } else {
             level.vtmp = NaN;
             level.wetb = NaN;
+            level.rh = NaN;
         }
     }
 };
