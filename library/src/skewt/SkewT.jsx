@@ -88,10 +88,6 @@ function filterWindBarbs(profile, topP, baseP) {
 function SkewTTooltipContent({ data, colors, traceVisibility }) {
     if (!data) return null;
 
-    // Use sharp.rh to calculate Relative Humidity (returns an array)
-    // const rhArray = sharp.rh([data.press], [data.temp], [data.dwpt]);
-    // const rh = rhArray && rhArray.length > 0 ? rhArray[0] : null;
-
     // Use math.convert for the height calculations
     const hghtMslFt = data.hght != null ? math.convert(data.hght, 'm', 'ft') : null;
     const hghtAglFt = data.hghtagl != null ? math.convert(data.hghtagl, 'm', 'ft') : null;
