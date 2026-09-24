@@ -1,6 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import * as d3 from 'd3';
-import sharp from '../Sharp';
 import useContainerDimensions from '../utilities/useContainerDimensions';
 import useZoomHandler from '../utilities/useZoomHandler';
 import ChartTooltip from '../utilities/tooltip';
@@ -8,6 +7,7 @@ import { math } from '../Utilities';
 import SkewTBackground from './skewtBackground';
 import SkewTBoxWhisker from './skewtBoxWhisker';
 import WindBarb from './windBarb';
+import SkewTRHBars from './rhBars';
 import { computeMeanProfile } from './meanProfile';
 import { getPrimaryParcelMeanProfile, getSelectedParcelTraceSets } from './parcelTrace';
 import {
@@ -87,10 +87,6 @@ function filterWindBarbs(profile, topP, baseP) {
 function SkewTTooltipContent({ data, colors, traceVisibility }) {
     if (!data) return null;
 
-    // Use sharp.rh to calculate Relative Humidity (returns an array)
-    const rhArray = sharp.rh([data.press], [data.temp], [data.dwpt]);
-    const rh = rhArray && rhArray.length > 0 ? rhArray[0] : null;
-
     // Use math.convert for the height calculations
     const hghtMslFt = data.hght != null ? math.convert(data.hght, 'm', 'ft') : null;
     const hghtAglFt = data.hghtagl != null ? math.convert(data.hghtagl, 'm', 'ft') : null;
@@ -114,7 +110,7 @@ function SkewTTooltipContent({ data, colors, traceVisibility }) {
             {data.uwnd != null && (
                 <div>Wind: {Math.round(Math.sqrt(data.uwnd ** 2 + data.vwnd ** 2))} kts</div>
             )}
-            {rh != null && <div>RH: {rh.toFixed(0)}%</div>}
+            {data.rh != null && <div>RH: {data.rh.toFixed(0)}%</div>}
             <div>
                 Hght (MSL): {data.hght?.toFixed(0) ?? '--'} m / {hghtMslFt?.toFixed(0) ?? '--'} ft
             </div>
@@ -153,6 +149,7 @@ export default function SkewT({
             dwpt: config.showDewPoint ?? config.traceVisibility?.dwpt ?? true,
             wetb: config.showWetBulb ?? config.traceVisibility?.wetb ?? false,
             vtmp: config.showVirtualTemp ?? config.traceVisibility?.vtmp ?? false,
+            rh: config.rhBars?.enabled ?? config.traceVisibility?.rh ?? false,
         }),
         [
             config.showTemperature,
@@ -160,6 +157,7 @@ export default function SkewT({
             config.showDewPoint,
             config.showWetBulb,
             config.showVirtualTemp,
+            config.rhBars,
         ],
     );
     const traceLineStyles = useMemo(() => resolveTraceLineStyles(config), [config]);
@@ -172,6 +170,12 @@ export default function SkewT({
                 ]),
             ),
         [traceLineStyles],
+    );
+    const rhConfig = useMemo(
+        () => ({
+            ...config.rhBars,
+        }),
+        [config.rhBars],
     );
     const settings = useMemo(
         () => ({
@@ -626,6 +630,16 @@ export default function SkewT({
                                     )}
                                 </g>
                             }
+                            {/* --- RH Bars (Anchored to Left Edge) --- */}
+                            {traceVisibility.rh && computedMeanProfile && (
+                                <SkewTRHBars
+                                    profile={computedMeanProfile}
+                                    scales={scales}
+                                    transformState={transformState}
+                                    xPosition={0}
+                                    rhConfig={rhConfig}
+                                />
+                            )}
                         </g>
                     </svg>
 
