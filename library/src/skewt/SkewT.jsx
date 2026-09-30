@@ -71,11 +71,12 @@ function getSkewX(temp, press, xScale, yScale, tanAlpha, baseY) {
     return xScale(temp) + (baseY - yScale(press)) / tanAlpha;
 }
 
-function filterWindBarbs(profile, topP, baseP) {
+export function filterWindBarbs(profile, topP, baseP) {
     if (!profile) return [];
+    // Index 0 is the surface level (u10/v10); its pressure is rarely a multiple of 50.
     return profile.filter(
-        (d) =>
-            (Math.round(d.press) % 50 === 0 || Math.round(d.press) === 1000) &&
+        (d, i) =>
+            (i === 0 || d.sfcflag || Math.round(d.press) % 50 === 0) &&
             d.uwnd != null &&
             d.vwnd != null &&
             d.press >= topP &&
