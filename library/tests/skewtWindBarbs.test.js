@@ -16,7 +16,7 @@ describe('filterWindBarbs', () => {
     });
 
     test('includes the first level of a mean profile without sfcflag', () => {
-        const meanProfile = profile.map(({ sfcflag, ...rest }) => rest);
+        const meanProfile = profile.map(({ ...rest }) => rest);
         const barbs = filterWindBarbs(meanProfile, 100, 1050);
         expect(barbs[0].press).toBe(967.3);
     });
