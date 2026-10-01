@@ -476,6 +476,7 @@ function App() {
     // --- Tooltip Override Demo ---
     // Toggle this state to see the tooltips change!
     const [useCustomTooltips, setUseCustomTooltips] = useState(false);
+    const [showHodoLegend, setShowHodoLegend] = useState(true);
 
     return (
         <div className="app-layout" data-theme={theme}>
@@ -769,6 +770,14 @@ function App() {
                             Median: 50th (always included)
                         </p>
                     )}
+                    <label className="checkbox-row">
+                        Hodograph Legend
+                        <input
+                            type="checkbox"
+                            checked={showHodoLegend}
+                            onChange={(e) => setShowHodoLegend(e.target.checked)}
+                        />
+                    </label>
                     {/* Button to easily enable/disable custom tooltips in the demo UI */}
                     <button
                         className="tooltips-toggle"
@@ -813,6 +822,7 @@ function App() {
                                     soundingParam={soundingData}
                                     statsDictParam={stats}
                                     config={{
+                                        legend: showHodoLegend,
                                         ...(useCustomTooltips
                                             ? { renderTooltip: hodoTooltipOverride }
                                             : {}),

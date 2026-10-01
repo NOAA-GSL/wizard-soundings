@@ -53,18 +53,24 @@ const stats = sounding.calcStats(sounding.getMembers(), 'mean');
 
 ## `config` options
 
-| key                   | type                                 | default             | description                                        |
-| --------------------- | ------------------------------------ | ------------------- | -------------------------------------------------- |
-| `margin`              | `number`                             | `25`                | Margin used to compute plotting radius.            |
-| `maxWind`             | `number`                             | `80`                | Maximum wind speed used for ring and radial scale. |
-| `rings.interval`      | `number`                             | `10`                | Ring spacing.                                      |
-| `rings.labelInterval` | `number`                             | `20`                | Label interval for ring text.                      |
-| `rings.units`         | `string`                             | `'kts'`             | Unit label displayed on ring labels.               |
-| `segments`            | `Array<{ maxHeight, color, label }>` | see source defaults | Mean-hodograph segment color bands by height.      |
-| `zoom.enabled`        | `boolean`                            | `true`              | Enable/disable pan/zoom behavior.                  |
-| `zoom.min`            | `number`                             | `1`                 | Minimum zoom scale.                                |
-| `zoom.max`            | `number`                             | `10`                | Maximum zoom scale.                                |
-| `renderTooltip`       | `(data, type) => ReactNode`          | `null`              | Custom tooltip renderer.                           |
+| key                   | type                                                           | default             | description                                                                                |
+| --------------------- | -------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------ |
+| `margin`              | `number`                                                       | `25`                | Margin used to compute plotting radius.                                                    |
+| `maxWind`             | `number`                                                       | `80`                | Maximum wind speed used for ring and radial scale.                                         |
+| `rings.interval`      | `number`                                                       | `10`                | Ring spacing.                                                                              |
+| `rings.labelInterval` | `number`                                                       | `20`                | Label interval for ring text.                                                              |
+| `rings.units`         | `string`                                                       | `'kts'`             | Unit label displayed on ring labels.                                                       |
+| `segments`            | `Array<{ maxHeight, color, label }>`                           | see source defaults | Mean-hodograph segment color bands by height.                                              |
+| `legend`              | `boolean \| object`                                            | `true`              | Built-in legend overlay. `false` hides it; an object configures it (see below).            |
+| `legend.enabled`      | `boolean`                                                      | `true`              | Show/hide the built-in legend.                                                             |
+| `legend.position`     | `'top-left' \| 'top-right' \| 'bottom-left' \| 'bottom-right'` | `'top-left'`        | Corner of the hodograph the legend is placed in. Unknown values fall back to `'top-left'`. |
+| `legend.title`        | `string`                                                       | `'Mean Wind'`       | Legend heading. Empty string hides it.                                                     |
+| `legend.className`    | `string`                                                       | `''`                | Extra CSS class added to the legend element.                                               |
+| `legend.sx`           | `object`                                                       | `{}`                | Inline style object applied to the legend element.                                         |
+| `zoom.enabled`        | `boolean`                                                      | `true`              | Enable/disable pan/zoom behavior.                                                          |
+| `zoom.min`            | `number`                                                       | `1`                 | Minimum zoom scale.                                                                        |
+| `zoom.max`            | `number`                                                       | `10`                | Maximum zoom scale.                                                                        |
+| `renderTooltip`       | `(data, type) => ReactNode`                                    | `null`              | Custom tooltip renderer.                                                                   |
 
 Default `segments` are:
 
@@ -72,6 +78,43 @@ Default `segments` are:
 - 1-3 km (`orange`)
 - 3-6 km (`purple`)
 - > 6 km (`blue`)
+
+They are exported as `DEFAULT_HODOGRAPH_SEGMENTS`.
+
+## Legend
+
+By default the mean-wind legend is drawn over the top-left corner of the hodograph.
+
+```jsx
+// Hide it
+<Hodograph soundingParam={soundingData} config={{ legend: false }} />
+
+// Move it and restyle it
+<Hodograph
+    soundingParam={soundingData}
+    config={{ legend: { position: 'bottom-right', title: 'Wind', sx: { fontSize: 14 } } }}
+/>
+```
+
+### Standalone `HodographLegend`
+
+To place the legend somewhere else (sidebar, below the chart, ...), hide the built-in one and render `HodographLegend` yourself. Pass the same `segments` you give the `Hodograph` so the colors match.
+
+```jsx
+import { Hodograph, HodographLegend, DEFAULT_HODOGRAPH_SEGMENTS } from '@noaa-gsl/wizard-soundings';
+
+<Hodograph soundingParam={soundingData} config={{ legend: false }} />
+<HodographLegend segments={DEFAULT_HODOGRAPH_SEGMENTS} />
+```
+
+| prop        | type                                 | required | default                      | description                                           |
+| ----------- | ------------------------------------ | -------- | ---------------------------- | ----------------------------------------------------- |
+| `segments`  | `Array<{ maxHeight, color, label }>` | no       | `DEFAULT_HODOGRAPH_SEGMENTS` | Segments to list (only `color` and `label` are used). |
+| `title`     | `string`                             | no       | `'Mean Wind'`                | Legend heading. Empty string hides it.                |
+| `className` | `string`                             | no       | `''`                         | Extra CSS class for the legend element.               |
+| `sx`        | `object`                             | no       | `{}`                         | Inline style object for the legend element.           |
+
+The standalone legend is not absolutely positioned; it flows like a normal block element.
 
 ## Styling overrides
 
@@ -89,6 +132,8 @@ Default `segments` are:
 | `--ws-hodograph-legend-bg`       | `transparent` | Legend background color.                              |
 | `--ws-hodograph-legend-text`     | `black`       | Legend text color.                                    |
 | `--ws-hodograph-legend-border`   | `#000`        | Legend and legend swatch border color.                |
+
+The legend also exposes `.ws-hodograph-legend` as a stable class for CSS overrides (for example `.ws-hodograph-legend { font-size: 14px; }`), in addition to `legend.className` / `legend.sx`. The legend CSS variables are read from any ancestor, so they also apply to a standalone `HodographLegend`.
 
 ## Tooltip override
 

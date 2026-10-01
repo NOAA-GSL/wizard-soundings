@@ -28,7 +28,9 @@ body {
     --ws-hodograph-bg: var(--library-bg);
     --ws-hodograph-text: var(--library-text);
     --ws-hodograph-ring-color: lightgray;
-    --ws-hodograph-legend-bg: rgba(255, 255, 255, 0.8);
+    --ws-hodograph-legend-bg: rgba(34, 34, 34, 0.85);
+    --ws-hodograph-legend-text: var(--library-text);
+    --ws-hodograph-legend-border: #555555;
     --ws-stats-bg: var(--library-bg);
     --ws-stats-text: var(--library-text);
     --ws-stats-border: var(--library-border);
@@ -69,6 +71,8 @@ body {
     --ws-hodograph-text: var(--library-text);
     --ws-hodograph-ring-color: lightgray;
     --ws-hodograph-legend-bg: rgba(255, 255, 255, 0.8);
+    --ws-hodograph-legend-text: var(--library-text);
+    --ws-hodograph-legend-border: var(--library-border);
     --ws-stats-bg: var(--library-bg);
     --ws-stats-text: var(--library-text);
     --ws-stats-border: var(--library-border);
