@@ -21,6 +21,12 @@ export const DEFAULT_TALL_GRAPH_CONFIG = {
         isobar: 'rgba(200, 150, 150, 0.4)',
         zeroLine: 'rgba(150, 150, 150, 0.8)',
     },
+    pressureAxis: {
+        showValues: false,
+        showLabel: false,
+        label: 'Pressure',
+        units: 'mb',
+    },
     rh: {
         enabled: true,
         displayMode: 'meanBars',
@@ -94,6 +100,7 @@ export function resolveTallGraphConfig(config = {}) {
         ...config,
         margin: { ...DEFAULT_TALL_GRAPH_CONFIG.margin, ...config.margin },
         colors: { ...DEFAULT_TALL_GRAPH_CONFIG.colors, ...config.colors },
+        pressureAxis: { ...DEFAULT_TALL_GRAPH_CONFIG.pressureAxis, ...config.pressureAxis },
     };
 
     for (const key of TALL_GRAPH_VARIABLE_KEYS) {
@@ -181,4 +188,17 @@ export function getBoxWhiskerPercentileKeys(percentiles) {
 
 export function formatAxisTitle({ label, units }) {
     return units ? `${label} (${units})` : label;
+}
+
+export const PRESSURE_VALUES_WIDTH = 40;
+export const PRESSURE_LABEL_WIDTH = 20;
+
+/**
+ * Extra left space (px) reserved for the pressure (y) axis values and label.
+ */
+export function getPressureAxisWidth(pressureAxis = {}) {
+    return (
+        (pressureAxis.showValues ? PRESSURE_VALUES_WIDTH : 0) +
+        (pressureAxis.showLabel ? PRESSURE_LABEL_WIDTH : 0)
+    );
 }

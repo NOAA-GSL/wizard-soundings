@@ -8,10 +8,43 @@ import {
     formatAxisTitle,
     getAxisLayout,
     getBoxWhiskerPercentileKeys,
+    getPressureAxisWidth,
     resolveTallGraphConfig,
 } from '../src/tallGraph/tallGraphConfig.js';
 import TallGraph from '../src/tallGraph/TallGraph.jsx';
 import * as library from '../src/index.js';
+
+describe('pressureAxis', () => {
+    test('values and label are hidden by default', () => {
+        const { pressureAxis } = resolveTallGraphConfig();
+        expect(pressureAxis).toEqual({
+            showValues: false,
+            showLabel: false,
+            label: 'Pressure',
+            units: 'mb',
+        });
+        expect(getPressureAxisWidth(pressureAxis)).toBe(0);
+    });
+
+    test('merges partial overrides with defaults', () => {
+        const { pressureAxis } = resolveTallGraphConfig({
+            pressureAxis: { showLabel: true, units: 'hPa' },
+        });
+        expect(pressureAxis).toEqual({
+            showValues: false,
+            showLabel: true,
+            label: 'Pressure',
+            units: 'hPa',
+        });
+        expect(formatAxisTitle(pressureAxis)).toBe('Pressure (hPa)');
+    });
+
+    test('reserves left space only for the parts that are shown', () => {
+        expect(getPressureAxisWidth({ showValues: true })).toBe(40);
+        expect(getPressureAxisWidth({ showLabel: true })).toBe(20);
+        expect(getPressureAxisWidth({ showValues: true, showLabel: true })).toBe(60);
+    });
+});
 
 describe('resolveTallGraphConfig', () => {
     test('returns defaults for both variables', () => {

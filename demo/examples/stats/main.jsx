@@ -356,6 +356,10 @@ function App() {
     const [rhColorBarKey, setRhColorBarKey] = useState('standard');
     const [rhVariable, setRhVariable] = useState('rh');
     const [rhIceThreshold, setRhIceThreshold] = useState(DEFAULT_RH_ICE_THRESHOLD);
+    const [tallGraphPressureAxis, setTallGraphPressureAxis] = useState({
+        showValues: false,
+        showLabel: false,
+    });
 
     // Parse percentile input into array of numbers
     const percentiles = useMemo(
@@ -444,8 +448,9 @@ function App() {
                 colorBar: COLORBAR_PRESETS[rhColorBarKey].stops,
             },
             omega: { ...tallGraphControls.omega, units: 'm/s' },
+            pressureAxis: tallGraphPressureAxis,
         }),
-        [tallGraphControls, percentiles, rhColorBarKey, rhVariable],
+        [tallGraphControls, percentiles, rhColorBarKey, rhVariable, tallGraphPressureAxis],
     );
 
     const tallGraphSoundingData = useMemo(
@@ -717,6 +722,32 @@ function App() {
                                 ))}
                             </tbody>
                         </table>
+                        <label className="checkbox-row">
+                            Y Values
+                            <input
+                                type="checkbox"
+                                checked={tallGraphPressureAxis.showValues}
+                                onChange={(e) =>
+                                    setTallGraphPressureAxis((current) => ({
+                                        ...current,
+                                        showValues: e.target.checked,
+                                    }))
+                                }
+                            />
+                        </label>
+                        <label className="checkbox-row">
+                            Y Axis Label
+                            <input
+                                type="checkbox"
+                                checked={tallGraphPressureAxis.showLabel}
+                                onChange={(e) =>
+                                    setTallGraphPressureAxis((current) => ({
+                                        ...current,
+                                        showLabel: e.target.checked,
+                                    }))
+                                }
+                            />
+                        </label>
                         <label className="checkbox-row">
                             RH Variable
                             <select

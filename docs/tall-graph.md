@@ -87,9 +87,29 @@ function Soundings() {
 | `percentiles`   | `number[]`                     | `[5, 25, 75, 95]`                                                              | Whisker/box percentiles for the box-whisker modes. `50` is always included.     |
 | `isobars`       | `number[]`                     | `[1000, 850, 700, 500, 300, 200, 100]`                                         | Pressure grid lines.                                                            |
 | `colors`        | `{ isobar, zeroLine }`         | `{ isobar: 'rgba(200, 150, 150, 0.4)', zeroLine: 'rgba(150, 150, 150, 0.8)' }` | Grid colors. `zeroLine` is the dashed omega = 0 line.                           |
+| `pressureAxis`  | `object`                       | see pressure axis options                                                      | Pressure (y) axis values and label.                                             |
 | `rh`            | `object`                       | see variable options                                                           | RH settings.                                                                    |
 | `omega`         | `object`                       | see variable options                                                           | Omega settings.                                                                 |
 | `renderTooltip` | `(data) => ReactNode`          | `null`                                                                         | Custom tooltip renderer. Receives the hovered mean-profile level.               |
+
+### Pressure axis options (`pressureAxis`)
+
+The TallGraph shares the SkewT's pressure axis, so its own y values and y-axis label are hidden by default. Turn them on when the TallGraph is shown on its own or away from the SkewT.
+
+| key          | type      | default      | description                                                                                                          |
+| ------------ | --------- | ------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `showValues` | `boolean` | `false`      | Show pressure values at each `isobars` level on the left edge. Values outside the visible (zoomed) range are hidden. |
+| `showLabel`  | `boolean` | `false`      | Show the rotated y-axis title on the left edge.                                                                      |
+| `label`      | `string`  | `'Pressure'` | y-axis title text.                                                                                                   |
+| `units`      | `string`  | `'mb'`       | y-axis title units, shown as `label (units)`. Empty string shows the label only. Display text only.                  |
+
+When shown, the TallGraph reserves extra left space automatically (40 px for values, 20 px for the label) on top of `margin.left`, so the plot area gets narrower. Values and label use the same font size (14px), weight, and placement as the SkewT isobar labels and y-axis title, colored with `--ws-tallgraph-text`.
+
+```js
+config: {
+    pressureAxis: { showValues: true, showLabel: true, units: 'hPa' },
+}
+```
 
 ### Variable options (`rh` and `omega`)
 
@@ -150,10 +170,10 @@ The demo offers these RH presets: Green to Purple (Classic), Cyan to Deep Blue, 
 
 `TallGraph` uses CSS Modules and exposes `.ws-tallgraph` as the stable public styling hook. Override these CSS variables on `.ws-tallgraph`, a parent element, or the `sx` prop:
 
-| variable              | default       | description                                                                         |
-| --------------------- | ------------- | ----------------------------------------------------------------------------------- |
-| `--ws-tallgraph-text` | `#333`        | Hover line and tick label color. The plot frame is black, matching the SkewT frame. |
-| `--ws-tallgraph-bg`   | `transparent` | SVG background color.                                                               |
+| variable              | default       | description                                                                                                     |
+| --------------------- | ------------- | --------------------------------------------------------------------------------------------------------------- |
+| `--ws-tallgraph-text` | `#333`        | Hover line, tick label, and pressure axis value/label color. The plot frame is black, matching the SkewT frame. |
+| `--ws-tallgraph-bg`   | `transparent` | SVG background color.                                                                                           |
 
 ## Tooltip
 

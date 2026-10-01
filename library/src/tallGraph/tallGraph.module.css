@@ -49,3 +49,16 @@
     font-size: 11px;
     font-weight: 700;
 }
+
+/* Matches the SkewT isobar labels and axis title */
+.yAxis text,
+text.yAxis {
+    font-size: 14px;
+    dominant-baseline: hanging;
+    fill: var(--ws-tallgraph-text, #333);
+    stroke: none;
+}
+
+.yAxisTitle {
+    font-weight: 500;
+}

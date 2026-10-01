@@ -13,6 +13,7 @@ import {
     formatAxisTitle,
     getAxisLayout,
     getBoxWhiskerPercentileKeys,
+    getPressureAxisWidth,
     resolveTallGraphConfig,
 } from './tallGraphConfig';
 import styles from './tallGraph.module.css';
@@ -79,10 +80,14 @@ export default function TallGraph({
         const innerH =
             yAxis?.innerH ??
             Math.max(0, dimensions.height - margin.top - margin.bottom - axisLayout.totalHeight);
-        const innerW = Math.max(0, dimensions.width - margin.left - margin.right);
+        const pressureAxisWidth = getPressureAxisWidth(settings.pressureAxis);
+        const innerW = Math.max(
+            0,
+            dimensions.width - margin.left - margin.right - pressureAxisWidth,
+        );
 
         return {
-            offsetX: margin.left,
+            offsetX: margin.left + pressureAxisWidth,
             offsetY,
             innerW,
             innerH,
@@ -409,6 +414,36 @@ export default function TallGraph({
                         onPointerUp={handlePointerUp}
                         onPointerCancel={handlePointerUp}
                     />
+                    {settings.pressureAxis.showValues && (
+                        <g className={styles.yAxis} pointerEvents="none">
+                            {settings.isobars
+                                .filter((p) => {
+                                    const y = zoomY(p);
+                                    return y >= 0 && y <= innerH;
+                                })
+                                .map((p) => (
+                                    <text
+                                        key={`ytick-${p}`}
+                                        x={-5}
+                                        y={zoomY(p)}
+                                        dy="-0.35em"
+                                        textAnchor="end"
+                                    >
+                                        {p}
+                                    </text>
+                                ))}
+                        </g>
+                    )}
+                    {settings.pressureAxis.showLabel && (
+                        <text
+                            className={`${styles.yAxis} ${styles.yAxisTitle}`}
+                            transform={`translate(${-getPressureAxisWidth(settings.pressureAxis) + 2}, ${innerH / 2}) rotate(-90)`}
+                            textAnchor="middle"
+                            pointerEvents="none"
+                        >
+                            {formatAxisTitle(settings.pressureAxis)}
+                        </text>
+                    )}
                     {axisLayout.axes.map(({ key, offset }) => {
                         const vs = settings[key];
                         const xScale = xScales[key];
