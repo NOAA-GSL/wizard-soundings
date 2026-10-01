@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import * as d3 from 'd3';
 import useContainerDimensions from '../utilities/useContainerDimensions';
 import useZoomHandler from '../utilities/useZoomHandler';
@@ -7,7 +7,6 @@ import { math } from '../Utilities';
 import SkewTBackground from './skewtBackground';
 import SkewTBoxWhisker from './skewtBoxWhisker';
 import WindBarb from './windBarb';
-import SkewTRHBars from './rhBars';
 import { computeMeanProfile } from './meanProfile';
 import { getPrimaryParcelMeanProfile, getSelectedParcelTraceSets } from './parcelTrace';
 import {
@@ -24,7 +23,7 @@ import styles from './skewt.module.css';
 
 const DEFAULT_CONFIG = {
     // Canvas settings
-    margin: { top: 20, right: 40, bottom: 30, left: 30 },
+    margin: { top: 20, right: 40, bottom: 50, left: 60 },
     // Pressure bounds (hPa)
     baseP: 1050,
     topP: 100,
@@ -61,7 +60,24 @@ const DEFAULT_CONFIG = {
         max: 5,
     },
     renderTooltip: null,
+    // Axis titles; units are display text only (data must be in deg C and hPa/mb)
+    axisLabels: { x: 'Temperature', y: 'Pressure' },
+    units: { temperature: 'C', pressure: 'mb' },
 };
+
+const X_TITLE_OFFSET = 28;
+const Y_TITLE_OFFSET = 56;
+
+export function formatSkewTAxisTitles({ axisLabels = {}, units = {} } = {}) {
+    const format = (label, unit) => {
+        if (!label) return null;
+        return unit ? `${label} (${unit})` : label;
+    };
+    return {
+        x: format(axisLabels.x, units.temperature),
+        y: format(axisLabels.y, units.pressure),
+    };
+}
 
 /*--------------------------------*/
 /* --- Sub-Components ----------- */
@@ -133,6 +149,7 @@ export default function SkewT({
     className = 'skewt-container',
     sx = {},
     percentiles,
+    onYAxisChange,
 }) {
     // --- Dimensions and Setup ---
     const [containerRef, dimensions] = useContainerDimensions();
@@ -150,7 +167,6 @@ export default function SkewT({
             dwpt: config.showDewPoint ?? config.traceVisibility?.dwpt ?? true,
             wetb: config.showWetBulb ?? config.traceVisibility?.wetb ?? false,
             vtmp: config.showVirtualTemp ?? config.traceVisibility?.vtmp ?? false,
-            rh: config.rhBars?.enabled ?? config.traceVisibility?.rh ?? false,
         }),
         [
             config.showTemperature,
@@ -158,7 +174,6 @@ export default function SkewT({
             config.showDewPoint,
             config.showWetBulb,
             config.showVirtualTemp,
-            config.rhBars,
         ],
     );
     const traceLineStyles = useMemo(() => resolveTraceLineStyles(config), [config]);
@@ -172,20 +187,17 @@ export default function SkewT({
             ),
         [traceLineStyles],
     );
-    const rhConfig = useMemo(
-        () => ({
-            ...config.rhBars,
-        }),
-        [config.rhBars],
-    );
     const settings = useMemo(
         () => ({
             ...DEFAULT_CONFIG,
             ...config,
             colors: { ...DEFAULT_CONFIG.colors, ...config.colors },
+            axisLabels: { ...DEFAULT_CONFIG.axisLabels, ...config.axisLabels },
+            units: { ...DEFAULT_CONFIG.units, ...config.units },
         }),
         [config],
     );
+    const axisTitles = useMemo(() => formatSkewTAxisTitles(settings), [settings]);
 
     const parcelTraceSets = useMemo(
         () => getSelectedParcelTraceSets(statsDictParam, config),
@@ -254,7 +266,35 @@ export default function SkewT({
     }, [dimensions.width, dimensions.height, settings]);
 
     // Zoom Logic
-    const [zoomRefCallback, transformState] = useZoomHandler(dimensions, settings.zoom);
+    const [zoomRefCallback, transformState, zoomControls] = useZoomHandler(
+        dimensions,
+        settings.zoom,
+    );
+
+    // Share the pressure axis layout so companion plots (e.g. TallGraph) can align and follow zoom.
+    const hasScales = Boolean(scales.yScale);
+    useEffect(() => {
+        if (!onYAxisChange || !hasScales) return;
+        onYAxisChange({
+            baseP: settings.baseP,
+            topP: settings.topP,
+            offsetY: scales.offsetY,
+            innerH: scales.innerH,
+            transform: { k: transformState.k, y: transformState.y },
+            zoomBy: zoomControls.zoomBy,
+            panBy: zoomControls.panBy,
+        });
+    }, [
+        onYAxisChange,
+        zoomControls,
+        hasScales,
+        scales.offsetY,
+        scales.innerH,
+        settings.baseP,
+        settings.topP,
+        transformState.k,
+        transformState.y,
+    ]);
 
     // --- Data Preparation ---
     const { memberProfiles, memberBarbs } = useMemo(() => {
@@ -491,6 +531,25 @@ export default function SkewT({
                                 transformString={transformString}
                                 transformState={transformState}
                             />
+                            <g className={styles.axisTitle} pointerEvents="none">
+                                {axisTitles.x && (
+                                    <text
+                                        x={scales.innerW / 2}
+                                        y={scales.innerH + X_TITLE_OFFSET}
+                                        textAnchor="middle"
+                                    >
+                                        {axisTitles.x}
+                                    </text>
+                                )}
+                                {axisTitles.y && (
+                                    <text
+                                        transform={`translate(${-Y_TITLE_OFFSET}, ${scales.innerH / 2}) rotate(-90)`}
+                                        textAnchor="middle"
+                                    >
+                                        {axisTitles.y}
+                                    </text>
+                                )}
+                            </g>
                             <g clipPath="url(#skewt-chart-area)" pointerEvents="none">
                                 <g transform={transformString}>
                                     {plumeTraceConfigs.flatMap((config) =>
@@ -631,16 +690,6 @@ export default function SkewT({
                                     )}
                                 </g>
                             }
-                            {/* --- RH Bars (Anchored to Left Edge) --- */}
-                            {traceVisibility.rh && computedMeanProfile && (
-                                <SkewTRHBars
-                                    profile={computedMeanProfile}
-                                    scales={scales}
-                                    transformState={transformState}
-                                    xPosition={0}
-                                    rhConfig={rhConfig}
-                                />
-                            )}
                         </g>
                     </svg>
 

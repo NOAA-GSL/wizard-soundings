@@ -7,6 +7,7 @@ Documentation index:
 - [Hodograph usage](./hodograph.md)
 - [StatsTable usage](./stats-table.md)
 - [BoxPlot usage](./boxplot.md)
+- [TallGraph usage](./tall-graph.md)
 
 This document explains how to format data for `library/src/createSounding.js` (exported as `createSounding`) and how to use it in code.
 
@@ -54,31 +55,85 @@ You can use whatever pressure levels you want.
 
 ## Required fields and units
 
-For every `model` member, provide the following fields. Required values are marked `yes`; fields marked `no` may be omitted.
+For every `model` member, provide the following fields. Required values are marked `yes`; fields marked `no` may be omitted. Fields marked `derived` are computed by `createSounding` and cannot be supplied as records; they appear on each level returned by `getLevelData()`.
 
-| field          | required | type          | allowed input units | internal normalized units |
-| -------------- | -------- | ------------- | ------------------- | ------------------------- |
-| `pressure`     | yes      | array<number> | `hPa`, `Pa`         | hPa                       |
-| `gh_isobaric`  | yes      | array<number> | `dam`, `m`          | m                         |
-| `t_isobaric`   | yes      | array<number> | `F`, `C`, `K`       | C                         |
-| `dpt_isobaric` | yes      | array<number> | `F`, `C`, `K`       | C                         |
-| `u_isobaric`   | yes      | array<number> | `mph`, `kts`, `m/s` | kts                       |
-| `v_isobaric`   | yes      | array<number> | `mph`, `kts`, `m/s` | kts                       |
-| `orog`         | yes      | number        | `m`, `ft`           | m                         |
-| `sp`           | yes      | number        | `hPa`, `Pa`         | hPa                       |
-| `mslp`         | yes      | number        | `hPa`, `Pa`         | hPa                       |
-| `t2`           | yes      | number        | `F`, `C`, `K`       | C                         |
-| `d2`           | yes      | number        | `F`, `C`, `K`       | C                         |
-| `u10`          | yes      | number        | `mph`, `kts`, `m/s` | kts                       |
-| `v10`          | yes      | number        | `mph`, `kts`, `m/s` | kts                       |
-| `w_isobaric`   | no       | array<number> | coming soon         | coming soon               |
+| field          | required | type          | allowed input units | internal normalized units | level field (`getLevelData()`) / notes                                                                                     |
+| -------------- | -------- | ------------- | ------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `pressure`     | yes      | array<number> | `hPa`, `Pa`         | hPa                       | `press`                                                                                                                    |
+| `gh_isobaric`  | yes      | array<number> | `dam`, `m`          | m (MSL)                   | `hght`                                                                                                                     |
+| `t_isobaric`   | yes      | array<number> | `F`, `C`, `K`       | C                         | `temp`                                                                                                                     |
+| `dpt_isobaric` | one of\* | array<number> | `F`, `C`, `K`       | C                         | `dwpt`                                                                                                                     |
+| `rh_isobaric`  | one of\* | array<number> | `%`                 | % (converted to dewpoint) | Converted to `dwpt` (see [Moisture](#moisture-dewpoint-vs-relative-humidity))                                              |
+| `u_isobaric`   | yes      | array<number> | `mph`, `kts`, `m/s` | kts                       | `uwnd`                                                                                                                     |
+| `v_isobaric`   | yes      | array<number> | `mph`, `kts`, `m/s` | kts                       | `vwnd`                                                                                                                     |
+| `orog`         | yes      | number        | `m`, `ft`           | m                         | `orog`                                                                                                                     |
+| `sp`           | yes      | number        | `hPa`, `Pa`         | hPa                       | `sp`; members' `sp` are averaged to set the surface level `press`                                                          |
+| `mslp`         | yes      | number        | `hPa`, `Pa`         | hPa                       | `mslp` (surface level)                                                                                                     |
+| `t2`           | yes      | number        | `F`, `C`, `K`       | C                         | `t2`, and `temp` of the surface level                                                                                      |
+| `d2`           | yes      | number        | `F`, `C`, `K`       | C                         | `d2`, and `dwpt` of the surface level                                                                                      |
+| `u10`          | yes      | number        | `mph`, `kts`, `m/s` | kts                       | `u10`, and `uwnd` of the surface level                                                                                     |
+| `v10`          | yes      | number        | `mph`, `kts`, `m/s` | kts                       | `v10`, and `vwnd` of the surface level                                                                                     |
+| `w_isobaric`   | no       | array<number> | any (not validated) | unchanged from input      | `wwnd`. A non-empty `units` string is required but values are not converted. Missing → `NaN`; surface level is always `0`. |
+| `rh2`          | no       | number        | `%`                 | %                         | `rh2` (surface level). Derived from `sp`, `t2`, `d2` when omitted.                                                         |
+| `hghtagl`      | derived  | number        | —                   | m (AGL)                   | `hght - orog`; `0` at the surface level                                                                                    |
+| `twnd`         | derived  | number        | —                   | kts                       | Wind speed from `uwnd`, `vwnd`                                                                                             |
+| `wdir`         | derived  | number        | —                   | degrees                   | Wind direction (from) from `uwnd`, `vwnd`                                                                                  |
+| `twind10`      | derived  | number        | —                   | kts                       | 10 m wind speed from `u10`, `v10` (surface level)                                                                          |
+| `wdir10`       | derived  | number        | —                   | degrees                   | 10 m wind direction from `u10`, `v10` (surface level)                                                                      |
+| `vtmp`         | derived  | number        | —                   | C                         | Virtual temperature from `temp`, `dwpt`, `press`                                                                           |
+| `wetb`         | derived  | number        | —                   | C                         | Wet-bulb temperature from `temp`, `dwpt`, `press`                                                                          |
+| `rh`           | derived  | number        | —                   | %                         | RH over liquid water from `temp`, `dwpt`                                                                                   |
+| `rhIce`        | derived  | number        | —                   | %                         | RH over ice from `temp`, `dwpt`; equals `rh` at or above 0 C                                                               |
+
+\* Each member must provide **exactly one** of `dpt_isobaric` or `rh_isobaric`:
+
+- Providing both throws `Model "<model>" provides both "dpt_isobaric" and "rh_isobaric". Provide only one.`
+- Providing neither throws `Model "<model>" is missing moisture data. Provide either "dpt_isobaric" or "rh_isobaric".`
+
+The choice can differ between members.
+
+`rh2` is derived from `sp`, `t2`, and `d2` when omitted.
+
+## Derived relative humidity fields
+
+Every level returned by `getLevelData()` includes these derived fields (computed from `press`, `temp`, and `dwpt`, regardless of which moisture field was provided):
+
+| level field | description                                                                                                                                |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `rh`        | RH with respect to liquid water (%).                                                                                                       |
+| `rhIce`     | RH with respect to ice (%). Uses the Murphy & Koop (2005) ice saturation vapor pressure when `temp < 0` C. At or above 0 C it equals `rh`. |
+| `rhCombo`   | Only present after calling `combineRh` (below). RH over ice when `temp <= iceThreshold`, otherwise RH over water.                          |
+
+Levels missing `temp` or `dwpt` have `vtmp`, `wetb`, `rh`, and `rhIce` set to `NaN`. Levels missing `uwnd` or `vwnd` have `twnd` and `wdir` set to `NaN`, and `vtmp`, `wetb`, `rh`, and `rhIce` are not set.
+
+### `combineRh(levelData, iceThreshold)`
+
+```js
+import { createSounding, combineRh, DEFAULT_RH_ICE_THRESHOLD } from '@noaa-gsl/wizard-soundings';
+
+sounding.updateData(records);
+const withCombo = combineRh(sounding.getLevelData(), -23);
+
+// e.g. plot it on the TallGraph
+<TallGraph
+    soundingParam={withCombo}
+    config={{ rh: { valueKey: 'rhCombo', label: 'RH + RH (ice)' } }}
+/>;
+```
+
+| argument       | type   | default                          | description                                                                 |
+| -------------- | ------ | -------------------------------- | --------------------------------------------------------------------------- |
+| `levelData`    | array  | required                         | Output of `getLevelData()`. Non-array input is returned unchanged.          |
+| `iceThreshold` | number | `DEFAULT_RH_ICE_THRESHOLD` (-23) | Temperature (C). Levels at or below it use `rhIce`; warmer levels use `rh`. |
+
+Returns a new array (input is not mutated) where every level has an added `rhCombo` field.
 
 ## Missing profile values
 
 During profile formatting, `createSounding` linearly interpolates interior missing values for:
 
 - `t_isobaric`
-- `dpt_isobaric`
+- `dpt_isobaric` (or the dewpoint derived from `rh_isobaric`)
 - `u_isobaric`
 - `v_isobaric`
 - `w_isobaric`
@@ -93,7 +148,7 @@ For each member (`model`), these arrays must have the same length and aligned in
 - `pressure`
 - `gh_isobaric`
 - `t_isobaric`
-- `dpt_isobaric`
+- `dpt_isobaric` or `rh_isobaric`
 - `u_isobaric`
 - `v_isobaric`
 

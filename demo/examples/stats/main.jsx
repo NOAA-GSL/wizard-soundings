@@ -1,7 +1,7 @@
 import { StrictMode, useState, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createSounding } from '@noaa-gsl/wizard-soundings';
-import { SkewT, Hodograph, StatsTable, BoxPlot } from '@noaa-gsl/wizard-soundings';
+import { createSounding, combineRh, DEFAULT_RH_ICE_THRESHOLD } from '@noaa-gsl/wizard-soundings';
+import { SkewT, TallGraph, Hodograph, StatsTable, BoxPlot } from '@noaa-gsl/wizard-soundings';
 import data from './soundingData.json';
 import '@noaa-gsl/wizard-soundings/styles.css';
 import './style.css';
@@ -11,48 +11,84 @@ import './style.css';
 
 const DATES = data.metadata?.gh_isobaric?.availableDates ?? [];
 
-// Pre-defined Colorbar Presets
+// Shared display-mode labels so every chart uses the same terminology.
+const MODE_LABELS = {
+    mean: 'Mean Line',
+    meanBars: 'Mean Bars',
+    plumes: 'Plumes',
+    boxwhisker: 'Box-Whisker Lines',
+    boxwhiskerBars: 'Box-Whisker Bars',
+};
+
+const DISPLAY_MODE_OPTIONS = ['mean', 'plumes', 'boxwhisker'].map((value) => ({
+    value,
+    label: MODE_LABELS[value],
+}));
+
+const TALL_GRAPH_MODE_OPTIONS = ['meanBars', 'mean', 'plumes', 'boxwhiskerBars', 'boxwhisker'].map(
+    (value) => ({ value, label: MODE_LABELS[value] }),
+);
+
+const TALL_GRAPH_ROWS = [
+    { key: 'rh', label: 'RH' },
+    { key: 'omega', label: 'Omega' },
+];
+
+// Level fields the TallGraph RH row can plot.
+const RH_VARIABLE_OPTIONS = [
+    { value: 'rh', label: 'RH' },
+    { value: 'rhIce', label: 'RH (ice)' },
+    { value: 'rhCombo', label: 'RH + RH (ice)' },
+];
+
+// Leaves room under the Skew-T plot for the TallGraph's two stacked x axes.
+const SKEWT_MARGIN = { top: 20, right: 40, bottom: 76, left: 60 };
+
+// RH color schemes for the TallGraph bar modes (Mean Bars, Box-Whisker Bars).
 const COLORBAR_PRESETS = {
+    none: {
+        label: 'Trace Color',
+        stops: null,
+    },
     standard: {
         label: 'Green to Purple (Classic)',
         stops: [
-            { value: 70, color: '#14532d' },
-            { value: 94, color: '#00ff00' },
-            { value: 95, color: '#9333ea' },
-            { value: 100, color: '#9333ea' },
+            { value: 0, color: 'rgba(255, 255, 255, 0.5)' },
+            { value: 70, color: 'rgba(20, 83, 45, 1)' },
+            { value: 90, color: 'rgba(0, 255, 0, 1)' },
+            { value: 95, color: 'rgba(147, 51, 234, 1)' },
         ],
     },
     cyanBlue: {
         label: 'Cyan to Deep Blue',
         stops: [
-            { value: 70, color: '#a5f3fc' },
-            { value: 85, color: '#0284c7' },
-            { value: 100, color: '#1e3a8a' },
+            { value: 0, color: 'rgba(255, 255, 255, 0.5)' },
+            { value: 70, color: 'rgba(165, 243, 252, 1)' },
+            { value: 90, color: 'rgba(2, 132, 199, 1)' },
+            { value: 95, color: 'rgba(30, 58, 138, 1)' },
         ],
     },
     spectral: {
         label: 'Spectral (Multi-stop)',
         stops: [
-            { value: 70, color: '#fef08a' },
-            { value: 80, color: '#22c55e' },
-            { value: 90, color: '#06b6d4' },
-            { value: 100, color: '#7e22ce' },
+            { value: 0, color: 'rgba(255, 255, 255, 0.5)' },
+            { value: 70, color: 'rgba(254, 240, 138, 1)' },
+            { value: 80, color: 'rgba(34, 197, 94, 1)' },
+            { value: 90, color: 'rgba(6, 182, 212, 1)' },
+            { value: 95, color: 'rgba(126, 34, 206, 1)' },
         ],
     },
     grayscale: {
         label: 'Grayscale',
         stops: [
-            { value: 70, color: '#d1d5db' },
-            { value: 100, color: '#111827' },
+            { value: 0, color: 'rgba(209, 213, 219, 1)' },
+            { value: 70, color: 'rgba(209, 213, 219, 1)' },
+            { value: 80, color: 'rgba(100, 100, 100, 1)' },
+            { value: 90, color: 'rgba(50, 50, 50, 1)' },
+            { value: 95, color: 'rgba(17, 24, 39, 1)' },
         ],
     },
 };
-
-const DISPLAY_MODE_OPTIONS = [
-    { value: 'plumes', label: 'Plumes' },
-    { value: 'boxwhisker', label: 'Box' },
-    { value: 'mean', label: 'Mean' },
-];
 
 const LINE_STYLE_OPTIONS = [
     { value: 'solid', label: 'Solid' },
@@ -309,22 +345,27 @@ function App() {
         vtmp: { enabled: false, mode: 'boxwhisker', lineStyle: 'dashDot' },
     });
     const [parcelControls, setParcelControls] = useState({
-        parcel: { type: 'none', mode: 'mean', lineStyle: 'dot' },
-        parcelVirtual: { type: 'sfc', mode: 'mean', lineStyle: 'dash' },
+        parcel: { type: 'sfc', mode: 'mean', lineStyle: 'dot' },
+        parcelVirtual: { type: 'none', mode: 'mean', lineStyle: 'dash' },
     });
-    const [rhBarControls, setRhBarControls] = useState({
-        enabled: true,
-        minRH: 70,
-        colorBarKey: 'standard',
-        minBarWidth: 2,
-        maxBarWidth: 24,
+    const [tallGraphControls, setTallGraphControls] = useState({
+        rh: { enabled: true, displayMode: 'meanBars', lineStyle: 'solid' },
+        omega: { enabled: true, displayMode: 'mean', lineStyle: 'solid' },
     });
+    const [skewTYAxis, setSkewTYAxis] = useState(null);
+    const [rhColorBarKey, setRhColorBarKey] = useState('standard');
+    const [rhVariable, setRhVariable] = useState('rh');
+    const [rhIceThreshold, setRhIceThreshold] = useState(DEFAULT_RH_ICE_THRESHOLD);
 
     // Parse percentile input into array of numbers
-    const percentiles = percentileInput
-        .split(',')
-        .map((s) => Number(s.trim()))
-        .filter((n) => !Number.isNaN(n) && n >= 0 && n <= 100);
+    const percentiles = useMemo(
+        () =>
+            percentileInput
+                .split(',')
+                .map((s) => Number(s.trim()))
+                .filter((n) => !Number.isNaN(n) && n >= 0 && n <= 100),
+        [percentileInput],
+    );
 
     const sortedPercentiles = [...percentiles].sort((a, b) => a - b);
     const boxPlotPercentiles = {
@@ -352,19 +393,6 @@ function App() {
             derivedData: sounding.calcStats(sounding.getMembers(), 'list'),
         };
     }, [timeIndex]);
-
-    const rhBarsConfig = useMemo(
-        () => ({
-            enabled: rhBarControls.enabled,
-            minRH: rhBarControls.minRH,
-            colorBar:
-                COLORBAR_PRESETS[rhBarControls.colorBarKey]?.stops ??
-                COLORBAR_PRESETS.standard.stops,
-            minBarWidth: rhBarControls.minBarWidth,
-            maxBarWidth: rhBarControls.maxBarWidth,
-        }),
-        [rhBarControls],
-    );
 
     const traceVisibility = useMemo(
         () =>
@@ -398,6 +426,35 @@ function App() {
 
     const updateTraceControl = (key, field, value) => {
         setTraceControls((current) => ({
+            ...current,
+            [key]: {
+                ...current[key],
+                [field]: value,
+            },
+        }));
+    };
+
+    const tallGraphConfig = useMemo(
+        () => ({
+            percentiles,
+            rh: {
+                ...tallGraphControls.rh,
+                valueKey: rhVariable,
+                label: RH_VARIABLE_OPTIONS.find((option) => option.value === rhVariable).label,
+                colorBar: COLORBAR_PRESETS[rhColorBarKey].stops,
+            },
+            omega: { ...tallGraphControls.omega, units: 'm/s' },
+        }),
+        [tallGraphControls, percentiles, rhColorBarKey, rhVariable],
+    );
+
+    const tallGraphSoundingData = useMemo(
+        () => combineRh(soundingData, rhIceThreshold),
+        [soundingData, rhIceThreshold],
+    );
+
+    const updateTallGraphControl = (key, field, value) => {
+        setTallGraphControls((current) => ({
             ...current,
             [key]: {
                 ...current[key],
@@ -591,63 +648,113 @@ function App() {
                             </tbody>
                         </table>
                     </div>
-                    {/* RH Bar Configuration Section */}
                     <div className="trace-controls">
-                        <div className="trace-controls-title">RH Bar Controls</div>
-                        <div className="rh-controls-single-row">
-                            {/* Toggle Checkbox */}
-                            <label className="rh-control-inline">
-                                <input
-                                    type="checkbox"
-                                    checked={rhBarControls.enabled}
-                                    onChange={(e) =>
-                                        setRhBarControls((prev) => ({
-                                            ...prev,
-                                            enabled: e.target.checked,
-                                        }))
-                                    }
-                                />
-                                <span>Enable</span>
-                            </label>
-
-                            {/* Min RH Slider */}
-                            <label className="rh-control-inline">
-                                <span>Min: {rhBarControls.minRH}%</span>
+                        <div className="trace-controls-title">Tall Graph Controls</div>
+                        <table className="trace-controls-table">
+                            <thead>
+                                <tr>
+                                    <th>Trace</th>
+                                    <th>On</th>
+                                    <th>Mode</th>
+                                    <th>Line</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {TALL_GRAPH_ROWS.map((row) => (
+                                    <tr key={row.key}>
+                                        <td>{row.label}</td>
+                                        <td>
+                                            <input
+                                                type="checkbox"
+                                                checked={tallGraphControls[row.key].enabled}
+                                                onChange={(e) =>
+                                                    updateTallGraphControl(
+                                                        row.key,
+                                                        'enabled',
+                                                        e.target.checked,
+                                                    )
+                                                }
+                                            />
+                                        </td>
+                                        <td>
+                                            <select
+                                                value={tallGraphControls[row.key].displayMode}
+                                                onChange={(e) =>
+                                                    updateTallGraphControl(
+                                                        row.key,
+                                                        'displayMode',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            >
+                                                {TALL_GRAPH_MODE_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select
+                                                value={tallGraphControls[row.key].lineStyle}
+                                                onChange={(e) =>
+                                                    updateTallGraphControl(
+                                                        row.key,
+                                                        'lineStyle',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            >
+                                                {LINE_STYLE_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <label className="checkbox-row">
+                            RH Variable
+                            <select
+                                value={rhVariable}
+                                onChange={(e) => setRhVariable(e.target.value)}
+                            >
+                                {RH_VARIABLE_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        {rhVariable === 'rhCombo' && (
+                            <label>
+                                RH (ice) at or below: {rhIceThreshold}&deg;C
                                 <input
                                     type="range"
-                                    min={50}
-                                    max={90}
-                                    step={5}
-                                    value={rhBarControls.minRH}
-                                    onChange={(e) =>
-                                        setRhBarControls((prev) => ({
-                                            ...prev,
-                                            minRH: Number(e.target.value),
-                                        }))
-                                    }
+                                    min={-40}
+                                    max={0}
+                                    step={1}
+                                    value={rhIceThreshold}
+                                    onChange={(e) => setRhIceThreshold(Number(e.target.value))}
                                 />
                             </label>
-
-                            {/* Color Scheme Dropdown */}
-                            <label className="rh-control-inline">
-                                <span>Scheme:</span>
-                                <select
-                                    value={rhBarControls.colorBarKey}
-                                    onChange={(e) =>
-                                        setRhBarControls((prev) => ({
-                                            ...prev,
-                                            colorBarKey: e.target.value,
-                                        }))
-                                    }
-                                >
-                                    {Object.entries(COLORBAR_PRESETS).map(([key, preset]) => (
-                                        <option key={key} value={key}>
-                                            {preset.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                        </div>
+                        )}
+                        <label className="checkbox-row">
+                            RH Bar Colors
+                            <select
+                                value={rhColorBarKey}
+                                onChange={(e) => setRhColorBarKey(e.target.value)}
+                            >
+                                {Object.entries(COLORBAR_PRESETS).map(([key, preset]) => (
+                                    <option key={key} value={key}>
+                                        {preset.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
                     </div>
                     {percentiles.length >= 2 && (
                         <p className="percentile-info">
@@ -679,18 +786,26 @@ function App() {
                                 <SkewT
                                     soundingParam={soundingData}
                                     statsDictParam={derivedData}
+                                    onYAxisChange={setSkewTYAxis}
                                     config={{
+                                        margin: SKEWT_MARGIN,
                                         percentiles,
                                         traceVisibility,
                                         displayModes,
                                         traceLineStyles,
                                         parcelTrace: parcelControls.parcel.type,
                                         virtualParcelTrace: parcelControls.parcelVirtual.type,
-                                        rhBars: rhBarsConfig,
                                         ...(useCustomTooltips
                                             ? { renderTooltip: skewTTooltipOverride }
                                             : {}),
                                     }}
+                                />
+                            </div>
+                            <div className="viz-item tallgraph-wrapper">
+                                <TallGraph
+                                    soundingParam={tallGraphSoundingData}
+                                    yAxis={skewTYAxis}
+                                    config={tallGraphConfig}
                                 />
                             </div>
                             <div className="viz-item hodo-wrapper">

@@ -7,6 +7,7 @@ Documentation index:
 - [Hodograph usage](./hodograph.md)
 - [StatsTable usage](./stats-table.md)
 - [BoxPlot usage](./boxplot.md)
+- [TallGraph usage](./tall-graph.md)
 
 This document explains how to use the `SkewT` React component exported by `@noaa-gsl/wizard-soundings`.
 
@@ -59,45 +60,63 @@ const stats = sounding.calcStats(sounding.getMembers(), 'mean');
 
 ## Props
 
-| prop             | type                  | required | default                                        | description                                                                                                    |
-| ---------------- | --------------------- | -------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `soundingParam`  | `Array<Array<Level>>` | yes      | none                                           | Member profile arrays, typically from `getLevelData()`.                                                        |
-| `statsDictParam` | `object`              | no       | `undefined`                                    | Stats dictionary from `calcStats(..., 'list')`; used for parcel traces (e.g., `sfctrace`, `sfctrace_regular`). |
-| `config`         | `object`              | no       | `{}`                                           | Chart behavior and rendering options (see config table).                                                       |
-| `className`      | `string`              | no       | `'skewt-container'`                            | CSS class for the root container.                                                                              |
-| `sx`             | `object`              | no       | `{}`                                           | Inline style object applied to the root container.                                                             |
-| `percentiles`    | `number[]`            | no       | from `config.percentiles` or `[5, 25, 75, 95]` | Optional top-level override for percentile display mode settings.                                              |
+| prop             | type                  | required | default                                        | description                                                                                                                                                                                                                                                                                                               |
+| ---------------- | --------------------- | -------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `soundingParam`  | `Array<Array<Level>>` | yes      | none                                           | Member profile arrays, typically from `getLevelData()`.                                                                                                                                                                                                                                                                   |
+| `statsDictParam` | `object`              | no       | `undefined`                                    | Stats dictionary from `calcStats(..., 'list')`; used for parcel traces (e.g., `sfctrace`, `sfctrace_regular`).                                                                                                                                                                                                            |
+| `config`         | `object`              | no       | `{}`                                           | Chart behavior and rendering options (see config table).                                                                                                                                                                                                                                                                  |
+| `className`      | `string`              | no       | `'skewt-container'`                            | CSS class for the root container.                                                                                                                                                                                                                                                                                         |
+| `sx`             | `object`              | no       | `{}`                                           | Inline style object applied to the root container.                                                                                                                                                                                                                                                                        |
+| `percentiles`    | `number[]`            | no       | from `config.percentiles` or `[5, 25, 75, 95]` | Optional top-level override for percentile display mode settings.                                                                                                                                                                                                                                                         |
+| `onYAxisChange`  | `(yAxis) => void`     | no       | `undefined`                                    | Called with `{ baseP, topP, offsetY, innerH, transform: { k, y }, zoomBy(factor, y), panBy(dy) }` when the pressure axis layout or zoom changes. `zoomBy`/`panBy` drive the SkewT zoom from outside (no-ops when `zoom.enabled` is `false`). Pass the value to [`TallGraph`](./tall-graph.md)'s `yAxis` prop to align it. |
 
 ## `config` options
 
-| key                  | type                                                      | default                                        | description                                                                                              |
-| -------------------- | --------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `margin`             | `{ top, right, bottom, left }`                            | `{ top: 20, right: 40, bottom: 30, left: 30 }` | Inner chart margins.                                                                                     |
-| `baseP`              | `number`                                                  | `1050`                                         | Bottom pressure bound (hPa).                                                                             |
-| `topP`               | `number`                                                  | `100`                                          | Top pressure bound (hPa).                                                                                |
-| `minT`               | `number`                                                  | `-45`                                          | Left temperature bound (deg C).                                                                          |
-| `maxT`               | `number`                                                  | `50`                                           | Right temperature bound (deg C).                                                                         |
-| `skewAngle`          | `number`                                                  | `55`                                           | Skew angle for the Skew-T transform.                                                                     |
-| `aspectRatio`        | `number`                                                  | `1`                                            | Plot width/height ratio target.                                                                          |
-| `isobars`            | `number[]`                                                | `[1000, 850, 700, 500, 300, 200, 100]`         | Pressure lines drawn in the background.                                                                  |
-| `isotherms`          | `{ min, max, interval }`                                  | `{ min: -50, max: 50, interval: 10 }`          | Background temperature-line generation.                                                                  |
-| `dryAdiabats`        | `{ min, max, interval }`                                  | `{ min: -30, max: 170, interval: 20 }`         | Dry adiabat background settings.                                                                         |
-| `moistAdiabats`      | `{ min, max, interval }`                                  | `{ min: -20, max: 40, interval: 5 }`           | Moist adiabat background settings.                                                                       |
-| `mixingRatio`        | `number[]`                                                | `[2, 4, 8, 14, 20, 26]`                        | Mixing ratio guide lines (g/kg).                                                                         |
-| `colors`             | `object`                                                  | built-in colors                                | Color map for traces and grid lines (`temp`, `dwpt`, `wetb`, `vtmp`, `parcel`, `parcelVirtual`, etc.).   |
-| `zoom`               | `{ enabled, min, max }`                                   | `{ enabled: true, min: 1, max: 5 }`            | Zoom enablement and limits.                                                                              |
-| `displayMode`        | `'plumes' \| 'boxwhisker' \| 'mean'`                      | `'plumes'`                                     | Global fallback for trace rendering mode.                                                                |
-| `displayModes`       | `{ temp?, dwpt?, wetb?, vtmp?, parcel?, parcelVirtual? }` | `undefined`                                    | Per-trace display mode overrides using `'plumes'`, `'boxwhisker'`, or `'mean'`, including parcel traces. |
-| `percentiles`        | `number[]`                                                | `[5, 25, 75, 95]`                              | Used by `boxwhisker` mode for whisker/box bounds.                                                        |
-| `showTemperature`    | `boolean`                                                 | `true`                                         | Show/hide temperature trace.                                                                             |
-| `showDewPoint`       | `boolean`                                                 | `true`                                         | Show/hide dewpoint trace.                                                                                |
-| `showWetBulb`        | `boolean`                                                 | `false`                                        | Show/hide wet-bulb trace.                                                                                |
-| `showVirtualTemp`    | `boolean`                                                 | `false`                                        | Show/hide virtual-temperature trace.                                                                     |
-| `traceVisibility`    | `{ temp?, dwpt?, wetb?, vtmp? }`                          | derived                                        | Alternate trace visibility object (used if specific booleans are not set).                               |
-| `traceLineStyles`    | `{ temp?, dwpt?, wetb?, vtmp?, parcel?, parcelVirtual? }` | built-in styles                                | Line-style map using `'solid'`, `'dash'`, `'dot'`, or `'dashDot'`.                                       |
-| `parcelTrace`        | `'sfc' \| 'mu' \| 'ml' \| 'none'`                         | `'none'` in independent mode                   | Regular-temperature parcel trace selector.                                                               |
-| `virtualParcelTrace` | `'sfc' \| 'mu' \| 'ml' \| 'none'`                         | `'none'` in independent mode                   | Virtual-temperature parcel trace selector.                                                               |
-| `renderTooltip`      | `(data) => ReactNode`                                     | `null`                                         | Custom tooltip renderer for hover level data.                                                            |
+| key                  | type                                                      | default                                        | description                                                                                                           |
+| -------------------- | --------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `margin`             | `{ top, right, bottom, left }`                            | `{ top: 20, right: 40, bottom: 50, left: 60 }` | Inner chart margins. Not merged with the default: pass all four sides. Leave room on the bottom/left for axis titles. |
+| `baseP`              | `number`                                                  | `1050`                                         | Bottom pressure bound (hPa).                                                                                          |
+| `topP`               | `number`                                                  | `100`                                          | Top pressure bound (hPa).                                                                                             |
+| `minT`               | `number`                                                  | `-45`                                          | Left temperature bound (deg C).                                                                                       |
+| `maxT`               | `number`                                                  | `50`                                           | Right temperature bound (deg C).                                                                                      |
+| `skewAngle`          | `number`                                                  | `55`                                           | Skew angle for the Skew-T transform.                                                                                  |
+| `aspectRatio`        | `number`                                                  | `1`                                            | Plot width/height ratio target.                                                                                       |
+| `isobars`            | `number[]`                                                | `[1000, 850, 700, 500, 300, 200, 100]`         | Pressure lines drawn in the background.                                                                               |
+| `isotherms`          | `{ min, max, interval }`                                  | `{ min: -50, max: 50, interval: 10 }`          | Background temperature-line generation.                                                                               |
+| `dryAdiabats`        | `{ min, max, interval }`                                  | `{ min: -30, max: 170, interval: 20 }`         | Dry adiabat background settings.                                                                                      |
+| `moistAdiabats`      | `{ min, max, interval }`                                  | `{ min: -20, max: 40, interval: 5 }`           | Moist adiabat background settings.                                                                                    |
+| `mixingRatio`        | `number[]`                                                | `[2, 4, 8, 14, 20, 26]`                        | Mixing ratio guide lines (g/kg).                                                                                      |
+| `colors`             | `object`                                                  | built-in colors                                | Color map for traces and grid lines (`temp`, `dwpt`, `wetb`, `vtmp`, `parcel`, `parcelVirtual`, etc.).                |
+| `zoom`               | `{ enabled, min, max }`                                   | `{ enabled: true, min: 1, max: 5 }`            | Zoom enablement and limits.                                                                                           |
+| `displayMode`        | `'plumes' \| 'boxwhisker' \| 'mean'`                      | `'plumes'`                                     | Global fallback for trace rendering mode.                                                                             |
+| `displayModes`       | `{ temp?, dwpt?, wetb?, vtmp?, parcel?, parcelVirtual? }` | `undefined`                                    | Per-trace display mode overrides using `'plumes'`, `'boxwhisker'`, or `'mean'`, including parcel traces.              |
+| `percentiles`        | `number[]`                                                | `[5, 25, 75, 95]`                              | Used by `boxwhisker` mode for whisker/box bounds.                                                                     |
+| `showTemperature`    | `boolean`                                                 | `true`                                         | Show/hide temperature trace.                                                                                          |
+| `showDewPoint`       | `boolean`                                                 | `true`                                         | Show/hide dewpoint trace.                                                                                             |
+| `showWetBulb`        | `boolean`                                                 | `false`                                        | Show/hide wet-bulb trace.                                                                                             |
+| `showVirtualTemp`    | `boolean`                                                 | `false`                                        | Show/hide virtual-temperature trace.                                                                                  |
+| `traceVisibility`    | `{ temp?, dwpt?, wetb?, vtmp? }`                          | derived                                        | Alternate trace visibility object (used if specific booleans are not set).                                            |
+| `traceLineStyles`    | `{ temp?, dwpt?, wetb?, vtmp?, parcel?, parcelVirtual? }` | built-in styles                                | Line-style map using `'solid'`, `'dash'`, `'dot'`, or `'dashDot'`.                                                    |
+| `parcelTrace`        | `'sfc' \| 'mu' \| 'ml' \| 'none'`                         | `'none'` in independent mode                   | Regular-temperature parcel trace selector.                                                                            |
+| `virtualParcelTrace` | `'sfc' \| 'mu' \| 'ml' \| 'none'`                         | `'none'` in independent mode                   | Virtual-temperature parcel trace selector.                                                                            |
+| `renderTooltip`      | `(data) => ReactNode`                                     | `null`                                         | Custom tooltip renderer for hover level data.                                                                         |
+| `axisLabels`         | `{ x?: string, y?: string }`                              | `{ x: 'Temperature', y: 'Pressure' }`          | Axis title text. An empty string hides that title.                                                                    |
+| `units`              | `{ temperature?: string, pressure?: string }`             | `{ temperature: 'C', pressure: 'mb' }`         | Units shown in the axis titles as `label (units)`. An empty string omits the parentheses.                             |
+
+## Axis titles and units
+
+The x axis is titled `Temperature (C)` and the y axis `Pressure (mb)` by default. Override either part:
+
+```js
+config: {
+    axisLabels: { x: 'Temperature', y: 'Pressure' },
+    units: { temperature: '°C', pressure: 'hPa' },
+}
+```
+
+- `units` is display text only; no conversion is applied. Profile data must be in deg C and hPa (mb).
+- `axisLabels` and `units` are merged with the defaults, so you can pass a single key.
+- The x title sits below the isotherm labels and the y title is rotated left of the isobar labels; they use `--ws-skewt-text` for color.
 
 ## Display mode behavior
 
@@ -105,6 +124,14 @@ const stats = sounding.calcStats(sounding.getMembers(), 'mean');
 - `displayModes` can override per trace key: `temp`, `dwpt`, `wetb`, `vtmp`, `parcel`, `parcelVirtual`.
 - Supported mode values are: `'plumes'`, `'boxwhisker'`, `'mean'`.
 - In `'boxwhisker'` mode, the `50` percentile (median) is always included automatically.
+
+Display names used in the demo (shared with [`TallGraph`](./tall-graph.md)):
+
+| mode         | label             |
+| ------------ | ----------------- |
+| `mean`       | Mean Line         |
+| `plumes`     | Plumes            |
+| `boxwhisker` | Box-Whisker Lines |
 
 ## Line style options
 

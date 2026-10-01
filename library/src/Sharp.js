@@ -1712,6 +1712,40 @@ export default class sharp {
         return rh;
     }
 
+    // Saturation vapor pressure over ice (hPa), Murphy & Koop (2005)
+    static vappresIce(t) {
+        const tk = t + 273.15;
+        return Math.exp(9.550426 - 5723.265 / tk + 3.53068 * Math.log(tk) - 0.00728332 * tk) / 100;
+    }
+
+    // Relative humidity with respect to ice; equals RH over water at or above 0 C
+    static rhIce(p, t, d) {
+        return p.map((element, idx) => {
+            const es = t[idx] >= 0 ? this.vappres(t[idx]) : this.vappresIce(t[idx]);
+            return (100 * this.vappres(d[idx])) / es;
+        });
+    }
+
+    // Dewpoint (C) from temperature (C) and RH over water (%), inverting vappres; RH capped at 100
+    static dewpointFromRH(t, rh) {
+        return rh.map((rhValue, idx) => {
+            const tmpc = t[idx];
+            if (!Number.isFinite(rhValue) || !Number.isFinite(tmpc) || rhValue <= 0) return NaN;
+            const e = (Math.min(rhValue, 100) / 100) * this.vappres(tmpc);
+
+            const gamma = Math.log(e / 6.112);
+            let td = (243.5 * gamma) / (17.67 - gamma);
+            for (let i = 0; i < 20; i += 1) {
+                const f = this.vappres(td) - e;
+                const dfdt = (this.vappres(td + 0.01) - this.vappres(td - 0.01)) / 0.02;
+                const step = f / dfdt;
+                td -= step;
+                if (Math.abs(step) < 1e-7) break;
+            }
+            return Math.min(td, tmpc);
+        });
+    }
+
     // Enhanced stretching potential
     static esp(profile, mlCAPE03, mlCAPE) {
         const lrsfc3km = this.lapseRate(profile, 0, 3000);

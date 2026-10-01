@@ -7,6 +7,7 @@ Documentation index:
 - [SkewT usage](./skewt.md)
 - [Hodograph usage](./hodograph.md)
 - [BoxPlot usage](./boxplot.md)
+- [TallGraph usage](./tall-graph.md)
 
 This document explains how to use the `StatsTable` React component exported by `@noaa-gsl/wizard-soundings`.
 
@@ -22,11 +23,11 @@ Build your profile data with [create-sounding.md](./create-sounding.md), then co
 
 `calcStats(memberList, stat)` supports these `stat` values:
 
-| stat value | output behavior | common use |
-| --- | --- | --- |
-| `'mean'` | Returns mean values for scalar stats and mean-magnitude vectors with mean direction for vector stats. | Default for `StatsTable` display |
-| `'list'` | Returns per-member arrays (no reduction). | Inputs for `BoxPlot` and custom distributions |
-| `'<N>%'` | Returns the percentile at `N` (for example `'90%'`, `'25%'`, `'5%'`). | Percentile dashboards or threshold views |
+| stat value | output behavior                                                                                       | common use                                    |
+| ---------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `'mean'`   | Returns mean values for scalar stats and mean-magnitude vectors with mean direction for vector stats. | Default for `StatsTable` display              |
+| `'list'`   | Returns per-member arrays (no reduction).                                                             | Inputs for `BoxPlot` and custom distributions |
+| `'<N>%'`   | Returns the percentile at `N` (for example `'90%'`, `'25%'`, `'5%'`).                                 | Percentile dashboards or threshold views      |
 
 Percentile notes:
 
@@ -59,22 +60,18 @@ const stats = sounding.calcStats(members, 'mean');
 
 const [selectedStat, setSelectedStat] = useState('sfcCAPE');
 
-<StatsTable
-  statsDictParam={stats}
-  selectedStat={selectedStat}
-  onStatSelect={setSelectedStat}
-/>;
+<StatsTable statsDictParam={stats} selectedStat={selectedStat} onStatSelect={setSelectedStat} />;
 ```
 
 ## Props
 
-| prop | type | required | default | description |
-| --- | --- | --- | --- | --- |
-| `statsDictParam` | `object` | yes | none | Statistics dictionary from `calcStats(..., stat)`. Most common for `StatsTable` is `'mean'` or a percentile like `'90%'`. |
-| `selectedStat` | `string` | no | uncontrolled mode | Active/selected stat key for controlled highlighting. |
-| `onStatSelect` | `(statKey, event) => void` | no | `undefined` | Callback when an interactive stat cell is clicked. |
-| `className` | `string` | no | `'statsContainer'` | CSS class for root container. |
-| `sx` | `object` | no | `{}` | Inline style object applied to root container. |
+| prop             | type                       | required | default            | description                                                                                                               |
+| ---------------- | -------------------------- | -------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `statsDictParam` | `object`                   | yes      | none               | Statistics dictionary from `calcStats(..., stat)`. Most common for `StatsTable` is `'mean'` or a percentile like `'90%'`. |
+| `selectedStat`   | `string`                   | no       | uncontrolled mode  | Active/selected stat key for controlled highlighting.                                                                     |
+| `onStatSelect`   | `(statKey, event) => void` | no       | `undefined`        | Callback when an interactive stat cell is clicked.                                                                        |
+| `className`      | `string`                   | no       | `'statsContainer'` | CSS class for root container.                                                                                             |
+| `sx`             | `object`                   | no       | `{}`               | Inline style object applied to root container.                                                                            |
 
 ## Controlled vs uncontrolled selection
 
@@ -115,14 +112,14 @@ const [selectedStat, setSelectedStat] = useState('sfcCAPE');
 
 `StatsTable` uses CSS Modules for internal selectors and exposes `.ws-stats-table` as the stable public styling hook. Override these CSS variables on `.ws-stats-table`, a parent element, or the `sx` prop:
 
-| variable | default | description |
-| --- | --- | --- |
-| `--ws-stats-text` | `#333` | Table text color. |
-| `--ws-stats-bg` | `transparent` | Optional table background color. |
-| `--ws-stats-border` | `#333` | Table and column border color. |
-| `--ws-stats-selected-bg` | `transparent` | Selected stat cell background color. |
-| `--ws-stats-selected-outline` | `rgb(31, 119, 180)` | Selected stat cell outline color. |
-| `--ws-stats-selected-text` | `currentColor` | Selected stat cell text color. |
+| variable                      | default             | description                          |
+| ----------------------------- | ------------------- | ------------------------------------ |
+| `--ws-stats-text`             | `#333`              | Table text color.                    |
+| `--ws-stats-bg`               | `transparent`       | Optional table background color.     |
+| `--ws-stats-border`           | `#333`              | Table and column border color.       |
+| `--ws-stats-selected-bg`      | `transparent`       | Selected stat cell background color. |
+| `--ws-stats-selected-outline` | `rgb(31, 119, 180)` | Selected stat cell outline color.    |
+| `--ws-stats-selected-text`    | `currentColor`      | Selected stat cell text color.       |
 
 ## Data flow recommendation
 
@@ -138,7 +135,7 @@ See practical usage in:
 
 The stats demo owns presentation backgrounds for the library visualizations through the `--ws-*` CSS variables and offers a color theme control with these options:
 
-| option | behavior |
-| --- | --- |
+| option  | behavior                                                          |
+| ------- | ----------------------------------------------------------------- |
 | `Light` | Uses a light app shell and white visualization/table backgrounds. |
-| `Dark` | Uses a dark app shell and dark visualization/table backgrounds. |
+| `Dark`  | Uses a dark app shell and dark visualization/table backgrounds.   |

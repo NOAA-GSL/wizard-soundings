@@ -23,6 +23,8 @@ body {
     --library-border: #ffffff;
     --ws-skewt-bg: var(--library-bg);
     --ws-skewt-text: var(--library-text);
+    --ws-tallgraph-bg: var(--library-bg);
+    --ws-tallgraph-text: var(--library-text);
     --ws-hodograph-bg: var(--library-bg);
     --ws-hodograph-text: var(--library-text);
     --ws-hodograph-ring-color: lightgray;
@@ -61,6 +63,8 @@ body {
     --library-border: #333333;
     --ws-skewt-bg: var(--library-bg);
     --ws-skewt-text: var(--library-text);
+    --ws-tallgraph-bg: var(--library-bg);
+    --ws-tallgraph-text: var(--library-text);
     --ws-hodograph-bg: var(--library-bg);
     --ws-hodograph-text: var(--library-text);
     --ws-hodograph-ring-color: lightgray;
@@ -228,33 +232,20 @@ header h1 {
     font-size: 0.75rem;
 }
 
-/* Single-row layout for RH Bar controls */
-.rh-controls-single-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 8px 4px;
-    flex-wrap: wrap; /* Allows graceful wrapping if sidebar is narrow */
+.trace-controls-table th:nth-child(1) {
+    width: 22%;
 }
 
-.rh-control-inline {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.85rem;
-    white-space: nowrap;
+.trace-controls-table th:nth-child(2) {
+    width: 14%;
 }
 
-.rh-control-inline input[type='range'] {
-    width: 65px;
-    cursor: pointer;
+.trace-controls-table th:nth-child(3) {
+    width: 38%;
 }
 
-.rh-control-inline select {
-    padding: 2px 4px;
-    font-size: 0.8rem;
-    max-width: 130px;
+.trace-controls-table th:nth-child(4) {
+    width: 26%;
 }
 
 .percentile-info {
@@ -305,7 +296,7 @@ div.rollover.selected {
 
 .viz-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 2fr 160px 1fr;
     gap: 15px;
     height: 850px; /* This is the "Anchor" height */
     overflow: hidden; /* Prevents children from pushing the grid open */
@@ -348,7 +339,8 @@ div.rollover.selected {
         grid-template-columns: 1fr;
         height: auto;
     }
-    .skewt-wrapper {
+    .skewt-wrapper,
+    .tallgraph-wrapper {
         height: 600px;
     }
     .hodo-wrapper {
