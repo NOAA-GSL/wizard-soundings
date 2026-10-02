@@ -134,6 +134,11 @@ header h1 {
     color: var(--app-bg);
 }
 
+.data-mode-toggle {
+    align-self: flex-start;
+    flex-shrink: 0;
+}
+
 .main-content {
     display: grid;
     grid-template-columns: 360px minmax(0, 1fr);

@@ -414,6 +414,7 @@ const hodoTooltipOverride = (data, type, { windUnit = 'kts' } = {}) => {
 
 function App() {
     const [theme, setTheme] = useState('dark');
+    const [dataMode, setDataMode] = useState('ensemble');
     const [temperatureUnit, setTemperatureUnit] = useState('C');
     const [windUnit, setWindUnit] = useState('kts');
     const [percentileInput, setPercentileInput] = useState('5, 25, 75, 95');
@@ -467,7 +468,7 @@ function App() {
                 : [25, 75],
     };
 
-    // Data Fetching - recompute when time changes
+    // Data Fetching - recompute when time or data mode changes
     const { soundingData, stats, derivedData } = useMemo(() => {
         const sounding = createSounding();
         const selectedDate = String(DATES[timeIndex]);
@@ -475,12 +476,21 @@ function App() {
 
         sounding.updateData(recordsForDate);
 
+        if (dataMode === 'deterministic' && sounding.getMembers().length > 1) {
+            const [firstMember] = sounding.getMembers();
+            sounding.updateData(
+                recordsForDate.filter(
+                    (record) => record.model === firstMember || record.model === 'ALL',
+                ),
+            );
+        }
+
         return {
             soundingData: sounding.getLevelData(),
             stats: sounding.calcStats(sounding.getMembers(), 'mean'),
             derivedData: sounding.calcStats(sounding.getMembers(), 'list'),
         };
-    }, [timeIndex]);
+    }, [timeIndex, dataMode]);
 
     const traceVisibility = useMemo(
         () =>
@@ -616,6 +626,46 @@ function App() {
             </header>
             <main className="main-content">
                 <aside className="settings-sidebar">
+                    <div
+                        className="theme-toggle data-mode-toggle"
+                        role="group"
+                        aria-label="Sounding data mode"
+                    >
+                        <button
+                            type="button"
+                            className={dataMode === 'ensemble' ? 'active' : ''}
+                            aria-pressed={dataMode === 'ensemble'}
+                            onClick={() => setDataMode('ensemble')}
+                        >
+                            Ensemble
+                        </button>
+                        <button
+                            type="button"
+                            className={dataMode === 'deterministic' ? 'active' : ''}
+                            aria-pressed={dataMode === 'deterministic'}
+                            onClick={() => {
+                                setDataMode('deterministic');
+                                setTraceControls((current) =>
+                                    Object.fromEntries(
+                                        Object.entries(current).map(([key, control]) => [
+                                            key,
+                                            { ...control, mode: 'mean' },
+                                        ]),
+                                    ),
+                                );
+                                setParcelControls((current) =>
+                                    Object.fromEntries(
+                                        Object.entries(current).map(([key, control]) => [
+                                            key,
+                                            { ...control, mode: 'mean' },
+                                        ]),
+                                    ),
+                                );
+                            }}
+                        >
+                            Deterministic
+                        </button>
+                    </div>
                     <label>
                         Forecast Time
                         <input
