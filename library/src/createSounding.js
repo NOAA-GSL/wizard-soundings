@@ -873,7 +873,8 @@ const calculateStatsScalar = (componentOne, stat) => {
     return value;
 };
 
-const calculateStatsVector = (components, stat) => {
+export const calculateStatsVector = (components, stat) => {
+    if (stat === 'list') return components;
     // in this case we have a vector-valued input
     // first, calculate the mean u and mean v winds...and this will be our direction
     const uList = components.map((vec) => vec.u);
@@ -886,8 +887,6 @@ const calculateStatsVector = (components, stat) => {
     const mags = uList.map((element, idx) => sharp.mag(element, vList[idx]));
     if (stat == 'mean') {
         mag = math.mean(mags);
-    } else if (stat === 'list') {
-        mag = mags;
     } else {
         const q = Number(stat.substring(0, stat.length - 1));
         mag = math.quantile(mags, q / 100);

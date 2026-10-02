@@ -63,7 +63,7 @@ const stats = sounding.calcStats(sounding.getMembers(), 'mean');
 | prop             | type                  | required | default                                        | description                                                                                                                                                                                                                                                                                                               |
 | ---------------- | --------------------- | -------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `soundingParam`  | `Array<Array<Level>>` | yes      | none                                           | Member profile arrays, typically from `getLevelData()`.                                                                                                                                                                                                                                                                   |
-| `statsDictParam` | `object`              | no       | `undefined`                                    | Stats dictionary from `calcStats(..., 'list')`; used for parcel traces (e.g., `sfctrace`, `sfctrace_regular`).                                                                                                                                                                                                            |
+| `statsDictParam` | `object`              | no       | `undefined`                                    | Stats dictionary from `calcStats(..., 'list')`; used for parcel traces (e.g., `sfctrace`, `sfctrace_regular`), PBL depth (`pblDepth`), and momentum transfer (`momentumTransferVector`, `momentumTransferVectorMax`).                                                                                                    |
 | `config`         | `object`              | no       | `{}`                                           | Chart behavior and rendering options (see config table).                                                                                                                                                                                                                                                                  |
 | `className`      | `string`              | no       | `'skewt-container'`                            | CSS class for the root container.                                                                                                                                                                                                                                                                                         |
 | `sx`             | `object`              | no       | `{}`                                           | Inline style object applied to the root container.                                                                                                                                                                                                                                                                        |
@@ -100,6 +100,8 @@ const stats = sounding.calcStats(sounding.getMembers(), 'mean');
 | `parcelTrace`        | `'sfc' \| 'mu' \| 'ml' \| 'none'`                         | `'none'` in independent mode                   | Regular-temperature parcel trace selector.                                                                            |
 | `virtualParcelTrace` | `'sfc' \| 'mu' \| 'ml' \| 'none'`                         | `'none'` in independent mode                   | Virtual-temperature parcel trace selector.                                                                            |
 | `renderTooltip`      | `(data) => ReactNode`                                     | `null`                                         | Custom tooltip renderer for hover level data.                                                                         |
+| `pblDepth`           | `{ enabled?, color?, width? }`                            | `{ enabled: false, color: '#90caf9', width: 8 }` | PBL depth box-whisker. See [PBL depth and momentum transfer](#pbl-depth-and-momentum-transfer).                     |
+| `momentumTransfer`   | `{ enabled?, stat?, color?, showMean?, showMax? }`        | `{ enabled: false, stat: 'mean', color: '#ffb74d', showMean: true, showMax: true }` | Mean/max momentum-transfer barbs. See [PBL depth and momentum transfer](#pbl-depth-and-momentum-transfer). |
 | `axisLabels`         | `{ x?: string, y?: string }`                              | `{ x: 'Temperature', y: 'Pressure' }`          | Axis title text. An empty string hides that title.                                                                    |
 | `units`              | `{ temperature?: string, pressure?: string }`             | `{ temperature: 'C', pressure: 'mb' }`         | Units shown in the axis titles as `label (units)`. An empty string omits the parentheses.                             |
 
@@ -182,6 +184,48 @@ These keys are available when stats are computed with:
 ```js
 const stats = sounding.calcStats(sounding.getMembers(), 'list');
 ```
+
+## PBL depth and momentum transfer
+
+Both overlays follow zoom/pan vertically. The PBL box is drawn left of the wind-barb column; the MT barbs sit on the mean temperature trace. They read per-member values from `statsDictParam`, so pass `calcStats(..., 'list')` output.
+
+```js
+config: {
+    percentiles: [5, 25, 75, 95],
+    pblDepth: { enabled: true },
+    momentumTransfer: { enabled: true, stat: 'mean' },
+}
+```
+
+PBL depth (`pblDepth`):
+
+| key       | type      | default     | description                                                    |
+| --------- | --------- | ----------- | -------------------------------------------------------------- |
+| `enabled` | `boolean` | `false`     | Show the PBL depth box-whisker.                                |
+| `color`   | `string`  | `'#90caf9'` | Stroke and fill color.                                         |
+| `width`   | `number`  | `8`         | Box width in pixels.                                           |
+
+- PBL top per member comes from `pblDepth` (first level where virtual potential temperature is at least 0.5 K above the surface value).
+- Whiskers and box use `percentiles` (lowest/highest are whiskers, second/second-to-last are the box). Percentiles are of PBL **height**, so the 95th percentile is the deepest PBL.
+- The median is drawn as a thick line. With one member, only a single line at the PBL top is drawn.
+
+Momentum transfer (`momentumTransfer`):
+
+| key        | type      | default     | description                                                                                 |
+| ---------- | --------- | ----------- | ------------------------------------------------------------------------------------------- |
+| `enabled`  | `boolean` | `false`     | Show the MT barbs.                                                                          |
+| `stat`     | `string`  | `'mean'`    | Statistic applied across members to MT speed: `'mean'` or a percentile such as `'90%'`.    |
+| `color`    | `string`  | `'#ffb74d'` | Barb color.                                                                                 |
+| `strokeWidth` | `number` | `2.5`    | Barb line thickness in pixels.                                                              |
+| `showMean` | `boolean` | `true`      | Show the mean-MT barb (`momentumTransferVector`).                                           |
+| `showMax`  | `boolean` | `true`      | Show the max-MT barb (`momentumTransferVectorMax`).                                         |
+
+- `stat` follows the same values as [`calcStats`](./stats-table.md#calcstats-options). With `'mean'`, the barbs show the mean of the members' mean MT and the mean of the members' max MT.
+- Barb direction is the direction of the mean u/v across members; barb speed is `stat` applied to member speeds.
+- The mean-MT barb sits at half the mean PBL depth: the log-pressure midpoint between the surface (highest pressure in the mean profile) and the mean member PBL top. Without a surface pressure it falls back to the mean PBL top.
+- The max-MT barb sits at the mean member PBL top.
+- Each MT barb is placed horizontally on the mean temperature trace at its height (interpolated in log-pressure) and follows zoom/pan. A barb is hidden if the mean profile does not reach its pressure.
+- If both barbs land at the same height, the max-MT barb is shifted left so they do not overlap.
 
 ## Pressure alignment
 

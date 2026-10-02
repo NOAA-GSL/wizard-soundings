@@ -26,7 +26,7 @@ Build your profile data with [create-sounding.md](./create-sounding.md), then co
 | stat value | output behavior                                                                                       | common use                                    |
 | ---------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | `'mean'`   | Returns mean values for scalar stats and mean-magnitude vectors with mean direction for vector stats. | Default for `StatsTable` display              |
-| `'list'`   | Returns per-member arrays (no reduction).                                                             | Inputs for `BoxPlot` and custom distributions |
+| `'list'`   | Returns per-member arrays (no reduction). Vector stats return the per-member `Vector` objects.        | Inputs for `BoxPlot`, `SkewT`, and custom distributions |
 | `'<N>%'`   | Returns the percentile at `N` (for example `'90%'`, `'25%'`, `'5%'`).                                 | Percentile dashboards or threshold views      |
 
 Percentile notes:

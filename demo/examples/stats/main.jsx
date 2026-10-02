@@ -116,6 +116,13 @@ const PARCEL_TRACE_ROWS = [
     { key: 'parcelVirtual', label: 'Virtual Parcel' },
 ];
 
+const MT_STAT_OPTIONS = [
+    { value: 'mean', label: 'Mean' },
+    { value: '50%', label: '50th' },
+    { value: '90%', label: '90th' },
+    { value: '100%', label: 'Max' },
+];
+
 function formatTime(timestamp) {
     const d = new Date(timestamp);
     return d.toLocaleString(undefined, {
@@ -353,6 +360,9 @@ function App() {
         omega: { enabled: true, displayMode: 'mean', lineStyle: 'solid' },
     });
     const [skewTYAxis, setSkewTYAxis] = useState(null);
+    const [showPblDepth, setShowPblDepth] = useState(true);
+    const [showMomentumTransfer, setShowMomentumTransfer] = useState(true);
+    const [momentumTransferStat, setMomentumTransferStat] = useState('mean');
     const [rhColorBarKey, setRhColorBarKey] = useState('standard');
     const [rhVariable, setRhVariable] = useState('rh');
     const [rhIceThreshold, setRhIceThreshold] = useState(DEFAULT_RH_ICE_THRESHOLD);
@@ -653,6 +663,35 @@ function App() {
                                 ))}
                             </tbody>
                         </table>
+                        <label className="checkbox-row">
+                            PBL Depth
+                            <input
+                                type="checkbox"
+                                checked={showPblDepth}
+                                onChange={(e) => setShowPblDepth(e.target.checked)}
+                            />
+                        </label>
+                        <label className="checkbox-row">
+                            MT Barbs
+                            <input
+                                type="checkbox"
+                                checked={showMomentumTransfer}
+                                onChange={(e) => setShowMomentumTransfer(e.target.checked)}
+                            />
+                        </label>
+                        <label className="checkbox-row">
+                            MT Statistic
+                            <select
+                                value={momentumTransferStat}
+                                onChange={(e) => setMomentumTransferStat(e.target.value)}
+                            >
+                                {MT_STAT_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
                     </div>
                     <div className="trace-controls">
                         <div className="trace-controls-title">Tall Graph Controls</div>
@@ -835,6 +874,11 @@ function App() {
                                         traceLineStyles,
                                         parcelTrace: parcelControls.parcel.type,
                                         virtualParcelTrace: parcelControls.parcelVirtual.type,
+                                        pblDepth: { enabled: showPblDepth },
+                                        momentumTransfer: {
+                                            enabled: showMomentumTransfer,
+                                            stat: momentumTransferStat,
+                                        },
                                         ...(useCustomTooltips
                                             ? { renderTooltip: skewTTooltipOverride }
                                             : {}),

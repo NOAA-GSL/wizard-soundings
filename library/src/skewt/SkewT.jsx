@@ -7,6 +7,13 @@ import { math } from '../Utilities';
 import SkewTBackground from './skewtBackground';
 import SkewTBoxWhisker from './skewtBoxWhisker';
 import WindBarb from './windBarb';
+import PblMomentumOverlay from './pblMomentumOverlay';
+import {
+    computePblMomentumMarkers,
+    DEFAULT_MOMENTUM_TRANSFER_CONFIG,
+    DEFAULT_PBL_DEPTH_CONFIG,
+    interpolateAtPressure,
+} from './pblMomentum';
 import { computeMeanProfile } from './meanProfile';
 import { getPrimaryParcelMeanProfile, getSelectedParcelTraceSets } from './parcelTrace';
 import {
@@ -60,6 +67,8 @@ const DEFAULT_CONFIG = {
         max: 5,
     },
     renderTooltip: null,
+    pblDepth: DEFAULT_PBL_DEPTH_CONFIG,
+    momentumTransfer: DEFAULT_MOMENTUM_TRANSFER_CONFIG,
     // Axis titles; units are display text only (data must be in deg C and hPa/mb)
     axisLabels: { x: 'Temperature', y: 'Pressure' },
     units: { temperature: 'C', pressure: 'mb' },
@@ -194,6 +203,8 @@ export default function SkewT({
             colors: { ...DEFAULT_CONFIG.colors, ...config.colors },
             axisLabels: { ...DEFAULT_CONFIG.axisLabels, ...config.axisLabels },
             units: { ...DEFAULT_CONFIG.units, ...config.units },
+            pblDepth: { ...DEFAULT_PBL_DEPTH_CONFIG, ...config.pblDepth },
+            momentumTransfer: { ...DEFAULT_MOMENTUM_TRANSFER_CONFIG, ...config.momentumTransfer },
         }),
         [config],
     );
@@ -320,6 +331,27 @@ export default function SkewT({
 
         return { computedMeanProfile: profile, computedMeanBarbs: barbs };
     }, [memberProfiles, settings]);
+
+    const pblMomentumMarkers = useMemo(() => {
+        if (!statsDictParam) return null;
+        if (!settings.pblDepth.enabled && !settings.momentumTransfer.enabled) return null;
+        return computePblMomentumMarkers({
+            pblDepth: statsDictParam.pblDepth,
+            momentumTransferVector: statsDictParam.momentumTransferVector,
+            momentumTransferVectorMax: statsDictParam.momentumTransferVectorMax,
+            percentiles: resolvedPercentiles,
+            stat: settings.momentumTransfer.stat,
+            surfacePress: computedMeanProfile?.length
+                ? Math.max(...computedMeanProfile.map((d) => d.press).filter(Number.isFinite))
+                : undefined,
+        });
+    }, [
+        statsDictParam,
+        settings.pblDepth,
+        settings.momentumTransfer,
+        resolvedPercentiles,
+        computedMeanProfile,
+    ]);
 
     const traceConfigs = useMemo(
         () =>
@@ -690,6 +722,30 @@ export default function SkewT({
                                     )}
                                 </g>
                             }
+                            <g clipPath="url(#skewt-barb-area)">
+                                <PblMomentumOverlay
+                                    markers={pblMomentumMarkers}
+                                    toY={(p) =>
+                                        transformState.k * scales.yScale(p) + transformState.y
+                                    }
+                                    toBarbX={(p) => {
+                                        const temp = interpolateAtPressure(computedMeanProfile, p);
+                                        if (temp == null) return null;
+                                        const skewX = getSkewX(
+                                            temp,
+                                            p,
+                                            scales.xScale,
+                                            scales.yScale,
+                                            scales.tanAlpha,
+                                            scales.baseY,
+                                        );
+                                        return transformState.k * skewX + (transformState.x || 0);
+                                    }}
+                                    pblX={scales.innerW - 70}
+                                    pblConfig={settings.pblDepth}
+                                    mtConfig={settings.momentumTransfer}
+                                />
+                            </g>
                         </g>
                     </svg>
 
