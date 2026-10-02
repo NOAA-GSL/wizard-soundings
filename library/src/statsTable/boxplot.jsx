@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { math } from '../Utilities';
+import { convertTemperatureStat } from '../temperatureUnits';
+import { convertWindStat } from '../windUnits';
 import BoxWhisker from './BoxWhisker';
 import useContainerDimensions from '../utilities/useContainerDimensions';
 
@@ -13,6 +15,8 @@ const DEFAULT_CONFIG = {
     },
     orientation: 'horizontal', // 'horizontal' or 'vertical'
     height: null, // Default height for horizontal. You might want this taller for vertical!
+    temperatureUnit: 'C',
+    windUnit: 'kts',
 };
 
 export default function BoxPlot({ statsDictParam, curStat, config }) {
@@ -32,7 +36,11 @@ export default function BoxPlot({ statsDictParam, curStat, config }) {
     const plotHeight = settings.height || (isVertical ? 400 : 120);
 
     const plotData = useMemo(() => {
-        const data = statsDictParam[curStat];
+        const data = convertWindStat(
+            curStat,
+            convertTemperatureStat(curStat, statsDictParam[curStat], settings.temperatureUnit),
+            settings.windUnit,
+        );
         if (!data) return null;
 
         return [

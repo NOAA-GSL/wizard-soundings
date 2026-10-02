@@ -1,15 +1,35 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import * as d3 from 'd3';
 
 /**
  * Custom hook to bridge D3 Zoom behavior with React state.
  * @param {Object} dimensions - { width, height } of the container.
  * @param {Object} zoomConfig - { enabled, extent } or { min, max }.
- * @returns {Array} [zoomRefCallback, transformState]
+ * @returns {Array} [zoomRefCallback, transformState, zoomControls]
+ *   zoomControls: { zoomBy(factor, y), panBy(dy) } drive the zoom from outside the zoom node.
  */
 function useZoomHandler(dimensions, zoomConfig) {
     const [transformState, setTransformState] = useState({ k: 1, x: 0, y: 0 });
     const transformRef = useRef({ k: 1, x: 0, y: 0 });
+    const zoomRef = useRef(null);
+    const nodeRef = useRef(null);
+
+    const zoomControls = useMemo(
+        () => ({
+            zoomBy: (factor, y) => {
+                const node = nodeRef.current;
+                if (!node || !zoomRef.current) return;
+                const x = node.width.baseVal.value / 2;
+                d3.select(node).call(zoomRef.current.scaleBy, factor, [x, y]);
+            },
+            panBy: (dy) => {
+                const node = nodeRef.current;
+                if (!node || !zoomRef.current) return;
+                d3.select(node).call(zoomRef.current.translateBy, 0, dy / transformRef.current.k);
+            },
+        }),
+        [],
+    );
 
     const zoomRefCallback = useCallback(
         (node) => {
@@ -22,6 +42,7 @@ function useZoomHandler(dimensions, zoomConfig) {
 
             if (!enabled) {
                 selection.on('.zoom', null);
+                zoomRef.current = null;
                 return;
             }
 
@@ -47,6 +68,8 @@ function useZoomHandler(dimensions, zoomConfig) {
                 });
 
             selection.call(zoom);
+            zoomRef.current = zoom;
+            nodeRef.current = node;
 
             // Explicitly trap the wheel event to prevent the page from scrolling
             // We store the function on the node to ensure we can clean it up safely
@@ -67,7 +90,7 @@ function useZoomHandler(dimensions, zoomConfig) {
         [dimensions, zoomConfig],
     );
 
-    return [zoomRefCallback, transformState];
+    return [zoomRefCallback, transformState, zoomControls];
 }
 
 export default useZoomHandler;

@@ -54,3 +54,11 @@
 .hidden {
     display: none !important;
 }
+
+.axisTitle text {
+    font-size: 14px;
+    font-weight: 500;
+    dominant-baseline: hanging;
+    fill: var(--ws-skewt-text, #333);
+    stroke: none;
+}

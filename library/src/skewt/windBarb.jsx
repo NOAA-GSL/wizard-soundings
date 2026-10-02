@@ -7,8 +7,9 @@ import React from 'react';
  * @param {number} x - X coordinate in the SVG
  * @param {number} y - Y coordinate in the SVG
  * @param {number} size - Length of the barb staff
+ * @param {number} strokeWidth - Line thickness
  */
-function WindBarb({ u, v, x, y, size = 25 }) {
+function WindBarb({ u, v, x, y, size = 25, strokeWidth = 1.5 }) {
     // Basic calculation for speed and direction
     const speed = Math.sqrt(u * u + v * v);
     // Met direction: from where the wind blows (rads -> deg)
@@ -40,7 +41,7 @@ function WindBarb({ u, v, x, y, size = 25 }) {
 
     return (
         <g transform={`translate(${x}, ${y}) rotate(${dir + 180})`}>
-            <path d={path} stroke="currentColor" strokeWidth="1.5" fill="none" />
+            <path d={path} stroke="currentColor" strokeWidth={strokeWidth} fill="none" />
         </g>
     );
 }

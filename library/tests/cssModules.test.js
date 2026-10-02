@@ -38,7 +38,13 @@ describe('library CSS scoping', () => {
     });
 
     test('components expose stable public override roots', () => {
-        const publicRootClasses = ['ws-skewt', 'ws-hodograph', 'ws-stats-table', 'ws-box-plot'];
+        const publicRootClasses = [
+            'ws-skewt',
+            'ws-hodograph',
+            'ws-stats-table',
+            'ws-box-plot',
+            'ws-tallgraph',
+        ];
         const source = filesMatching(librarySrc, (fileName) => fileName.endsWith('.jsx'))
             .map((file) => readFileSync(file, 'utf-8'))
             .join('\n');

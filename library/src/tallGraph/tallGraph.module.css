@@ -1,0 +1,64 @@
+.root {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.svg {
+    display: block;
+    background-color: var(--ws-tallgraph-bg, transparent);
+}
+
+.grid {
+    pointer-events: none;
+}
+
+.grid line {
+    stroke-width: 1px;
+}
+
+.frame {
+    fill: transparent;
+    stroke: black;
+    stroke-width: 2px;
+}
+
+.bar {
+    stroke: rgba(0, 0, 0, 0.35);
+    stroke-width: 0.5px;
+}
+
+.hoverLine {
+    stroke: var(--ws-tallgraph-text, #333);
+    stroke-width: 1px;
+    opacity: 0.5;
+}
+
+.axis line {
+    stroke-width: 1px;
+}
+
+.axis text {
+    font-size: 10px;
+    dominant-baseline: hanging;
+    fill: var(--ws-tallgraph-text, #333);
+    stroke: none;
+}
+
+.axis .axisTitle {
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* Matches the SkewT isobar labels and axis title */
+.yAxis text,
+text.yAxis {
+    font-size: 14px;
+    dominant-baseline: hanging;
+    fill: var(--ws-tallgraph-text, #333);
+    stroke: none;
+}
+
+.yAxisTitle {
+    font-weight: 500;
+}

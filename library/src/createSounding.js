@@ -9,7 +9,9 @@ const FT_TO_M = 0.3048;
 const PRESSURE_FIELDS = new Set(['pressure', 'sp', 'mslp']);
 const TEMP_FIELDS = new Set(['t2', 'd2', 't_isobaric', 'dpt_isobaric']);
 const WIND_FIELDS = new Set(['u10', 'v10', 'u_isobaric', 'v_isobaric']);
-const PERCENT_FIELDS = new Set(['rh2', 'r_isobaric']);
+const PERCENT_FIELDS = new Set(['rh2', 'rh_isobaric']);
+
+export const DEFAULT_RH_ICE_THRESHOLD = -23;
 
 const normalizeUnit = (unit, field, model) => {
     if (typeof unit !== 'string' || unit.trim() === '') {
@@ -150,11 +152,54 @@ const addDerivedProfileFields = (levels) => {
         ) {
             level.vtmp = sharp.vtmp([level.temp], [level.dwpt], [level.press])[0];
             level.wetb = sharp.wetBulb([level.press], [level.temp], [level.dwpt])[0];
+            level.rh = sharp.rh([level.press], [level.temp], [level.dwpt])[0];
+            level.rhIce = sharp.rhIce([level.press], [level.temp], [level.dwpt])[0];
         } else {
             level.vtmp = NaN;
             level.wetb = NaN;
+            level.rh = NaN;
+            level.rhIce = NaN;
         }
     }
+};
+
+const resolveIsobaricDewpoint = (memberData, mem) => {
+    const hasDpt = memberData.dpt_isobaric != null;
+    const hasRh = memberData.rh_isobaric != null;
+
+    if (hasDpt && hasRh) {
+        throw new Error(
+            `Model "${mem}" provides both "dpt_isobaric" and "rh_isobaric". Provide only one.`,
+        );
+    }
+    if (!hasDpt && !hasRh) {
+        throw new Error(
+            `Model "${mem}" is missing moisture data. Provide either "dpt_isobaric" or "rh_isobaric".`,
+        );
+    }
+    if (hasRh) {
+        memberData.dpt_isobaric = sharp.dewpointFromRH(
+            memberData.t_isobaric ?? [],
+            memberData.rh_isobaric,
+        );
+    }
+};
+
+/**
+ * Returns a copy of level data with an `rhCombo` field on every level: RH over ice when
+ * temp <= iceThreshold (C), otherwise RH over water.
+ * @param {Array} levelData - Output of sounding.getLevelData().
+ * @param {number} iceThreshold - Temperature (C) at or below which RH over ice is used.
+ * @returns {Array}
+ */
+export const combineRh = (levelData, iceThreshold = DEFAULT_RH_ICE_THRESHOLD) => {
+    if (!Array.isArray(levelData)) return levelData;
+    return levelData.map((levels) =>
+        levels.map((level) => ({
+            ...level,
+            rhCombo: level.temp <= iceThreshold ? level.rhIce : level.rh,
+        })),
+    );
 };
 
 const createSurfaceData = (memberData, mem) => {
@@ -364,6 +409,7 @@ const soundingFormat = (records) => {
 
     const levelData = [];
     for (const mem in obj) {
+        resolveIsobaricDewpoint(obj[mem], mem);
         const surface = createSurfaceData(obj[mem], mem);
         const memberLevels = createMemberLevels(obj[mem], surface);
         insertSurfaceLevel(memberLevels, surface, averageSurfaceValues);
@@ -827,7 +873,8 @@ const calculateStatsScalar = (componentOne, stat) => {
     return value;
 };
 
-const calculateStatsVector = (components, stat) => {
+export const calculateStatsVector = (components, stat) => {
+    if (stat === 'list') return components;
     // in this case we have a vector-valued input
     // first, calculate the mean u and mean v winds...and this will be our direction
     const uList = components.map((vec) => vec.u);
@@ -840,8 +887,6 @@ const calculateStatsVector = (components, stat) => {
     const mags = uList.map((element, idx) => sharp.mag(element, vList[idx]));
     if (stat == 'mean') {
         mag = math.mean(mags);
-    } else if (stat === 'list') {
-        mag = mags;
     } else {
         const q = Number(stat.substring(0, stat.length - 1));
         mag = math.quantile(mags, q / 100);
