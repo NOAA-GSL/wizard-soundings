@@ -23,11 +23,11 @@ Build your profile data with [create-sounding.md](./create-sounding.md), then co
 
 `calcStats(memberList, stat)` supports these `stat` values:
 
-| stat value | output behavior                                                                                       | common use                                    |
-| ---------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `'mean'`   | Returns mean values for scalar stats and mean-magnitude vectors with mean direction for vector stats. | Default for `StatsTable` display              |
+| stat value | output behavior                                                                                       | common use                                              |
+| ---------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `'mean'`   | Returns mean values for scalar stats and mean-magnitude vectors with mean direction for vector stats. | Default for `StatsTable` display                        |
 | `'list'`   | Returns per-member arrays (no reduction). Vector stats return the per-member `Vector` objects.        | Inputs for `BoxPlot`, `SkewT`, and custom distributions |
-| `'<N>%'`   | Returns the percentile at `N` (for example `'90%'`, `'25%'`, `'5%'`).                                 | Percentile dashboards or threshold views      |
+| `'<N>%'`   | Returns the percentile at `N` (for example `'90%'`, `'25%'`, `'5%'`).                                 | Percentile dashboards or threshold views                |
 
 Percentile notes:
 
@@ -65,13 +65,15 @@ const [selectedStat, setSelectedStat] = useState('sfcCAPE');
 
 ## Props
 
-| prop             | type                       | required | default            | description                                                                                                               |
-| ---------------- | -------------------------- | -------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `statsDictParam` | `object`                   | yes      | none               | Statistics dictionary from `calcStats(..., stat)`. Most common for `StatsTable` is `'mean'` or a percentile like `'90%'`. |
-| `selectedStat`   | `string`                   | no       | uncontrolled mode  | Active/selected stat key for controlled highlighting.                                                                     |
-| `onStatSelect`   | `(statKey, event) => void` | no       | `undefined`        | Callback when an interactive stat cell is clicked.                                                                        |
-| `className`      | `string`                   | no       | `'statsContainer'` | CSS class for root container.                                                                                             |
-| `sx`             | `object`                   | no       | `{}`               | Inline style object applied to root container.                                                                            |
+| I                 | prop                       | type | required           | default                                                                                                                                       | description |
+| ----------------- | -------------------------- | ---- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `statsDictParam`  | `object`                   | yes  | none               | Statistics dictionary from `calcStats(..., stat)`. Most common for `StatsTable` is `'mean'` or a percentile like `'90%'`.                     |
+| `selectedStat`    | `string`                   | no   | uncontrolled mode  | Active/selected stat key for controlled highlighting.                                                                                         |
+| `onStatSelect`    | `(statKey, event) => void` | no   | `undefined`        | Callback when an interactive stat cell is clicked.                                                                                            |
+| `temperatureUnit` | `'C' \| 'F'`               | no   | `'C'`              | Display unit for absolute-temperature stats (`cTemp`, `maxT`, `downT`). Temperature differences such as LI stay in deg C.                     |
+| `windUnit`        | `'kts' \| 'm/s' \| 'mph'`  | no   | `'kts'`            | Display unit for wind speeds: shear magnitudes, Mean/Max MT, and the speed part of every `dir/speed` vector. SRH and BRN shear are unchanged. |
+| `className`       | `string`                   | no   | `'statsContainer'` | CSS class for root container.                                                                                                                 |
+| `sx`              | `object`                   | no   | `{}`               | Inline style object applied to root container.                                                                                                |
 
 ## Controlled vs uncontrolled selection
 

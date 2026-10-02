@@ -36,7 +36,8 @@ const stats = sounding.calcStats(sounding.getMembers(), 'mean');
     statsDictParam={stats}
     config={{
         maxWind: 90,
-        rings: { interval: 10, labelInterval: 20, units: 'kts' },
+        windUnit: 'kts',
+        rings: { interval: 10, labelInterval: 20 },
     }}
 />;
 ```
@@ -56,10 +57,11 @@ const stats = sounding.calcStats(sounding.getMembers(), 'mean');
 | key                   | type                                                           | default             | description                                                                                |
 | --------------------- | -------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------ |
 | `margin`              | `number`                                                       | `25`                | Margin used to compute plotting radius.                                                    |
-| `maxWind`             | `number`                                                       | `80`                | Maximum wind speed used for ring and radial scale.                                         |
-| `rings.interval`      | `number`                                                       | `10`                | Ring spacing.                                                                              |
-| `rings.labelInterval` | `number`                                                       | `20`                | Label interval for ring text.                                                              |
-| `rings.units`         | `string`                                                       | `'kts'`             | Unit label displayed on ring labels.                                                       |
+| `maxWind`             | `number`                                                       | `80`                | Maximum wind speed (kts) used for the radial scale. Stays in kts for every `windUnit`.     |
+| `windUnit`            | `'kts' \| 'm/s' \| 'mph'`                                      | `'kts'`             | Display unit for ring labels and tooltip speeds. Wind data stays in kts.                   |
+| `rings.interval`      | `number`                                                       | `10`                | Ring spacing, in `windUnit`.                                                               |
+| `rings.labelInterval` | `number`                                                       | `20`                | Label interval for ring text, in `windUnit`.                                               |
+| `rings.units`         | `string`                                                       | `windUnit`          | Unit label displayed on ring labels.                                                       |
 | `segments`            | `Array<{ maxHeight, color, label }>`                           | see source defaults | Mean-hodograph segment color bands by height.                                              |
 | `legend`              | `boolean \| object`                                            | `true`              | Built-in legend overlay. `false` hides it; an object configures it (see below).            |
 | `legend.enabled`      | `boolean`                                                      | `true`              | Show/hide the built-in legend.                                                             |
@@ -70,7 +72,7 @@ const stats = sounding.calcStats(sounding.getMembers(), 'mean');
 | `zoom.enabled`        | `boolean`                                                      | `true`              | Enable/disable pan/zoom behavior.                                                          |
 | `zoom.min`            | `number`                                                       | `1`                 | Minimum zoom scale.                                                                        |
 | `zoom.max`            | `number`                                                       | `10`                | Maximum zoom scale.                                                                        |
-| `renderTooltip`       | `(data, type) => ReactNode`                                    | `null`              | Custom tooltip renderer.                                                                   |
+| `renderTooltip`       | `(data, type, { windUnit }) => ReactNode`                      | `null`              | Custom tooltip renderer. `data` speeds are kts; convert with `toWindUnit`.                 |
 
 Default `segments` are:
 
@@ -135,21 +137,33 @@ The standalone legend is not absolutely positioned; it flows like a normal block
 
 The legend also exposes `.ws-hodograph-legend` as a stable class for CSS overrides (for example `.ws-hodograph-legend { font-size: 14px; }`), in addition to `legend.className` / `legend.sx`. The legend CSS variables are read from any ancestor, so they also apply to a standalone `HodographLegend`.
 
+## Wind units
+
+Set `windUnit` to `'kts'`, `'m/s'`, or `'mph'`. Only the display changes; data and `maxWind` stay in kts.
+
+- Rings are drawn every `rings.interval` of the display unit up to `maxWind`, so labels are round numbers (for example `10, 30` in m/s with `maxWind: 80`).
+- The default tooltip converts speeds (`twnd`, Bunkers `mag`).
+- Exported helpers: `toWindUnit(valueKts, unit)`, `fromWindUnit(value, unit)`, `WIND_UNITS` (`['kts', 'm/s', 'mph']`), and `WIND_STAT_KEYS` (scalar stats converted by `StatsTable`/`BoxPlot`). Unknown units fall back to kts.
+
 ## Tooltip override
 
 If `config.renderTooltip` is provided, `Hodograph` calls it with:
 
 - `data`: hovered object
 - `type`: one of `datapoint`, `member`, `bunkers-right`, `bunkers-left`
+- `{ windUnit }`: the configured display unit
 
 ```jsx
-const customHodoTooltip = (data, type) => {
+import { toWindUnit } from '@noaa-gsl/wizard-soundings';
+
+const customHodoTooltip = (data, type, { windUnit }) => {
     if (!data) return null;
 
     if (type === 'datapoint') {
         return (
             <div>
-                {data.twnd?.toFixed(0)} kts @ {data.wdir?.toFixed(0)} deg
+                {toWindUnit(data.twnd, windUnit)?.toFixed(0)} {windUnit} @ {data.wdir?.toFixed(0)}{' '}
+                deg
             </div>
         );
     }

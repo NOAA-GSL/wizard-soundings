@@ -56,13 +56,15 @@ If `statsDictParam[curStat]` is missing, `BoxPlot` renders `null`.
 
 ## `config` options
 
-| key                    | type                           | default                                        | description                                                                          |
-| ---------------------- | ------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `margin`               | `{ top, right, bottom, left }` | `{ top: 20, right: 40, bottom: 30, left: 30 }` | Inner plotting margins.                                                              |
-| `percentiles.whiskers` | `[number, number]`             | `[5, 95]`                                      | Lower and upper whisker percentiles.                                                 |
-| `percentiles.boxes`    | `[number, number]`             | `[25, 75]`                                     | Lower and upper quartile-style bounds for the box.                                   |
-| `orientation`          | `'horizontal' \| 'vertical'`   | `'horizontal'`                                 | Axis orientation for rendering.                                                      |
-| `height`               | `number \| null`               | `null`                                         | Optional explicit plot height. If omitted: `120` for horizontal, `400` for vertical. |
+| key                    | type                           | default                                        | description                                                                             |
+| ---------------------- | ------------------------------ | ---------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `margin`               | `{ top, right, bottom, left }` | `{ top: 20, right: 40, bottom: 30, left: 30 }` | Inner plotting margins.                                                                 |
+| `percentiles.whiskers` | `[number, number]`             | `[5, 95]`                                      | Lower and upper whisker percentiles.                                                    |
+| `percentiles.boxes`    | `[number, number]`             | `[25, 75]`                                     | Lower and upper quartile-style bounds for the box.                                      |
+| `orientation`          | `'horizontal' \| 'vertical'`   | `'horizontal'`                                 | Axis orientation for rendering.                                                         |
+| `height`               | `number \| null`               | `null`                                         | Optional explicit plot height. If omitted: `120` for horizontal, `400` for vertical.    |
+| `temperatureUnit`      | `'C' \| 'F'`                   | `'C'`                                          | Display unit when `curStat` is an absolute-temperature stat (`cTemp`, `maxT`, `downT`). |
+| `windUnit`             | `'kts' \| 'm/s' \| 'mph'`      | `'kts'`                                        | Display unit when `curStat` is a wind-speed stat (see `WIND_STAT_KEYS`).                |
 
 ## Wiring with StatsTable
 

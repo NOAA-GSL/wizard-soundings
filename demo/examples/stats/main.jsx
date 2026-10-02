@@ -1,6 +1,13 @@
 import { StrictMode, useState, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createSounding, combineRh, DEFAULT_RH_ICE_THRESHOLD } from '@noaa-gsl/wizard-soundings';
+import {
+    createSounding,
+    combineRh,
+    DEFAULT_RH_ICE_THRESHOLD,
+    toTemperatureUnit,
+    toWindUnit,
+    WIND_UNITS,
+} from '@noaa-gsl/wizard-soundings';
 import { SkewT, TallGraph, Hodograph, StatsTable, BoxPlot } from '@noaa-gsl/wizard-soundings';
 import data from './soundingData.json';
 import '@noaa-gsl/wizard-soundings/styles.css';
@@ -158,13 +165,14 @@ const mToFt = (meters) => meters * 3.28084;
 // --- Tooltip Override Configurations ---
 
 // 1. Skew-T Render Prop Demo (Expanded Readout)
-const skewTTooltipOverride = (data) => {
+const skewTTooltipOverride = (data, { temperatureUnit = 'C', windUnit = 'kts' } = {}) => {
     // Defensive check
     if (!data) return null;
 
     // Derived Calculations
     const hghtMslFt = data.hght != null ? mToFt(data.hght) : null;
     const hghtAglFt = data.hghtagl != null ? mToFt(data.hghtagl) : null;
+    const fmtT = (value) => toTemperatureUnit(value, temperatureUnit)?.toFixed(1) ?? '--';
 
     // A reusable row style to keep the JSX clean
     const rowStyle = { display: 'flex', justifyContent: 'space-between', marginBottom: '2px' };
@@ -198,11 +206,15 @@ const skewTTooltipOverride = (data) => {
             </div>
             <div style={rowStyle}>
                 <span style={{ color: '#aaa' }}>Temp:</span>
-                <strong style={{ color: '#ff5252' }}>{data.temp?.toFixed(1) ?? '--'} &deg;C</strong>
+                <strong style={{ color: '#ff5252' }}>
+                    {fmtT(data.temp)} &deg;{temperatureUnit}
+                </strong>
             </div>
             <div style={rowStyle}>
                 <span style={{ color: '#aaa' }}>Dewpt:</span>
-                <strong style={{ color: '#69f0ae' }}>{data.dwpt?.toFixed(1) ?? '--'} &deg;C</strong>
+                <strong style={{ color: '#69f0ae' }}>
+                    {fmtT(data.dwpt)} &deg;{temperatureUnit}
+                </strong>
             </div>
             {data.rh != null && (
                 <div style={rowStyle}>
@@ -215,7 +227,8 @@ const skewTTooltipOverride = (data) => {
             <div style={rowStyle}>
                 <span style={{ color: '#aaa' }}>Wind:</span>
                 <strong>
-                    {data.wdir?.toFixed(0) ?? '--'}&deg; @ {data.twnd?.toFixed(0) ?? '--'} kts
+                    {data.wdir?.toFixed(0) ?? '--'}&deg; @{' '}
+                    {toWindUnit(data.twnd, windUnit)?.toFixed(0) ?? '--'} {windUnit}
                 </strong>
             </div>
 
@@ -239,7 +252,7 @@ const skewTTooltipOverride = (data) => {
 };
 
 // 2. Hodograph Render Prop Demo (Custom JSX based on data type)
-const hodoTooltipOverride = (data, type) => {
+const hodoTooltipOverride = (data, type, { windUnit = 'kts' } = {}) => {
     // Defensive check
     if (!data) return null;
 
@@ -274,7 +287,9 @@ const hodoTooltipOverride = (data, type) => {
                     </div>
                     <div style={rowStyle}>
                         <span style={{ color: '#aaa' }}>Spd:</span>
-                        <strong>{data.twnd?.toFixed(0) ?? '--'} kts</strong>
+                        <strong>
+                            {toWindUnit(data.twnd, windUnit)?.toFixed(0) ?? '--'} {windUnit}
+                        </strong>
                     </div>
                     <div style={rowStyle}>
                         <span style={{ color: '#aaa' }}>Dir:</span>
@@ -313,7 +328,9 @@ const hodoTooltipOverride = (data, type) => {
                     <div style={{ ...headerStyle, color: '#ef5350' }}>{title}</div>
                     <div style={rowStyle}>
                         <span style={{ color: '#aaa', marginRight: '12px' }}>Spd:</span>
-                        <strong>{data.mag?.toFixed(0) ?? '--'} kts</strong>
+                        <strong>
+                            {toWindUnit(data.mag, windUnit)?.toFixed(0) ?? '--'} {windUnit}
+                        </strong>
                     </div>
                     <div style={rowStyle}>
                         <span style={{ color: '#aaa' }}>Dir:</span>
@@ -342,6 +359,8 @@ const hodoTooltipOverride = (data, type) => {
 
 function App() {
     const [theme, setTheme] = useState('dark');
+    const [temperatureUnit, setTemperatureUnit] = useState('C');
+    const [windUnit, setWindUnit] = useState('kts');
     const [percentileInput, setPercentileInput] = useState('5, 25, 75, 95');
     const [timeIndex, setTimeIndex] = useState(0);
     const [selectedStat, setSelectedStat] = useState('sfcCAPE');
@@ -497,21 +516,47 @@ function App() {
         <div className="app-layout" data-theme={theme}>
             <header>
                 <h1>Welcome to Wizard Soundings!</h1>
-                <div className="theme-toggle" role="group" aria-label="Color theme">
-                    <button
-                        type="button"
-                        className={theme === 'light' ? 'active' : ''}
-                        onClick={() => setTheme('light')}
-                    >
-                        Light
-                    </button>
-                    <button
-                        type="button"
-                        className={theme === 'dark' ? 'active' : ''}
-                        onClick={() => setTheme('dark')}
-                    >
-                        Dark
-                    </button>
+                <div className="header-controls">
+                    <div className="theme-toggle" role="group" aria-label="Color theme">
+                        <button
+                            type="button"
+                            className={theme === 'light' ? 'active' : ''}
+                            onClick={() => setTheme('light')}
+                        >
+                            Light
+                        </button>
+                        <button
+                            type="button"
+                            className={theme === 'dark' ? 'active' : ''}
+                            onClick={() => setTheme('dark')}
+                        >
+                            Dark
+                        </button>
+                    </div>
+                    <div className="theme-toggle" role="group" aria-label="Temperature units">
+                        {['C', 'F'].map((unit) => (
+                            <button
+                                key={unit}
+                                type="button"
+                                className={temperatureUnit === unit ? 'active' : ''}
+                                onClick={() => setTemperatureUnit(unit)}
+                            >
+                                &deg;{unit}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="theme-toggle" role="group" aria-label="Wind units">
+                        {WIND_UNITS.map((unit) => (
+                            <button
+                                key={unit}
+                                type="button"
+                                className={windUnit === unit ? 'active' : ''}
+                                onClick={() => setWindUnit(unit)}
+                            >
+                                {unit}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </header>
             <main className="main-content">
@@ -802,7 +847,9 @@ function App() {
                         </label>
                         {rhVariable === 'rhCombo' && (
                             <label>
-                                RH (ice) at or below: {rhIceThreshold}&deg;C
+                                RH (ice) at or below:{' '}
+                                {toTemperatureUnit(rhIceThreshold, temperatureUnit).toFixed(0)}
+                                &deg;{temperatureUnit}
                                 <input
                                     type="range"
                                     min={-40}
@@ -868,6 +915,8 @@ function App() {
                                     onYAxisChange={setSkewTYAxis}
                                     config={{
                                         margin: SKEWT_MARGIN,
+                                        temperatureUnit,
+                                        windUnit,
                                         percentiles,
                                         traceVisibility,
                                         displayModes,
@@ -898,6 +947,7 @@ function App() {
                                     statsDictParam={stats}
                                     config={{
                                         legend: showHodoLegend,
+                                        windUnit,
                                         ...(useCustomTooltips
                                             ? { renderTooltip: hodoTooltipOverride }
                                             : {}),
@@ -912,6 +962,8 @@ function App() {
                                 statsDictParam={stats}
                                 selectedStat={selectedStat}
                                 onStatSelect={setSelectedStat}
+                                temperatureUnit={temperatureUnit}
+                                windUnit={windUnit}
                             />
                         </div>
                         <div>
@@ -931,6 +983,8 @@ function App() {
                                 curStat={selectedStat}
                                 config={{
                                     percentiles: boxPlotPercentiles,
+                                    temperatureUnit,
+                                    windUnit,
                                 }}
                             />
                         </div>

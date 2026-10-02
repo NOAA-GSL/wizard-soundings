@@ -1,31 +1,29 @@
 import React, { useMemo } from 'react';
-import * as d3 from 'd3';
+import { buildWindRings } from '../windUnits';
 import styles from './hodograph.module.css';
 
-function HodographBackground({ rScale, maxWind, ringConfig }) {
+function HodographBackground({ rScale, maxWind, ringConfig, windUnit = 'kts' }) {
     const { interval, labelInterval, units } = ringConfig;
 
-    const ringTicks = useMemo(() => d3.range(interval, maxWind + 1, interval), [interval, maxWind]);
-
-    const labelTicks = useMemo(
-        () => d3.range(interval, maxWind + 1, labelInterval),
-        [interval, maxWind, labelInterval],
+    const { rings, labels } = useMemo(
+        () => buildWindRings(maxWind, interval, labelInterval, windUnit),
+        [maxWind, interval, labelInterval, windUnit],
     );
 
     return (
         <g className={styles.grid}>
-            {ringTicks.map((tick) => (
-                <circle key={tick} cx={0} cy={0} r={rScale(tick)} className={styles.rings} />
+            {rings.map(({ kts, value }) => (
+                <circle key={value} cx={0} cy={0} r={rScale(kts)} className={styles.rings} />
             ))}
-            {labelTicks.map((tick) => (
+            {labels.map(({ kts, value }) => (
                 <text
-                    key={`label-${tick}`}
+                    key={`label-${value}`}
                     x={0}
-                    y={rScale(tick)}
+                    y={rScale(kts)}
                     dy="0.9em"
                     className={styles.labels}
                 >
-                    {tick}
+                    {value}
                     {units}
                 </text>
             ))}

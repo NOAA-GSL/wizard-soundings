@@ -4,6 +4,8 @@ import useContainerDimensions from '../utilities/useContainerDimensions';
 import useZoomHandler from '../utilities/useZoomHandler';
 import ChartTooltip from '../utilities/tooltip';
 import { math } from '../Utilities';
+import { toTemperatureUnit } from '../temperatureUnits';
+import { toWindUnit } from '../windUnits';
 import SkewTBackground from './skewtBackground';
 import SkewTBoxWhisker from './skewtBoxWhisker';
 import WindBarb from './windBarb';
@@ -67,6 +69,10 @@ const DEFAULT_CONFIG = {
         max: 5,
     },
     renderTooltip: null,
+    // Display unit for labels and readouts; data and minT/maxT/isotherm bounds stay in deg C
+    temperatureUnit: 'C',
+    // Display unit for the wind readout; wind barbs stay in kts
+    windUnit: 'kts',
     pblDepth: DEFAULT_PBL_DEPTH_CONFIG,
     momentumTransfer: DEFAULT_MOMENTUM_TRANSFER_CONFIG,
     // Axis titles; units are display text only (data must be in deg C and hPa/mb)
@@ -110,12 +116,15 @@ export function filterWindBarbs(profile, topP, baseP) {
 }
 
 // Renders default tooltip content for the SkewT.
-function SkewTTooltipContent({ data, colors, traceVisibility }) {
+function SkewTTooltipContent({ data, colors, traceVisibility, temperatureUnit, windUnit }) {
     if (!data) return null;
 
     // Use math.convert for the height calculations
     const hghtMslFt = data.hght != null ? math.convert(data.hght, 'm', 'ft') : null;
     const hghtAglFt = data.hghtagl != null ? math.convert(data.hghtagl, 'm', 'ft') : null;
+    const fmtT = (value) =>
+        typeof value === 'number' ? toTemperatureUnit(value, temperatureUnit).toFixed(1) : '--';
+    const unit = `\u00b0${temperatureUnit}`;
 
     return (
         <>
@@ -123,18 +132,26 @@ function SkewTTooltipContent({ data, colors, traceVisibility }) {
                 <strong>{data.press?.toFixed(0) ?? '--'} hPa</strong>
             </div>
             {traceVisibility.temp && (
-                <div style={{ color: colors.temp }}>T: {data.temp?.toFixed(1) ?? '--'} &deg;C</div>
+                <div style={{ color: colors.temp }}>
+                    T: {fmtT(data.temp)} {unit}
+                </div>
             )}
             {traceVisibility.dwpt && (
-                <div style={{ color: colors.dwpt }}>Td: {data.dwpt?.toFixed(1) ?? '--'} &deg;C</div>
+                <div style={{ color: colors.dwpt }}>
+                    Td: {fmtT(data.dwpt)} {unit}
+                </div>
             )}
             {traceVisibility.wetb && (
                 <div style={{ color: colors.wetb }}>
-                    Tw: {typeof data.wetb === 'number' ? data.wetb.toFixed(1) : '--'} &deg;C
+                    Tw: {fmtT(data.wetb)} {unit}
                 </div>
             )}
             {data.uwnd != null && (
-                <div>Wind: {Math.round(Math.sqrt(data.uwnd ** 2 + data.vwnd ** 2))} kts</div>
+                <div>
+                    Wind:{' '}
+                    {Math.round(toWindUnit(Math.sqrt(data.uwnd ** 2 + data.vwnd ** 2), windUnit))}{' '}
+                    {windUnit}
+                </div>
             )}
             {data.rh != null && <div>RH: {data.rh.toFixed(0)}%</div>}
             <div>
@@ -202,7 +219,16 @@ export default function SkewT({
             ...config,
             colors: { ...DEFAULT_CONFIG.colors, ...config.colors },
             axisLabels: { ...DEFAULT_CONFIG.axisLabels, ...config.axisLabels },
-            units: { ...DEFAULT_CONFIG.units, ...config.units },
+            units: {
+                ...DEFAULT_CONFIG.units,
+                temperature: (
+                    config.temperatureUnit ?? DEFAULT_CONFIG.temperatureUnit
+                ).toUpperCase(),
+                ...config.units,
+            },
+            temperatureUnit: (
+                config.temperatureUnit ?? DEFAULT_CONFIG.temperatureUnit
+            ).toUpperCase(),
             pblDepth: { ...DEFAULT_PBL_DEPTH_CONFIG, ...config.pblDepth },
             momentumTransfer: { ...DEFAULT_MOMENTUM_TRANSFER_CONFIG, ...config.momentumTransfer },
         }),
@@ -758,12 +784,17 @@ export default function SkewT({
                                 // If the user provided a custom render function, use it.
                                 // Otherwise, fall back to the default component.
                                 settings.renderTooltip ? (
-                                    settings.renderTooltip(hoverInfo.data)
+                                    settings.renderTooltip(hoverInfo.data, {
+                                        temperatureUnit: settings.temperatureUnit,
+                                        windUnit: settings.windUnit,
+                                    })
                                 ) : (
                                     <SkewTTooltipContent
                                         data={hoverInfo.data}
                                         colors={settings.colors}
                                         traceVisibility={traceVisibility}
+                                        temperatureUnit={settings.temperatureUnit}
+                                        windUnit={settings.windUnit}
                                     />
                                 )
                             }

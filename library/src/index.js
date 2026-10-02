@@ -9,6 +9,8 @@ import HodographLegend, { DEFAULT_HODOGRAPH_SEGMENTS } from './hodograph/Hodogra
 import SkewT from './skewt/SkewT';
 import BoxPlot from './statsTable/boxplot';
 import TallGraph from './tallGraph/TallGraph';
+import { toTemperatureUnit, fromTemperatureUnit, TEMPERATURE_STAT_KEYS } from './temperatureUnits';
+import { toWindUnit, fromWindUnit, WIND_STAT_KEYS, WIND_UNITS } from './windUnits';
 
 export {
     sharpStats,
@@ -22,4 +24,11 @@ export {
     SkewT,
     BoxPlot,
     TallGraph,
+    toTemperatureUnit,
+    fromTemperatureUnit,
+    TEMPERATURE_STAT_KEYS,
+    toWindUnit,
+    fromWindUnit,
+    WIND_STAT_KEYS,
+    WIND_UNITS,
 };

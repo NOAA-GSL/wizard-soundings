@@ -101,6 +101,11 @@ header h1 {
     font-size: 1.2rem;
 }
 
+.header-controls {
+    display: flex;
+    gap: 8px;
+}
+
 .theme-toggle {
     display: inline-flex;
     border: 1px solid var(--panel-border);
