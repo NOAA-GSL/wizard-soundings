@@ -18,6 +18,7 @@ body {
     --muted-text: #aaaaaa;
     --table-muted-text: #9f9f9f;
     --viz-bg: #ffffff;
+    --viz-border: #000000;
     --library-bg: #222222;
     --library-text: #ffffff;
     --library-border: #ffffff;
@@ -33,7 +34,7 @@ body {
     --ws-hodograph-legend-border: #555555;
     --ws-stats-bg: var(--library-bg);
     --ws-stats-text: var(--library-text);
-    --ws-stats-border: var(--library-border);
+    --ws-stats-border: var(--ws-hodograph-ring-color);
     --ws-stats-selected-bg: rgba(100, 180, 255, 0.3);
     --ws-stats-selected-outline: rgb(100, 180, 255);
     --ws-stats-selected-text: var(--library-text);
@@ -75,7 +76,7 @@ body {
     --ws-hodograph-legend-border: var(--library-border);
     --ws-stats-bg: var(--library-bg);
     --ws-stats-text: var(--library-text);
-    --ws-stats-border: var(--library-border);
+    --ws-stats-border: var(--ws-hodograph-ring-color);
     --ws-stats-selected-bg: rgba(31, 119, 180, 0.2);
     --ws-stats-selected-outline: rgb(31, 119, 180);
     --ws-stats-selected-text: var(--library-text);
@@ -135,7 +136,7 @@ header h1 {
 
 .main-content {
     display: grid;
-    grid-template-columns: 360px 1fr;
+    grid-template-columns: 360px minmax(0, 1fr);
     flex: 1;
     min-height: 0;
     overflow: hidden;
@@ -145,6 +146,7 @@ header h1 {
     overflow-y: auto;
     padding: 10px;
     min-height: 0;
+    min-width: 0;
 }
 
 .settings-sidebar {
@@ -297,24 +299,34 @@ div.rollover.selected {
 
 /* SoundingContainer styles */
 .sounding-dashboard {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 8px;
     width: 100%;
+    height: 100%;
+    min-height: 0;
 }
 
 .viz-grid {
     display: grid;
-    grid-template-columns: 2fr 160px 1fr;
+    grid-template-columns: minmax(0, 2fr) 160px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     gap: 15px;
-    height: 850px; /* This is the "Anchor" height */
-    overflow: hidden; /* Prevents children from pushing the grid open */
+    min-height: 0;
+    overflow: hidden;
+}
+
+.viz-item,
+.boxplot-wrapper {
+    background: var(--library-bg);
+    border: 1px solid var(--viz-border);
+    box-sizing: border-box;
 }
 
 .viz-item {
-    background: var(--viz-bg);
-    border: 1px solid var(--panel-border);
     position: relative; /* Essential for ResizeObserver accuracy */
+    min-width: 0;
+    min-height: 0;
     width: 100%;
     height: 100%;
     overflow: hidden;
@@ -334,19 +346,88 @@ div.rollover.selected {
     display: block;
 }
 
+.hodo-column {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 8px;
+    min-width: 0;
+    min-height: 0;
+}
+
+.boxplot-wrapper {
+    min-width: 0;
+    padding: 6px 8px 0;
+}
+
 .table-wrapper {
     width: 100%;
+    min-width: 0;
+    padding: 10px;
+    border: 0;
     overflow-x: auto;
+}
+
+.table-wrapper .ws-stats-table {
+    padding: 0;
+}
+
+.table-wrapper .ws-stats-table > div:first-child {
+    border: 0;
+}
+
+.table-wrapper .ws-stats-table table {
+    font-size: 0.75rem;
+}
+
+.table-wrapper .ws-stats-table table:first-child:not(:only-child) tr:last-child > * {
+    padding-bottom: 6px;
+}
+
+.table-wrapper .ws-stats-table table + table tr:first-child > * {
+    padding-top: 6px;
+}
+
+#boxwhiskertitle {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    font-size: 0.8rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+#boxwhiskertitle p {
+    margin: 0;
+    font-size: 0.7rem;
 }
 
 /* Responsive adjustment: Stack on small screens */
 @media (max-width: 1000px) {
+    .app-layout {
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+    }
+    header,
+    .header-controls {
+        flex-wrap: wrap;
+    }
     .main-content {
         grid-template-columns: 1fr;
+        overflow: visible;
+    }
+    .sounding-dashboard {
+        height: auto;
+        grid-template-rows: auto auto;
+    }
+    .settings-sidebar,
+    .display-area {
+        overflow: visible;
     }
     .viz-grid {
         grid-template-columns: 1fr;
-        height: auto;
+        grid-template-rows: auto;
     }
     .skewt-wrapper,
     .tallgraph-wrapper {
@@ -354,5 +435,8 @@ div.rollover.selected {
     }
     .hodo-wrapper {
         height: 400px;
+    }
+    .hodo-column {
+        grid-template-rows: 400px auto;
     }
 }

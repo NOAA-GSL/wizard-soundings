@@ -130,6 +130,61 @@ const MT_STAT_OPTIONS = [
     { value: '100%', label: 'Max' },
 ];
 
+const STAT_LABELS = {
+    sfcCAPE: 'SFC CAPE',
+    sfcCINH: 'SFC CINH',
+    sfcLCL: 'SFC LCL',
+    sfcLI: 'SFC LI',
+    sfcLFC: 'SFC LFC',
+    sfcEL: 'SFC EL',
+    mlCAPE: 'ML CAPE',
+    mlCINH: 'ML CINH',
+    mlLCL: 'ML LCL',
+    mlLI: 'ML LI',
+    mlLFC: 'ML LFC',
+    mlEL: 'ML EL',
+    muCAPE: 'MU CAPE',
+    muCINH: 'MU CINH',
+    muLCL: 'MU LCL',
+    muLI: 'MU LI',
+    muLFC: 'MU LFC',
+    muEL: 'MU EL',
+    pw: 'Precipitable Water (PW)',
+    kIndex: 'K Index',
+    wndg: 'WNDG',
+    meanMR: 'Mean Mixing Ratio',
+    tTotals: 'Total Totals',
+    tei: 'TEI',
+    lowRH: 'Low-level RH',
+    midRH: 'Mid-level RH',
+    cTemp: 'Convective Temperature',
+    mlcape3: 'ML 0-3 km CAPE',
+    maxT: 'Maximum Temperature',
+    mburst: 'Microburst',
+    dcape: 'DCAPE',
+    esp: 'ESP',
+    mmp: 'MMP',
+    sigsvr: 'Significant Severe',
+    momentumTransferMag: 'Mean Momentum Transfer',
+    momentumTransferMagMax: 'Max Momentum Transfer',
+    pblDepth: 'PBL Top',
+    right_srh1km: 'SFC-1 km SRH',
+    right_srh3km: 'SFC-3 km SRH',
+    right_srheff: 'Effective Inflow SRH',
+    right_srh6km: 'SFC-6 km SRH',
+    right_srh8km: 'SFC-8 km SRH',
+    right_srhlclel: 'LCL-EL SRH',
+    right_srhebwd: 'Effective Shear Layer SRH',
+    sfc1kmshr: 'SFC-1 km Shear',
+    sfc3kmshr: 'SFC-3 km Shear',
+    effshr: 'Effective Inflow Shear',
+    sfc6kmshr: 'SFC-6 km Shear',
+    sfc8kmshr: 'SFC-8 km Shear',
+    ellclshr: 'LCL-EL Shear',
+    ebwdshr: 'Effective Shear',
+    brnShear: 'BRN Shear',
+};
+
 function formatTime(timestamp) {
     const d = new Date(timestamp);
     return d.toLocaleString(undefined, {
@@ -941,51 +996,56 @@ function App() {
                                     config={tallGraphConfig}
                                 />
                             </div>
-                            <div className="viz-item hodo-wrapper">
-                                <Hodograph
-                                    soundingParam={soundingData}
-                                    statsDictParam={stats}
-                                    config={{
-                                        legend: showHodoLegend,
-                                        windUnit,
-                                        ...(useCustomTooltips
-                                            ? { renderTooltip: hodoTooltipOverride }
-                                            : {}),
-                                    }}
-                                />
+                            <div className="hodo-column">
+                                <div className="viz-item hodo-wrapper">
+                                    <Hodograph
+                                        soundingParam={soundingData}
+                                        statsDictParam={stats}
+                                        config={{
+                                            legend: showHodoLegend,
+                                            windUnit,
+                                            ...(useCustomTooltips
+                                                ? { renderTooltip: hodoTooltipOverride }
+                                                : {}),
+                                        }}
+                                    />
+                                </div>
+                                <div className="boxplot-wrapper">
+                                    <div id="boxwhiskertitle">
+                                        <strong aria-live="polite">
+                                            {STAT_LABELS[selectedStat] ?? selectedStat}
+                                        </strong>
+                                        <p>
+                                            {`Box Whiskers: ${ordinalSuffixOf(boxPlotPercentiles.whiskers[0])}, ${ordinalSuffixOf(
+                                                boxPlotPercentiles.boxes[0],
+                                            )}, ${ordinalSuffixOf(boxPlotPercentiles.boxes[1])}, & ${ordinalSuffixOf(
+                                                boxPlotPercentiles.whiskers[1],
+                                            )}`}
+                                        </p>
+                                    </div>
+                                    <BoxPlot
+                                        statsDictParam={derivedData}
+                                        curStat={selectedStat}
+                                        config={{
+                                            height: 72,
+                                            margin: { top: 8, right: 40, bottom: 26, left: 30 },
+                                            percentiles: boxPlotPercentiles,
+                                            temperatureUnit,
+                                            windUnit,
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </div>
 
                         {/* Bottom Section: Data Table */}
-                        <div className="table-wrapper">
+                        <div className="viz-item table-wrapper">
                             <StatsTable
                                 statsDictParam={stats}
                                 selectedStat={selectedStat}
                                 onStatSelect={setSelectedStat}
                                 temperatureUnit={temperatureUnit}
                                 windUnit={windUnit}
-                            />
-                        </div>
-                        <div>
-                            <div id="boxwhiskertitle">
-                                <div className="linkColor">Box Whiskers:</div>
-
-                                <p>
-                                    {`${ordinalSuffixOf(boxPlotPercentiles.whiskers[0])}, ${ordinalSuffixOf(
-                                        boxPlotPercentiles.boxes[0],
-                                    )}, ${ordinalSuffixOf(boxPlotPercentiles.boxes[1])}, & ${ordinalSuffixOf(
-                                        boxPlotPercentiles.whiskers[1],
-                                    )}`}
-                                </p>
-                            </div>
-                            <BoxPlot
-                                statsDictParam={derivedData}
-                                curStat={selectedStat}
-                                config={{
-                                    percentiles: boxPlotPercentiles,
-                                    temperatureUnit,
-                                    windUnit,
-                                }}
                             />
                         </div>
                     </div>
