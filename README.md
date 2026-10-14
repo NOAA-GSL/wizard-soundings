@@ -73,3 +73,4 @@ Library usage documentation is available in [docs/](docs/):
 - [Hodograph component usage](docs/hodograph.md)
 - [StatsTable component usage](docs/stats-table.md)
 - [BoxPlot component usage](docs/boxplot.md)
+- [TallGraph component usage (RH / omega)](docs/tall-graph.md)

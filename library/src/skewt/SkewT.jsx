@@ -1,13 +1,21 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import * as d3 from 'd3';
-import sharp from '../Sharp';
 import useContainerDimensions from '../utilities/useContainerDimensions';
 import useZoomHandler from '../utilities/useZoomHandler';
 import ChartTooltip from '../utilities/tooltip';
 import { math } from '../Utilities';
+import { toTemperatureUnit } from '../temperatureUnits';
+import { toWindUnit } from '../windUnits';
 import SkewTBackground from './skewtBackground';
 import SkewTBoxWhisker from './skewtBoxWhisker';
 import WindBarb from './windBarb';
+import PblMomentumOverlay from './pblMomentumOverlay';
+import {
+    computePblMomentumMarkers,
+    DEFAULT_MOMENTUM_TRANSFER_CONFIG,
+    DEFAULT_PBL_DEPTH_CONFIG,
+    interpolateAtPressure,
+} from './pblMomentum';
 import { computeMeanProfile } from './meanProfile';
 import { getPrimaryParcelMeanProfile, getSelectedParcelTraceSets } from './parcelTrace';
 import {
@@ -24,7 +32,7 @@ import styles from './skewt.module.css';
 
 const DEFAULT_CONFIG = {
     // Canvas settings
-    margin: { top: 20, right: 40, bottom: 30, left: 30 },
+    margin: { top: 20, right: 40, bottom: 50, left: 60 },
     // Pressure bounds (hPa)
     baseP: 1050,
     topP: 100,
@@ -61,7 +69,30 @@ const DEFAULT_CONFIG = {
         max: 5,
     },
     renderTooltip: null,
+    // Display unit for labels and readouts; data and minT/maxT/isotherm bounds stay in deg C
+    temperatureUnit: 'C',
+    // Display unit for the wind readout; wind barbs stay in kts
+    windUnit: 'kts',
+    pblDepth: DEFAULT_PBL_DEPTH_CONFIG,
+    momentumTransfer: DEFAULT_MOMENTUM_TRANSFER_CONFIG,
+    // Axis titles; units are display text only (data must be in deg C and hPa/mb)
+    axisLabels: { x: 'Temperature', y: 'Pressure' },
+    units: { temperature: 'C', pressure: 'mb' },
 };
+
+const X_TITLE_OFFSET = 28;
+const Y_TITLE_OFFSET = 56;
+
+export function formatSkewTAxisTitles({ axisLabels = {}, units = {} } = {}) {
+    const format = (label, unit) => {
+        if (!label) return null;
+        return unit ? `${label} (${unit})` : label;
+    };
+    return {
+        x: format(axisLabels.x, units.temperature),
+        y: format(axisLabels.y, units.pressure),
+    };
+}
 
 /*--------------------------------*/
 /* --- Sub-Components ----------- */
@@ -71,11 +102,12 @@ function getSkewX(temp, press, xScale, yScale, tanAlpha, baseY) {
     return xScale(temp) + (baseY - yScale(press)) / tanAlpha;
 }
 
-function filterWindBarbs(profile, topP, baseP) {
+export function filterWindBarbs(profile, topP, baseP) {
     if (!profile) return [];
+    // Index 0 is the surface level (u10/v10); its pressure is rarely a multiple of 50.
     return profile.filter(
-        (d) =>
-            (Math.round(d.press) % 50 === 0 || Math.round(d.press) === 1000) &&
+        (d, i) =>
+            (i === 0 || d.sfcflag || Math.round(d.press) % 50 === 0) &&
             d.uwnd != null &&
             d.vwnd != null &&
             d.press >= topP &&
@@ -84,16 +116,15 @@ function filterWindBarbs(profile, topP, baseP) {
 }
 
 // Renders default tooltip content for the SkewT.
-function SkewTTooltipContent({ data, colors, traceVisibility }) {
+function SkewTTooltipContent({ data, colors, traceVisibility, temperatureUnit, windUnit }) {
     if (!data) return null;
-
-    // Use sharp.rh to calculate Relative Humidity (returns an array)
-    const rhArray = sharp.rh([data.press], [data.temp], [data.dwpt]);
-    const rh = rhArray && rhArray.length > 0 ? rhArray[0] : null;
 
     // Use math.convert for the height calculations
     const hghtMslFt = data.hght != null ? math.convert(data.hght, 'm', 'ft') : null;
     const hghtAglFt = data.hghtagl != null ? math.convert(data.hghtagl, 'm', 'ft') : null;
+    const fmtT = (value) =>
+        typeof value === 'number' ? toTemperatureUnit(value, temperatureUnit).toFixed(1) : '--';
+    const unit = `\u00b0${temperatureUnit}`;
 
     return (
         <>
@@ -101,20 +132,28 @@ function SkewTTooltipContent({ data, colors, traceVisibility }) {
                 <strong>{data.press?.toFixed(0) ?? '--'} hPa</strong>
             </div>
             {traceVisibility.temp && (
-                <div style={{ color: colors.temp }}>T: {data.temp?.toFixed(1) ?? '--'} &deg;C</div>
+                <div style={{ color: colors.temp }}>
+                    T: {fmtT(data.temp)} {unit}
+                </div>
             )}
             {traceVisibility.dwpt && (
-                <div style={{ color: colors.dwpt }}>Td: {data.dwpt?.toFixed(1) ?? '--'} &deg;C</div>
+                <div style={{ color: colors.dwpt }}>
+                    Td: {fmtT(data.dwpt)} {unit}
+                </div>
             )}
             {traceVisibility.wetb && (
                 <div style={{ color: colors.wetb }}>
-                    Tw: {typeof data.wetb === 'number' ? data.wetb.toFixed(1) : '--'} &deg;C
+                    Tw: {fmtT(data.wetb)} {unit}
                 </div>
             )}
             {data.uwnd != null && (
-                <div>Wind: {Math.round(Math.sqrt(data.uwnd ** 2 + data.vwnd ** 2))} kts</div>
+                <div>
+                    Wind:{' '}
+                    {Math.round(toWindUnit(Math.sqrt(data.uwnd ** 2 + data.vwnd ** 2), windUnit))}{' '}
+                    {windUnit}
+                </div>
             )}
-            {rh != null && <div>RH: {rh.toFixed(0)}%</div>}
+            {data.rh != null && <div>RH: {data.rh.toFixed(0)}%</div>}
             <div>
                 Hght (MSL): {data.hght?.toFixed(0) ?? '--'} m / {hghtMslFt?.toFixed(0) ?? '--'} ft
             </div>
@@ -136,6 +175,7 @@ export default function SkewT({
     className = 'skewt-container',
     sx = {},
     percentiles,
+    onYAxisChange,
 }) {
     // --- Dimensions and Setup ---
     const [containerRef, dimensions] = useContainerDimensions();
@@ -178,9 +218,23 @@ export default function SkewT({
             ...DEFAULT_CONFIG,
             ...config,
             colors: { ...DEFAULT_CONFIG.colors, ...config.colors },
+            axisLabels: { ...DEFAULT_CONFIG.axisLabels, ...config.axisLabels },
+            units: {
+                ...DEFAULT_CONFIG.units,
+                temperature: (
+                    config.temperatureUnit ?? DEFAULT_CONFIG.temperatureUnit
+                ).toUpperCase(),
+                ...config.units,
+            },
+            temperatureUnit: (
+                config.temperatureUnit ?? DEFAULT_CONFIG.temperatureUnit
+            ).toUpperCase(),
+            pblDepth: { ...DEFAULT_PBL_DEPTH_CONFIG, ...config.pblDepth },
+            momentumTransfer: { ...DEFAULT_MOMENTUM_TRANSFER_CONFIG, ...config.momentumTransfer },
         }),
         [config],
     );
+    const axisTitles = useMemo(() => formatSkewTAxisTitles(settings), [settings]);
 
     const parcelTraceSets = useMemo(
         () => getSelectedParcelTraceSets(statsDictParam, config),
@@ -249,7 +303,35 @@ export default function SkewT({
     }, [dimensions.width, dimensions.height, settings]);
 
     // Zoom Logic
-    const [zoomRefCallback, transformState] = useZoomHandler(dimensions, settings.zoom);
+    const [zoomRefCallback, transformState, zoomControls] = useZoomHandler(
+        dimensions,
+        settings.zoom,
+    );
+
+    // Share the pressure axis layout so companion plots (e.g. TallGraph) can align and follow zoom.
+    const hasScales = Boolean(scales.yScale);
+    useEffect(() => {
+        if (!onYAxisChange || !hasScales) return;
+        onYAxisChange({
+            baseP: settings.baseP,
+            topP: settings.topP,
+            offsetY: scales.offsetY,
+            innerH: scales.innerH,
+            transform: { k: transformState.k, y: transformState.y },
+            zoomBy: zoomControls.zoomBy,
+            panBy: zoomControls.panBy,
+        });
+    }, [
+        onYAxisChange,
+        zoomControls,
+        hasScales,
+        scales.offsetY,
+        scales.innerH,
+        settings.baseP,
+        settings.topP,
+        transformState.k,
+        transformState.y,
+    ]);
 
     // --- Data Preparation ---
     const { memberProfiles, memberBarbs } = useMemo(() => {
@@ -275,6 +357,27 @@ export default function SkewT({
 
         return { computedMeanProfile: profile, computedMeanBarbs: barbs };
     }, [memberProfiles, settings]);
+
+    const pblMomentumMarkers = useMemo(() => {
+        if (!statsDictParam) return null;
+        if (!settings.pblDepth.enabled && !settings.momentumTransfer.enabled) return null;
+        return computePblMomentumMarkers({
+            pblDepth: statsDictParam.pblDepth,
+            momentumTransferVector: statsDictParam.momentumTransferVector,
+            momentumTransferVectorMax: statsDictParam.momentumTransferVectorMax,
+            percentiles: resolvedPercentiles,
+            stat: settings.momentumTransfer.stat,
+            surfacePress: computedMeanProfile?.length
+                ? Math.max(...computedMeanProfile.map((d) => d.press).filter(Number.isFinite))
+                : undefined,
+        });
+    }, [
+        statsDictParam,
+        settings.pblDepth,
+        settings.momentumTransfer,
+        resolvedPercentiles,
+        computedMeanProfile,
+    ]);
 
     const traceConfigs = useMemo(
         () =>
@@ -486,6 +589,25 @@ export default function SkewT({
                                 transformString={transformString}
                                 transformState={transformState}
                             />
+                            <g className={styles.axisTitle} pointerEvents="none">
+                                {axisTitles.x && (
+                                    <text
+                                        x={scales.innerW / 2}
+                                        y={scales.innerH + X_TITLE_OFFSET}
+                                        textAnchor="middle"
+                                    >
+                                        {axisTitles.x}
+                                    </text>
+                                )}
+                                {axisTitles.y && (
+                                    <text
+                                        transform={`translate(${-Y_TITLE_OFFSET}, ${scales.innerH / 2}) rotate(-90)`}
+                                        textAnchor="middle"
+                                    >
+                                        {axisTitles.y}
+                                    </text>
+                                )}
+                            </g>
                             <g clipPath="url(#skewt-chart-area)" pointerEvents="none">
                                 <g transform={transformString}>
                                     {plumeTraceConfigs.flatMap((config) =>
@@ -626,6 +748,30 @@ export default function SkewT({
                                     )}
                                 </g>
                             }
+                            <g clipPath="url(#skewt-barb-area)">
+                                <PblMomentumOverlay
+                                    markers={pblMomentumMarkers}
+                                    toY={(p) =>
+                                        transformState.k * scales.yScale(p) + transformState.y
+                                    }
+                                    toBarbX={(p) => {
+                                        const temp = interpolateAtPressure(computedMeanProfile, p);
+                                        if (temp == null) return null;
+                                        const skewX = getSkewX(
+                                            temp,
+                                            p,
+                                            scales.xScale,
+                                            scales.yScale,
+                                            scales.tanAlpha,
+                                            scales.baseY,
+                                        );
+                                        return transformState.k * skewX + (transformState.x || 0);
+                                    }}
+                                    pblX={scales.innerW - 70}
+                                    pblConfig={settings.pblDepth}
+                                    mtConfig={settings.momentumTransfer}
+                                />
+                            </g>
                         </g>
                     </svg>
 
@@ -638,12 +784,17 @@ export default function SkewT({
                                 // If the user provided a custom render function, use it.
                                 // Otherwise, fall back to the default component.
                                 settings.renderTooltip ? (
-                                    settings.renderTooltip(hoverInfo.data)
+                                    settings.renderTooltip(hoverInfo.data, {
+                                        temperatureUnit: settings.temperatureUnit,
+                                        windUnit: settings.windUnit,
+                                    })
                                 ) : (
                                     <SkewTTooltipContent
                                         data={hoverInfo.data}
                                         colors={settings.colors}
                                         traceVisibility={traceVisibility}
+                                        temperatureUnit={settings.temperatureUnit}
+                                        windUnit={settings.windUnit}
                                     />
                                 )
                             }

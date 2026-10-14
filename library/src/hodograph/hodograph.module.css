@@ -79,17 +79,43 @@
 }
 
 .legend {
-    position: absolute;
-    top: 10px;
-    left: 10px;
     padding: 8px;
     border-radius: 4px;
     border: 1px solid var(--ws-hodograph-legend-border, #000);
     font-size: 12px;
     color: var(--ws-hodograph-legend-text, black);
     background-color: var(--ws-hodograph-legend-bg, transparent);
-    pointer-events: none;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.legendOverlay {
+    position: absolute;
+    pointer-events: none;
+}
+
+.legendTopLeft {
+    top: 10px;
+    left: 10px;
+}
+
+.legendTopRight {
+    top: 10px;
+    right: 10px;
+}
+
+.legendBottomLeft {
+    bottom: 10px;
+    left: 10px;
+}
+
+.legendBottomRight {
+    bottom: 10px;
+    right: 10px;
+}
+
+.legendTitle {
+    display: block;
+    margin-bottom: 4px;
 }
 
 .legendItem {

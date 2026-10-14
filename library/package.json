@@ -3,7 +3,11 @@
     "publishConfig": {
         "access": "public"
     },
+<<<<<<< HEAD
     "version": "1.0.2",
+=======
+    "version": "0.0.0",
+>>>>>>> 3e319e2f30d0cfb4fb1fbbef077780123e42ceb7
     "description": "An extension of D3 that visualizes upper-air soundings.",
     "type": "module",
     "license": "Apache-2.0",

@@ -5,6 +5,8 @@ import useZoomHandler from '../utilities/useZoomHandler';
 import ChartTooltip from '../utilities/tooltip';
 import { computeMeanProfile } from '../skewt/meanProfile';
 import HodographBackground from './hodographBackground';
+import HodographLegend, { DEFAULT_HODOGRAPH_SEGMENTS } from './HodographLegend';
+import { toWindUnit } from '../windUnits';
 import styles from './hodograph.module.css';
 
 /*-------------------------------*/
@@ -12,22 +14,26 @@ import styles from './hodograph.module.css';
 /*-------------------------------*/
 
 const DEFAULT_CONFIG = {
-    // Max wind speed for scaling
+    // Max wind speed for scaling (kts)
     margin: 25,
     maxWind: 80,
-    // Ring settings for background grid
+    // Display unit for ring labels and readouts; data and maxWind stay in kts
+    windUnit: 'kts',
+    // Ring settings for background grid (interval/labelInterval in windUnit)
     rings: {
         interval: 10,
         labelInterval: 20,
-        units: 'kts',
     },
     // Altitude Segments for Mean Line
-    segments: [
-        { maxHeight: 1000, color: 'red', label: '0-1 km' },
-        { maxHeight: 3000, color: 'orange', label: '1-3 km' },
-        { maxHeight: 6000, color: 'purple', label: '3-6 km' },
-        { maxHeight: Infinity, color: 'blue', label: '>6 km' },
-    ],
+    segments: DEFAULT_HODOGRAPH_SEGMENTS,
+    // Built-in legend overlay; set to false to hide
+    legend: {
+        enabled: true,
+        position: 'top-left',
+        title: 'Mean Wind',
+        className: '',
+        sx: {},
+    },
     // Zoom settings
     zoom: {
         enabled: true,
@@ -35,6 +41,13 @@ const DEFAULT_CONFIG = {
         max: 10,
     },
     renderTooltip: null,
+};
+
+const LEGEND_POSITION_CLASSES = {
+    'top-left': 'legendTopLeft',
+    'top-right': 'legendTopRight',
+    'bottom-left': 'legendBottomLeft',
+    'bottom-right': 'legendBottomRight',
 };
 
 // Helper to split the mean line into colored altitude segments
@@ -75,8 +88,10 @@ function getCartesianCoords(wdir, twnd, rScale) {
 }
 
 // Renders default tooltip content for the Hodograph based on data type.
-function HodographTooltipContent({ data, type }) {
+function HodographTooltipContent({ data, type, windUnit }) {
     if (!data) return null;
+    const fmtSpd = (value) =>
+        Number.isFinite(value) ? toWindUnit(value, windUnit).toFixed(0) : '--';
 
     switch (type) {
         case 'datapoint':
@@ -86,7 +101,9 @@ function HodographTooltipContent({ data, type }) {
                         <strong>Wind Level</strong>
                     </div>
                     <div>Height: {data.hght?.toFixed(0) ?? '--'} m</div>
-                    <div>Spd: {data.twnd?.toFixed(0) ?? '--'} kts</div>
+                    <div>
+                        Spd: {fmtSpd(data.twnd)} {windUnit}
+                    </div>
                     <div>Dir: {data.wdir?.toFixed(0) ?? '--'}°</div>
                 </>
             );
@@ -102,7 +119,9 @@ function HodographTooltipContent({ data, type }) {
                     <div>
                         <b>{title}</b>
                     </div>
-                    <div>Spd: {data.mag?.toFixed(0) ?? '--'} kts</div>
+                    <div>
+                        Spd: {fmtSpd(data.mag)} {windUnit}
+                    </div>
                     <div>Dir: {data.drx?.toFixed(0) ?? '--'}°</div>
                 </>
             );
@@ -130,8 +149,16 @@ export default function Hodograph({
         () => ({
             ...DEFAULT_CONFIG,
             ...config,
-            rings: { ...DEFAULT_CONFIG.rings, ...config.rings },
+            rings: {
+                ...DEFAULT_CONFIG.rings,
+                units: config.windUnit ?? DEFAULT_CONFIG.windUnit,
+                ...config.rings,
+            },
             zoom: { ...DEFAULT_CONFIG.zoom, ...config.zoom },
+            legend:
+                typeof config.legend === 'boolean'
+                    ? { ...DEFAULT_CONFIG.legend, enabled: config.legend }
+                    : { ...DEFAULT_CONFIG.legend, ...config.legend },
         }),
         [config],
     );
@@ -224,7 +251,6 @@ export default function Hodograph({
                                 width={minDim}
                                 height={minDim}
                                 fill="transparent"
-                                stroke="black"
                                 style={{ touchAction: 'none' }}
                             />
                             <g clipPath="url(#hodo-chart-area)" style={{ pointerEvents: 'none' }}>
@@ -235,6 +261,7 @@ export default function Hodograph({
                                                 rScale={rScale}
                                                 maxWind={settings.maxWind}
                                                 ringConfig={settings.rings}
+                                                windUnit={settings.windUnit}
                                             />
                                         )}
 
@@ -325,20 +352,21 @@ export default function Hodograph({
                         </g>
                     </svg>
 
-                    {/* Legend */}
-                    <div className={styles.legend}>
-                        <strong style={{ display: 'block', marginBottom: '4px' }}>Mean Wind</strong>
-                        {settings.segments.map((item, i) => (
-                            <div className={styles.legendItem} key={i}>
-                                {/* The Color Box */}
-                                <span
-                                    className={styles.legendColorBox}
-                                    style={{ backgroundColor: item.color }}
-                                />
-                                <span>{item.label}</span>
-                            </div>
-                        ))}
-                    </div>
+                    {settings.legend.enabled && (
+                        <HodographLegend
+                            segments={settings.segments}
+                            title={settings.legend.title}
+                            className={[
+                                styles.legendOverlay,
+                                styles[LEGEND_POSITION_CLASSES[settings.legend.position]] ??
+                                    styles.legendTopLeft,
+                                settings.legend.className,
+                            ]
+                                .filter(Boolean)
+                                .join(' ')}
+                            sx={settings.legend.sx}
+                        />
+                    )}
 
                     {/* Tooltip */}
                     {hoverInfo && (
@@ -347,11 +375,14 @@ export default function Hodograph({
                             y={hoverInfo.y || hoverInfo.screenY}
                             content={
                                 settings.renderTooltip ? (
-                                    settings.renderTooltip(hoverInfo.data, hoverInfo.type)
+                                    settings.renderTooltip(hoverInfo.data, hoverInfo.type, {
+                                        windUnit: settings.windUnit,
+                                    })
                                 ) : (
                                     <HodographTooltipContent
                                         data={hoverInfo.data}
                                         type={hoverInfo.type}
+                                        windUnit={settings.windUnit}
                                     />
                                 )
                             }
