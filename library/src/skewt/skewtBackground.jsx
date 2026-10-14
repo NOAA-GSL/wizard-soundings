@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import * as d3 from 'd3';
 import sharp from '../Sharp';
+import { buildIsotherms } from '../temperatureUnits';
 import styles from './skewt.module.css';
 
 /**
@@ -16,8 +17,8 @@ function SkewTBackground({ dimensions, scales, config, transformString, transfor
 
     // 1. Isotherms
     const isothermLines = useMemo(
-        () => d3.range(config.isotherms.min, config.isotherms.max + 1, config.isotherms.interval),
-        [config.isotherms],
+        () => buildIsotherms(config.isotherms, config.temperatureUnit),
+        [config.isotherms, config.temperatureUnit],
     );
 
     // 2. Dry Adiabats
@@ -129,12 +130,19 @@ function SkewTBackground({ dimensions, scales, config, transformString, transfor
                         />
                     ))}
                     {/* Isotherm Lines */}
-                    {isothermLines.map((t) => {
-                        const xTop = getSkewX(t, config.topP, xScale, yScale, tanAlpha, baseY);
-                        const xBottom = getSkewX(t, config.baseP, xScale, yScale, tanAlpha, baseY);
+                    {isothermLines.map(({ tempC, freezing }) => {
+                        const xTop = getSkewX(tempC, config.topP, xScale, yScale, tanAlpha, baseY);
+                        const xBottom = getSkewX(
+                            tempC,
+                            config.baseP,
+                            xScale,
+                            yScale,
+                            tanAlpha,
+                            baseY,
+                        );
 
                         return (
-                            <g key={`iso-${t}`}>
+                            <g key={`iso-${tempC}`}>
                                 <line
                                     x1={xTop}
                                     y1={0}
@@ -142,7 +150,7 @@ function SkewTBackground({ dimensions, scales, config, transformString, transfor
                                     y2={height}
                                     stroke={config.colors.isotherm}
                                     strokeWidth={4}
-                                    strokeDasharray={t === 0 ? '' : '2,2'}
+                                    strokeDasharray={freezing ? '' : '2,2'}
                                 />
                             </g>
                         );
@@ -164,22 +172,23 @@ function SkewTBackground({ dimensions, scales, config, transformString, transfor
             </g>
             {/* Isotherm Labels (outside of clipping area) */}
             <g>
-                {isothermLines.map((t) => {
+                {isothermLines.map(({ tempC, label }) => {
+                    if (label == null) return null;
                     // Calculate exactly where the slanted line crosses the visual bottom of the chart
                     const yDataAtBottom = (height - transformState.y) / transformState.k;
-                    const xDataAtBottom = xScale(t) + (baseY - yDataAtBottom) / tanAlpha;
+                    const xDataAtBottom = xScale(tempC) + (baseY - yDataAtBottom) / tanAlpha;
                     const zoomedX = transformState.k * xDataAtBottom + transformState.x;
                     if (zoomedX < 0 || zoomedX > width) return null;
 
                     return (
                         <text
-                            key={`label-iso-${t}`}
+                            key={`label-iso-${tempC}`}
                             x={zoomedX}
                             y={height + 8}
                             fontSize="14px"
                             textAnchor="middle"
                         >
-                            {t}
+                            {label}
                         </text>
                     );
                 })}

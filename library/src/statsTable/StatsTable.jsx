@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import ChartTooltip from '../utilities/tooltip';
+import { convertTemperatureStat } from '../temperatureUnits';
+import { convertWindStat, toWindUnit } from '../windUnits';
 import styles from './statstable.module.css';
 
 /*--------------------------------*/
@@ -12,10 +14,10 @@ const fmt = (val, decimals = 0) => {
     return val.toFixed(decimals);
 };
 
-// --- Helper: Safe Vector Formatting ---
-const fmtVec = (vec) => {
+// --- Helper: Safe Vector Formatting (magnitude converted from kts) ---
+const fmtVec = (vec, windUnit = 'kts') => {
     if (!vec || vec.drx === null || vec.mag === null) return '-/-';
-    return `${vec.drx.toFixed(0)}/${vec.mag.toFixed(0)}`;
+    return `${vec.drx.toFixed(0)}/${toWindUnit(vec.mag, windUnit).toFixed(0)}`;
 };
 
 // --- Configuration: Thermo Grid --
@@ -287,6 +289,8 @@ export default function StatsTable({
     statsDictParam,
     selectedStat: externalStat,
     onStatSelect,
+    temperatureUnit = 'C',
+    windUnit = 'kts',
     className = 'statsContainer',
     sx = {},
 }) {
@@ -378,9 +382,17 @@ export default function StatsTable({
                                 <tr key={rIndex}>
                                     {row.map((cell) => {
                                         // Determine the value: use custom getter or standard key lookup
-                                        const rawVal = cell.getValue
-                                            ? cell.getValue(stats)
-                                            : stats[cell.id];
+                                        const rawVal = convertWindStat(
+                                            cell.id,
+                                            convertTemperatureStat(
+                                                cell.id,
+                                                cell.getValue
+                                                    ? cell.getValue(stats)
+                                                    : stats[cell.id],
+                                                temperatureUnit,
+                                            ),
+                                            windUnit,
+                                        );
 
                                         return (
                                             <StatCell
@@ -415,13 +427,17 @@ export default function StatsTable({
                                     <th>{row.label}</th>
                                     {WIND_COLS.map((col) => {
                                         const dataKey = row[col.keyProp]; // e.g., 'right_srh1km'
-                                        const rawValue = stats[dataKey];
+                                        const rawValue = convertWindStat(
+                                            dataKey,
+                                            stats[dataKey],
+                                            windUnit,
+                                        );
 
                                         return (
                                             <StatCell
                                                 key={col.header}
                                                 statKey={col.isInteractive ? dataKey : undefined}
-                                                value={col.formatter(rawValue)}
+                                                value={col.formatter(rawValue, windUnit)}
                                                 className={
                                                     !col.isInteractive ? styles.noClick : undefined
                                                 }
@@ -448,7 +464,7 @@ export default function StatsTable({
                                         <StatCell
                                             label={row.label}
                                             statKey={row.isInteractive ? row.id : undefined}
-                                            value={row.formatter(rawVal)}
+                                            value={row.formatter(rawVal, windUnit)}
                                             className={
                                                 !row.isInteractive ? styles.noClick : undefined
                                             }
